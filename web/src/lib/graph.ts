@@ -110,6 +110,39 @@ export async function ingestReceipt(
   };
 }
 
+// Manual entry from the dashboard form: explicit bucket, typed vendor/amount.
+export async function addManualTransaction(
+  tenantId: string,
+  input: { vendorLabel: string; amount: number; walletNodeId: string; occurredAt?: string },
+): Promise<IngestResult> {
+  const vendorNodeId = await ensureVendorNode(tenantId, input.vendorLabel);
+  const wallet = await pbFirst<PBNode>(
+    "nodes",
+    `id = ${pbStr(input.walletNodeId)} && tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+  );
+  if (!wallet) throw new Error("Unknown bucket for this household.");
+  const edgeId = await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId);
+
+  const tx = await pbCreate<{ id: string }>("transactions", {
+    tenant: tenantId,
+    edge: edgeId,
+    wallet_node: wallet.id,
+    vendor_node: vendorNodeId,
+    amount: input.amount,
+    currency: "MYR",
+    occurred_at: input.occurredAt ?? new Date().toISOString().replace("T", " "),
+    source: "manual",
+    parse_confidence: 1,
+  });
+
+  return {
+    transactionId: tx.id,
+    walletNodeId: wallet.id,
+    vendorNodeId,
+    walletLabel: wallet.label,
+  };
+}
+
 // Resolve a Telegram chat id to a tenant via channel_links.
 export async function resolveTenantByChannel(
   channel: string,

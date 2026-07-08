@@ -2,6 +2,7 @@ import Link from "next/link";
 import { isDatabaseConfigured, config } from "@/lib/config";
 import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/projection";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
+import AddTransaction from "./AddTransaction";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,10 @@ export default async function Dashboard() {
             <h1 className="text-2xl font-semibold tracking-tight">🍯 HoneyMoney</h1>
             <p className="text-sm text-zinc-500">The Rahman Household · this month</p>
           </div>
-          <Link href="/" className="text-sm text-zinc-500 hover:underline">← Home</Link>
+          <nav className="flex gap-4 text-sm">
+            <Link href="/graph" className="text-amber-600 hover:underline">🕸️ Graph</Link>
+            <Link href="/" className="text-zinc-500 hover:underline">← Home</Link>
+          </nav>
         </header>
 
         {/* Honey insight */}
@@ -117,6 +121,17 @@ export default async function Dashboard() {
               );
             })}
           </div>
+        </section>
+
+        {/* Manual input */}
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            Add a spend
+          </h2>
+          <AddTransaction
+            tenantId={tenantId}
+            buckets={projection.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
+          />
         </section>
 
         {/* Recent spend */}
