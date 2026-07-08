@@ -1,0 +1,96 @@
+// Gemini via REST (fetch) — no SDK dependency, edge-safe, no version churn.
+// Docs: https://ai.google.dev/api/generate-content
+
+import { config, isGeminiConfigured } from "./config";
+import type { ParsedReceipt } from "./types";
+
+const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
+
+interface GeminiPart {
+  text?: string;
+  inlineData?: { mimeType: string; data: string };
+}
+
+async function generate(parts: GeminiPart[], jsonMode: boolean): Promise<string> {
+  if (!isGeminiConfigured()) {
+    throw new Error("Gemini is not configured. Set GEMINI_API_KEY.");
+  }
+  const url = `${ENDPOINT}/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: jsonMode
+        ? { temperature: 0.1, responseMimeType: "application/json" }
+        : { temperature: 0.7 },
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Gemini error ${res.status}: ${detail.slice(0, 400)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((p: GeminiPart) => p.text ?? "")
+    .join("")
+    .trim();
+  if (!text) throw new Error("Gemini returned an empty response.");
+  return text;
+}
+
+function stripJsonFence(s: string): string {
+  return s
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+}
+
+const RECEIPT_PROMPT = `You are a receipt/e-wallet screenshot parser for Malaysian apps
+(Touch 'n Go, MAE, GrabPay, ShopeePay, bank apps). Extract the payment details.
+Return ONLY strict JSON with keys:
+  "vendor"     (string, merchant/recipient name; "Unknown" if unclear),
+  "amount"     (number, the transaction amount in the local currency),
+  "currency"   (string ISO code, default "MYR"),
+  "occurredAt" (string ISO 8601 timestamp; if only a date is visible use midnight; if absent use ""),
+  "confidence" (number 0..1, your confidence in the extraction).
+No commentary, no markdown.`;
+
+export async function parseReceipt(
+  imageBase64: string,
+  mimeType: string,
+): Promise<ParsedReceipt> {
+  const raw = await generate(
+    [{ text: RECEIPT_PROMPT }, { inlineData: { mimeType, data: imageBase64 } }],
+    true,
+  );
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(stripJsonFence(raw));
+  } catch {
+    throw new Error(`Could not parse Gemini JSON: ${raw.slice(0, 200)}`);
+  }
+  const amount = Number(obj.amount);
+  return {
+    vendor: String(obj.vendor ?? "Unknown").slice(0, 120),
+    amount: Number.isFinite(amount) ? Math.abs(amount) : 0,
+    currency: String(obj.currency ?? "MYR").toUpperCase().slice(0, 8),
+    occurredAt:
+      typeof obj.occurredAt === "string" && obj.occurredAt
+        ? obj.occurredAt
+        : new Date().toISOString(),
+    confidence: Math.max(0, Math.min(1, Number(obj.confidence) || 0.5)),
+  };
+}
+
+const HONEY_SYSTEM = `You are "Honey", HoneyMoney's financial wellness companion for families.
+Voice: warm, encouraging, forward-looking, and MARITAL-SAFE — never blame a spouse,
+never interrogate past purchases ("what was this RM50 for?"). Focus on proactive
+alignment toward shared goals. Keep it to 2-3 short sentences. Use RM for amounts.`;
+
+export async function honeyInsight(contextText: string): Promise<string> {
+  return generate(
+    [{ text: `${HONEY_SYSTEM}\n\nHousehold snapshot:\n${contextText}\n\nGive one insight now:` }],
+    false,
+  );
+}
