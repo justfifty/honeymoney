@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { getBucketProjection, getHoneyInsight } from "@/lib/projection";
-import { isSupabaseConfigured, config } from "@/lib/config";
+import { isDatabaseConfigured, config } from "@/lib/config";
 
 export const runtime = "nodejs";
 
 // GET /api/insight?tenantId=... -> projection + Honey insight.
 // Falls back to DEMO_TENANT_ID when tenantId is omitted.
 export async function GET(request: Request) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "Database (PocketBase) not configured" }, { status: 503 });
   }
 
   const tenantId =

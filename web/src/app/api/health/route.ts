@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  isPocketBaseConfigured,
   isSupabaseConfigured,
   isGeminiConfigured,
   isTelegramConfigured,
@@ -14,6 +15,7 @@ export async function GET() {
     ok: true,
     service: "honeymoney",
     integrations: {
+      pocketbase: isPocketBaseConfigured(),
       supabase: isSupabaseConfigured(),
       gemini: isGeminiConfigured(),
       telegram: isTelegramConfigured(),

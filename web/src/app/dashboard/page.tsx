@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isSupabaseConfigured, config } from "@/lib/config";
+import { isDatabaseConfigured, config } from "@/lib/config";
 import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/projection";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
 
@@ -11,9 +11,9 @@ function SetupNotice({ reason }: { reason: string }) {
       <h2 className="text-lg font-semibold">Almost there — finish setup</h2>
       <p className="mt-2 text-sm">{reason}</p>
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm">
-        <li>Create a free Supabase project.</li>
-        <li>Run <code>supabase/migrations/0001_init_graph.sql</code> then <code>supabase/seed.sql</code>.</li>
-        <li>Copy <code>.env.example</code> → <code>web/.env.local</code> and fill the keys + <code>DEMO_TENANT_ID</code>.</li>
+        <li>Download PocketBase: <code>npm run pb:download</code> (from <code>web/</code>).</li>
+        <li>Start it: <code>npm run pb:start</code> — schema + demo data load automatically.</li>
+        <li>Copy <code>.env.example</code> → <code>web/.env.local</code> (defaults already match).</li>
         <li>Restart <code>npm run dev</code>.</li>
       </ol>
       <p className="mt-4 text-xs opacity-80">See PLAN.md §8–9 for the full walkthrough.</p>
@@ -22,17 +22,17 @@ function SetupNotice({ reason }: { reason: string }) {
 }
 
 export default async function Dashboard() {
-  if (!isSupabaseConfigured()) {
+  if (!isDatabaseConfigured()) {
     return (
       <main className="min-h-full px-6 py-16">
-        <SetupNotice reason="Supabase isn't configured yet, so there's no household graph to show." />
+        <SetupNotice reason="PocketBase isn't configured yet, so there's no household graph to show." />
       </main>
     );
   }
   if (!config.demoTenantId) {
     return (
       <main className="min-h-full px-6 py-16">
-        <SetupNotice reason="Set DEMO_TENANT_ID (printed by seed.sql) to load a household." />
+        <SetupNotice reason="Set DEMO_TENANT_ID in web/.env.local (the demo household is hhrahman1111111)." />
       </main>
     );
   }

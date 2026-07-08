@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { config, isTelegramConfigured, isSupabaseConfigured } from "@/lib/config";
-import { getServiceClient } from "@/lib/supabaseServer";
+import { config, isTelegramConfigured, isDatabaseConfigured } from "@/lib/config";
 import { parseReceipt } from "@/lib/gemini";
-import { ingestReceipt, resolveTenantByChannel } from "@/lib/graph";
+import { ingestReceipt, resolveTenantByChannel, linkChannel } from "@/lib/graph";
 import { sendMessage, getFileBase64, largestPhotoId } from "@/lib/telegram";
 
 export const runtime = "nodejs";
@@ -10,22 +9,12 @@ export const runtime = "nodejs";
 // Auto-link a Telegram chat to the demo tenant on /start (MVP onboarding).
 async function linkChat(chatId: number): Promise<string | null> {
   if (!config.demoTenantId) return null;
-  const supabase = getServiceClient();
-  await supabase
-    .from("channel_links")
-    .upsert(
-      {
-        tenant_id: config.demoTenantId,
-        channel: "telegram",
-        external_id: String(chatId),
-      },
-      { onConflict: "channel,external_id" },
-    );
+  await linkChannel(config.demoTenantId, "telegram", String(chatId));
   return config.demoTenantId;
 }
 
 export async function POST(request: Request) {
-  if (!isTelegramConfigured() || !isSupabaseConfigured()) {
+  if (!isTelegramConfigured() || !isDatabaseConfigured()) {
     return NextResponse.json({ ok: true }); // ack silently if not wired up
   }
 

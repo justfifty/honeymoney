@@ -13,18 +13,22 @@ users forward e-wallet **screenshots** to a Telegram bot and Gemini does the res
 
 ---
 
-## Architecture (zero permanent backend)
+## Architecture (local-first, RM 0)
 
 ```text
-Telegram screenshot → Next.js API route → Gemini OCR → Supabase graph
+Telegram screenshot → Next.js API route → Gemini OCR → PocketBase graph (local)
                                                           ↓
-                        Dashboard  ←  bucket_projection()  →  "Honey" insight
+                        Dashboard  ←  projection engine  →  "Honey" insight
 ```
 
-- **Frontend + API:** Next.js 16 (App Router) on Vercel — serverless routes are the whole backend.
-- **Database:** Supabase Postgres — nodes/edges/transactions + RLS + a recursive-CTE projection.
+- **Frontend + API:** Next.js 16 (App Router) — API routes are the whole backend.
+- **Database:** **PocketBase** (single binary + SQLite) — nodes/edges/transactions knowledge
+  graph, stored locally in `pocketbase/pb_data/`. Schema + demo data ship as committed
+  migrations and load automatically on first start.
 - **AI:** Google Gemini via REST (multimodal vision + text). No SDK dependency.
 - **Ingestion:** Telegram Bot API (free; WhatsApp is Phase 3 — it's paid + BSP-gated).
+- **Cloud-scale path:** the same schema exists as Postgres SQL in [`supabase/`](supabase/)
+  (RLS + recursive-CTE projection) for when the team moves off local-first.
 
 See [`PLAN.md §4–6`](PLAN.md) for the data model and hosting details.
 
@@ -53,9 +57,12 @@ honeymoney/
 │       │       ├── insight/route.ts
 │       │       └── health/route.ts
 │       └── lib/             # config, supabase, gemini, graph, projection, telegram
-├── supabase/
-│   ├── migrations/0001_init_graph.sql   # knowledge-graph schema + RLS + projection
-│   └── seed.sql                         # demo household
+├── pocketbase/
+│   └── pb_migrations/       # knowledge-graph schema + demo seed (auto-applied)
+├── scripts/                 # pb:download / pb:start helpers (cross-platform)
+├── supabase/                # same schema as Postgres SQL — optional cloud-scale path
+│   ├── migrations/0001_init_graph.sql
+│   └── seed.sql · seed_business.sql
 ├── docs/                    # growth kit, LOI, AI disclosure (see NEXT.md)
 ├── api/                     # ⚠️ legacy FastAPI prototype — retained for reference only
 ├── PLAN.md                  # development manual
@@ -68,21 +75,23 @@ honeymoney/
 
 ---
 
-## Quick start
+## Quick start (Windows & macOS)
 
 ```bash
-cd web
+git clone https://github.com/justfifty/honeymoney.git && cd honeymoney/web
 npm install
-cp ../.env.example .env.local     # fill Supabase + Gemini + Telegram values
+cp ../.env.example .env.local     # defaults work out of the box
 
-# apply the database (Supabase SQL editor or CLI):
-#   run supabase/migrations/0001_init_graph.sql, then supabase/seed.sql
-#   copy the printed DEMO_TENANT_ID into .env.local
-
-npm run dev                       # http://localhost:3000  →  /dashboard
+npm run pb:download               # one-time: fetch the PocketBase binary for your OS
+npm run pb:start                  # terminal 1: database (auto-creates schema + demo data)
+npm run dev                       # terminal 2: app → http://localhost:3000/dashboard
 ```
 
-Full walkthrough (DB setup, Telegram webhook, deploy) in [`PLAN.md §9–11`](PLAN.md).
+That's it — the dashboard shows the demo household immediately. Add a free
+`GEMINI_API_KEY` to `.env.local` to enable receipt OCR + AI insights.
+PocketBase admin UI: `http://127.0.0.1:8090/_/` (see `.env.example` for the dev login).
+
+Full walkthrough (Telegram webhook, deploy options) in [`PLAN.md §9–11`](PLAN.md).
 
 ---
 

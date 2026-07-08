@@ -40,6 +40,13 @@ supabase/.temp/
 supabase/.branches/
 .turbo/
 
+# ─── PocketBase (binary + data stay local; migrations ARE committed) ─────────
+pocketbase/pocketbase
+pocketbase/pocketbase.exe
+pocketbase/pb_data/
+pocketbase/CHANGELOG.md
+pocketbase/LICENSE.md
+
 # ─── Next.js / Node ──────────────────────────────────────────────────────────
 node_modules/
 **/node_modules/

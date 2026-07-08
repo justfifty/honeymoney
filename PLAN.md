@@ -130,12 +130,18 @@ At household scale (tens–hundreds of nodes/tenant) Postgres + recursive CTEs i
 
 | Concern | Service | Tier | Notes / limits |
 |--------|---------|------|----------------|
-| Frontend + API (serverless) | **Vercel** | Hobby (free) | Edge/serverless routes; no dedicated server. |
-| Database + Auth + Storage | **Supabase** | Free | ~500 MB Postgres, connection pooler (Supavisor), Auth, RLS. |
+| Database (default, local-first) | **PocketBase** | Free, self-contained | Single binary + SQLite in `pocketbase/pb_data/`. Data stays on the team's machine. Schema + demo seed are committed migrations (`pocketbase/pb_migrations/`) — auto-applied on first start. |
+| Frontend + API | **Next.js** local (`npm run dev`) | Free | API routes are the whole backend. |
 | AI (vision + text) | **Google Gemini** (AI Studio) | Free | Rate-limited (RPM/RPD) — batch, cache, and queue OCR. |
-| Ingestion channel | **Telegram Bot API** | Free | No gatekeeper. *(WhatsApp Business API is paid + BSP-gated — Phase 3 only.)* |
+| Ingestion channel | **Telegram Bot API** | Free | No gatekeeper. *(WhatsApp Business API is paid + BSP-gated — Phase 3 only.)* Needs a public URL for the webhook — use a tunnel (e.g. `cloudflared`/`ngrok`) in local mode, or a deployed instance. |
 | Source control / artifact | **GitHub** | Free | Judges' artifact link; real commit history. |
+| Cloud-scale path (optional) | **Vercel + Supabase** | Free tiers | The same schema exists as Postgres SQL with RLS + recursive-CTE projection in `supabase/`. Switch when multi-device/cloud access is needed. |
 | Future scale | **AWS** (MAIC credits) | Credits | For enterprise pilots. |
+
+> **Local-first trade-off (deliberate):** the demo runs on a laptop — perfect for the KL live
+> demo and PDPA story ("your data never leaves the household"). The Vercel-deployed dashboard
+> cannot reach a laptop PocketBase; for a public URL either tunnel to it or move to the
+> Supabase path. Both schemas are kept in lock-step by design.
 
 > **Honest caveat:** "RM 0 for 1,000 profiles" is demo-scale. Gemini free-tier rate limits are the first ceiling; mitigate with a template/regex first-pass before spending a vision call, and treat OCR as a retryable queue.
 
@@ -164,47 +170,48 @@ At household scale (tens–hundreds of nodes/tenant) Postgres + recursive CTEs i
 
 ## 8. Configuration & required settings
 
-Copy `.env.example` → `web/.env.local` and fill:
+Copy `.env.example` → `web/.env.local`. **Local-first defaults work unchanged.**
 
-| Variable | Purpose | Where to get it |
-|----------|---------|-----------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Supabase → Project Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client (RLS-bound) key | same |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key (bypasses RLS in API routes) | same — **never expose to browser** |
-| `GEMINI_API_KEY` | Vision + text model | https://aistudio.google.com/app/apikey |
-| `GEMINI_MODEL` | Model id (default `gemini-2.0-flash`) | optional |
-| `TELEGRAM_BOT_TOKEN` | Bot auth | @BotFather |
+| Variable | Purpose | Default / where to get it |
+|----------|---------|---------------------------|
+| `POCKETBASE_URL` | Local database URL | `http://127.0.0.1:8090` (default) |
+| `POCKETBASE_ADMIN_EMAIL` | Superuser the server authenticates as | `admin@honeymoney.local` (dev default) |
+| `POCKETBASE_ADMIN_PASSWORD` | Its password | `honeymoney-local-dev` (dev default — change for anything shared) |
+| `DEMO_TENANT_ID` | Tenant shown on the dashboard | `hhrahman1111111` (household) or `bizsedap2222222` (business) |
+| `GEMINI_API_KEY` | Vision + text model (optional) | [AI Studio](https://aistudio.google.com/app/apikey) |
+| `GEMINI_MODEL` | Model id | `gemini-2.0-flash` |
+| `TELEGRAM_BOT_TOKEN` | Bot auth (optional) | @BotFather |
 | `TELEGRAM_WEBHOOK_SECRET` | Verifies inbound webhooks | you choose a random string |
-| `DEMO_TENANT_ID` | Household shown on the dashboard | UUID from `seed.sql` output |
+| `NEXT_PUBLIC_SUPABASE_URL` etc. | Optional cloud-scale path only | Supabase → Project Settings → API |
 
-The app **degrades gracefully**: if Supabase/Gemini are not configured, the dashboard shows a setup state and routes return a clear "not configured" response instead of crashing.
+PocketBase collections have no public API rules (superuser-only) — the browser never talks
+to the database directly, only the Next.js server does. The app **degrades gracefully**:
+if PocketBase/Gemini are not configured, the dashboard shows a setup state and routes
+return a clear "not configured" response instead of crashing.
 
 ---
 
 ## 9. Step-by-step: build & run locally
 
 ```bash
-# 0. prerequisites: Node >= 20, npm >= 10, git
-git clone <your-repo-url> honeymoney && cd honeymoney
+# 0. prerequisites: Node >= 20, npm >= 10, git  (Windows & macOS both fine)
+git clone https://github.com/justfifty/honeymoney.git && cd honeymoney
 
 # 1. install web deps
 cd web
 npm install
 
-# 2. configure env
+# 2. configure env — the defaults already match the local database
 cp ../.env.example .env.local
-#    edit .env.local with your Supabase + Gemini + Telegram values
+#    (optionally add GEMINI_API_KEY for OCR + AI insights)
 
-# 3. set up the database (Supabase)
-#    Option A — Supabase SQL editor: paste supabase/migrations/0001_init_graph.sql, run;
-#               then paste supabase/seed.sql, run. Copy the printed DEMO_TENANT_ID into .env.local.
-#    Option B — Supabase CLI:
-#       supabase link --project-ref <ref>
-#       supabase db push          # applies migrations
-#       (then run seed.sql in the SQL editor)
+# 3. database — PocketBase, fully automatic
+npm run pb:download    # one-time: fetches the binary for your OS into pocketbase/
+npm run pb:start       # terminal 1: creates superuser + applies schema + demo seed, then serves
+#    admin UI: http://127.0.0.1:8090/_/  (login = the two POCKETBASE_ADMIN_* values)
 
-# 4. run
-npm run dev            # http://localhost:3000  (landing)  /dashboard (app)
+# 4. run the app
+npm run dev            # terminal 2: http://localhost:3000  (landing)  /dashboard (app)
 
 # 5. test the parse pipeline without Telegram
 #    POST an image to /api/parse (base64) — see §12.2 for the payload shape.
@@ -212,6 +219,10 @@ npm run dev            # http://localhost:3000  (landing)  /dashboard (app)
 # 6. typecheck / build
 npm run build
 ```
+
+> Switching to the cloud path later? The identical schema lives in
+> `supabase/migrations/0001_init_graph.sql` — see §6 and the git history for the
+> Supabase-flavored lib layer.
 
 ---
 

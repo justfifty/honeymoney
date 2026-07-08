@@ -77,11 +77,17 @@ HoneyMoney is sold to **corporate HR as an employee financial-wellness benefit**
 
 ---
 
-## 5. Try it without the full setup
+## 5. Try it — three commands, everything local & free
 
-- **See the UI immediately:** `cd web && npm install && npm run dev` → open `http://localhost:3000`. Without Supabase configured, the dashboard shows a friendly setup checklist (it never crashes).
-- **See real data:** create a free Supabase project, run `0001_init_graph.sql` then `seed.sql` (and optionally `seed_business.sql`), put the printed `DEMO_TENANT_ID` in `web/.env.local`, restart. The dashboard fills in.
-- **Test the AI parse:** `POST /api/parse` with `{ "imageBase64": "...", "mimeType": "image/jpeg", "tenantId": "1111…1111" }`.
+```bash
+cd web && npm install && cp ../.env.example .env.local
+npm run pb:download && npm run pb:start     # terminal 1: local database (auto-seeds demo data)
+npm run dev                                  # terminal 2: app → http://localhost:3000/dashboard
+```
+
+- The database is **PocketBase** — a single free binary; your data lives in `pocketbase/pb_data/` on your own machine and the demo households load automatically. Browse it at `http://127.0.0.1:8090/_/`.
+- Demo tenants: household `hhrahman1111111` (default) · business `bizsedap2222222` (set as `DEMO_TENANT_ID`, or call `/api/insight?tenantId=bizsedap2222222`).
+- **Test the AI parse:** add a free `GEMINI_API_KEY`, then `POST /api/parse` with `{ "imageBase64": "...", "mimeType": "image/jpeg", "tenantId": "hhrahman1111111" }`.
 - **Check wiring:** `GET /api/health` shows which integrations are configured.
 
 Full setup + deploy walkthrough: `PLAN.md §9–11`.

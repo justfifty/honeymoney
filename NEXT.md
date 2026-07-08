@@ -64,20 +64,20 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 
 ## 4. Build status — the working artifact `[Technical Feasibility]`
 
-**Architecture (locked):** Next.js 16 (Vercel serverless) + Supabase Postgres (knowledge graph) + Gemini (REST, multimodal) + Telegram bot. Zero permanent backend. See `PLAN.md §4–6`.
+**Architecture (locked, local-first):** Next.js 16 + **PocketBase** (local knowledge graph, free) + Gemini (REST, multimodal) + Telegram bot. Data stays on the team's machine; the identical Postgres schema in `supabase/` is the optional cloud-scale path. See `PLAN.md §4–6`.
 
 - [x] Repo scaffolded (Next.js App Router, TS, Tailwind)
-- [x] **Knowledge-graph schema** — `supabase/migrations/0001_init_graph.sql` (tenants, members, nodes, edges, transactions, channel_links, RLS, `bucket_projection()`)
-- [x] Demo seed — `supabase/seed.sql` (one household, salary → 3 buckets → wallets, sample spend)
+- [x] **Knowledge-graph schema** — `pocketbase/pb_migrations/` (tenants, members, nodes, edges, transactions, channel_links; auto-applied) + Postgres twin in `supabase/`
+- [x] Demo seed — household **and** business tenants, auto-loaded on first `pb:start`
 - [x] Gemini OCR + Honey insight (REST) — `web/src/lib/gemini.ts`
-- [x] Graph ingest service — `web/src/lib/graph.ts`
-- [x] Projection / insight service — `web/src/lib/projection.ts`
+- [x] Graph ingest service — `web/src/lib/graph.ts` (PocketBase)
+- [x] Projection / insight engine — `web/src/lib/projection.ts` (TS allocation walk)
 - [x] Telegram webhook route — `web/src/app/api/telegram/webhook/route.ts`
 - [x] Test parse route + insight route + health — `web/src/app/api/{parse,insight,health}/route.ts`
 - [x] Dashboard (buckets, recent spend, Honey card) — `web/src/app/dashboard/page.tsx`
-- [ ] Apply migration to a real Supabase project + smoke-test end to end (`supabase db push`)
-- [ ] Register Telegram bot (@BotFather) + set webhook to Vercel URL
-- [ ] Deploy to Vercel, wire env vars
+- [x] **End-to-end verified locally**: PB migrations → projection → dashboard → Honey insight (both tenants)
+- [ ] Add a `GEMINI_API_KEY` + test `/api/parse` with a real TNG/MAE screenshot
+- [ ] Register Telegram bot (@BotFather) + expose webhook via tunnel (`cloudflared`/`ngrok`) for the demo
 - [ ] Curate 20 real TNG/MAE/GrabPay screenshots → measure OCR accuracy vs a golden set
 
 > **Scope discipline for the MVP demo:** one household, one killer graph insight ("your food velocity moves your Future Shield goal 6 weeks later"). Corporate dashboard + credit scoring stay **narrated roadmap**, not built code, until after semi-finals.

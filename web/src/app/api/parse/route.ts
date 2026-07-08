@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseReceipt } from "@/lib/gemini";
 import { ingestReceipt } from "@/lib/graph";
-import { isSupabaseConfigured, isGeminiConfigured } from "@/lib/config";
+import { isDatabaseConfigured, isGeminiConfigured } from "@/lib/config";
 
 export const runtime = "nodejs";
 
@@ -33,9 +33,9 @@ export async function POST(request: Request) {
     const parsed = await parseReceipt(imageBase64, mimeType);
 
     if (persist && tenantId) {
-      if (!isSupabaseConfigured()) {
+      if (!isDatabaseConfigured()) {
         return NextResponse.json(
-          { parsed, warning: "Supabase not configured — parsed only, not stored." },
+          { parsed, warning: "Database not configured — parsed only, not stored." },
           { status: 200 },
         );
       }

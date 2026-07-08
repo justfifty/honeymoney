@@ -1,8 +1,20 @@
 // Graph write path: turn a parsed receipt into graph state
-// (vendor node + SPENT_AT edge + transaction event).
+// (vendor node + SPENT_AT edge + transaction event). PocketBase edition.
 
-import { getServiceClient } from "./supabaseServer";
+import { pbList, pbFirst, pbCreate, pbStr } from "./pocketbase";
 import type { ParsedReceipt } from "./types";
+
+interface PBNode {
+  id: string;
+  label: string;
+  kind: string;
+  props: Record<string, unknown> | null;
+  created: string;
+}
+
+interface PBEdge {
+  id: string;
+}
 
 interface IngestResult {
   transactionId: string;
@@ -13,27 +25,21 @@ interface IngestResult {
 
 // Find-or-create the vendor node for this tenant (case-insensitive by label).
 async function ensureVendorNode(tenantId: string, vendor: string): Promise<string> {
-  const supabase = getServiceClient();
   const label = vendor.trim() || "Unknown";
 
-  const { data: existing } = await supabase
-    .from("nodes")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("kind", "vendor")
-    .ilike("label", label)
-    .limit(1)
-    .maybeSingle();
+  const existing = await pbFirst<PBNode>(
+    "nodes",
+    `tenant = ${pbStr(tenantId)} && kind = 'vendor' && label ~ ${pbStr(label)}`,
+  );
+  if (existing) return existing.id;
 
-  if (existing?.id) return existing.id as string;
-
-  const { data, error } = await supabase
-    .from("nodes")
-    .insert({ tenant_id: tenantId, kind: "vendor", label })
-    .select("id")
-    .single();
-  if (error) throw new Error(`ensureVendorNode: ${error.message}`);
-  return data.id as string;
+  const created = await pbCreate<PBNode>("nodes", {
+    tenant: tenantId,
+    kind: "vendor",
+    label,
+    props: {},
+  });
+  return created.id;
 }
 
 // Resolve which bucket/wallet a forwarded receipt should be attributed to.
@@ -41,29 +47,16 @@ async function ensureVendorNode(tenantId: string, vendor: string): Promise<strin
 async function resolveWalletNode(
   tenantId: string,
 ): Promise<{ id: string; label: string }> {
-  const supabase = getServiceClient();
-
-  const { data: def } = await supabase
-    .from("nodes")
-    .select("id, label")
-    .eq("tenant_id", tenantId)
-    .eq("kind", "bucket")
-    .eq("props->>default_spend", "true")
-    .limit(1)
-    .maybeSingle();
-  if (def?.id) return { id: def.id as string, label: def.label as string };
-
-  const { data: first, error } = await supabase
-    .from("nodes")
-    .select("id, label")
-    .eq("tenant_id", tenantId)
-    .eq("kind", "bucket")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw new Error(`resolveWalletNode: ${error.message}`);
-  if (!first?.id) throw new Error("No bucket exists for this tenant — seed it first.");
-  return { id: first.id as string, label: first.label as string };
+  const buckets = await pbList<PBNode>("nodes", {
+    filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+    sort: "created",
+  });
+  if (buckets.length === 0) {
+    throw new Error("No bucket exists for this tenant — run the PocketBase seed first.");
+  }
+  const def = buckets.find((b) => b.props && b.props.default_spend === true);
+  const pick = def ?? buckets[0];
+  return { id: pick.id, label: pick.label };
 }
 
 // Find-or-create the SPENT_AT edge (wallet -> vendor).
@@ -72,32 +65,19 @@ async function ensureSpentAtEdge(
   walletNodeId: string,
   vendorNodeId: string,
 ): Promise<string> {
-  const supabase = getServiceClient();
+  const existing = await pbFirst<PBEdge>(
+    "edges",
+    `tenant = ${pbStr(tenantId)} && src_node = ${pbStr(walletNodeId)} && dst_node = ${pbStr(vendorNodeId)} && rel = 'SPENT_AT' && valid_to = ''`,
+  );
+  if (existing) return existing.id;
 
-  const { data: existing } = await supabase
-    .from("edges")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("src_node", walletNodeId)
-    .eq("dst_node", vendorNodeId)
-    .eq("rel", "SPENT_AT")
-    .is("valid_to", null)
-    .limit(1)
-    .maybeSingle();
-  if (existing?.id) return existing.id as string;
-
-  const { data, error } = await supabase
-    .from("edges")
-    .insert({
-      tenant_id: tenantId,
-      src_node: walletNodeId,
-      dst_node: vendorNodeId,
-      rel: "SPENT_AT",
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`ensureSpentAtEdge: ${error.message}`);
-  return data.id as string;
+  const created = await pbCreate<PBEdge>("edges", {
+    tenant: tenantId,
+    src_node: walletNodeId,
+    dst_node: vendorNodeId,
+    rel: "SPENT_AT",
+  });
+  return created.id;
 }
 
 export async function ingestReceipt(
@@ -105,32 +85,25 @@ export async function ingestReceipt(
   parsed: ParsedReceipt,
   source = "telegram",
 ): Promise<IngestResult> {
-  const supabase = getServiceClient();
-
   const vendorNodeId = await ensureVendorNode(tenantId, parsed.vendor);
   const wallet = await resolveWalletNode(tenantId);
   const edgeId = await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId);
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert({
-      tenant_id: tenantId,
-      edge_id: edgeId,
-      wallet_node: wallet.id,
-      vendor_node: vendorNodeId,
-      amount: parsed.amount,
-      currency: parsed.currency,
-      occurred_at: parsed.occurredAt,
-      source,
-      parse_confidence: parsed.confidence,
-      raw: parsed as unknown as Record<string, unknown>,
-    })
-    .select("id")
-    .single();
-  if (error) throw new Error(`ingestReceipt: ${error.message}`);
+  const tx = await pbCreate<{ id: string }>("transactions", {
+    tenant: tenantId,
+    edge: edgeId,
+    wallet_node: wallet.id,
+    vendor_node: vendorNodeId,
+    amount: parsed.amount,
+    currency: parsed.currency,
+    occurred_at: parsed.occurredAt,
+    source,
+    parse_confidence: parsed.confidence,
+    raw: parsed as unknown as Record<string, unknown>,
+  });
 
   return {
-    transactionId: data.id as string,
+    transactionId: tx.id,
     walletNodeId: wallet.id,
     vendorNodeId,
     walletLabel: wallet.label,
@@ -142,12 +115,24 @@ export async function resolveTenantByChannel(
   channel: string,
   externalId: string,
 ): Promise<string | null> {
-  const supabase = getServiceClient();
-  const { data } = await supabase
-    .from("channel_links")
-    .select("tenant_id")
-    .eq("channel", channel)
-    .eq("external_id", externalId)
-    .maybeSingle();
-  return (data?.tenant_id as string) ?? null;
+  const link = await pbFirst<{ tenant: string }>(
+    "channel_links",
+    `channel = ${pbStr(channel)} && external_id = ${pbStr(externalId)}`,
+  );
+  return link?.tenant ?? null;
+}
+
+// Link a channel to a tenant (idempotent — unique index on channel+external_id).
+export async function linkChannel(
+  tenantId: string,
+  channel: string,
+  externalId: string,
+): Promise<void> {
+  const existing = await resolveTenantByChannel(channel, externalId);
+  if (existing) return;
+  await pbCreate("channel_links", {
+    tenant: tenantId,
+    channel,
+    external_id: externalId,
+  });
 }
