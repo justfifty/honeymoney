@@ -4,8 +4,10 @@ import { getGraphView, type GNode } from "@/lib/graphView";
 
 export const dynamic = "force-dynamic";
 
-// Layered money-flow layout: income → buckets → vendors/goals.
-const COL_X = { income: 40, bucket: 380, right: 720 } as const;
+// Branch layout: expenses (vendors) on the LEFT, the household's structure
+// (buckets, goals, obligations) in the MIDDLE, income sources on the RIGHT.
+// Money visually flows right → middle → left.
+const COL_X = { expense: 40, middle: 380, income: 720 } as const;
 const NODE_W = 190;
 const NODE_H = 46;
 const ROW_GAP = 66;
@@ -31,8 +33,8 @@ const KIND_BADGE: Record<string, string> = {
 
 function columnOf(n: GNode): keyof typeof COL_X {
   if (n.kind === "income_source") return "income";
-  if (n.kind === "bucket" || n.kind === "wallet") return "bucket";
-  return "right";
+  if (n.kind === "vendor") return "expense";
+  return "middle"; // buckets, wallets, goals, obligations = household context
 }
 
 export default async function GraphPage({
@@ -55,12 +57,12 @@ export default async function GraphPage({
   const { nodes, edges } = await getGraphView(tenantId);
 
   // assign rows per column
-  const cols: Record<string, GNode[]> = { income: [], bucket: [], right: [] };
+  const cols: Record<string, GNode[]> = { expense: [], middle: [], income: [] };
   for (const n of nodes) cols[columnOf(n)].push(n);
   for (const key of Object.keys(cols)) cols[key].sort((a, b) => a.label.localeCompare(b.label));
 
   const pos = new Map<string, { x: number; y: number }>();
-  const maxRows = Math.max(cols.income.length, cols.bucket.length, cols.right.length, 1);
+  const maxRows = Math.max(cols.expense.length, cols.middle.length, cols.income.length, 1);
   const height = TOP + maxRows * ROW_GAP + 40;
   for (const [col, list] of Object.entries(cols)) {
     // vertically center shorter columns
@@ -71,7 +73,7 @@ export default async function GraphPage({
   }
 
   const maxFlow = Math.max(...edges.map((e) => e.flow), 1);
-  const width = COL_X.right + NODE_W + 40;
+  const width = COL_X.income + NODE_W + 40;
 
   const otherTenant =
     tenantId === "hhrahman1111111" ? "bizsedap2222222" : "hhrahman1111111";
@@ -97,33 +99,46 @@ export default async function GraphPage({
       <div className="mt-6 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ minWidth: 760 }} role="img" aria-label="Money flow graph">
           {/* column headers */}
-          <text x={COL_X.income + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">INCOME</text>
-          <text x={COL_X.bucket + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">BUCKETS</text>
-          <text x={COL_X.right + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">GOALS &amp; VENDORS</text>
+          <text x={COL_X.expense + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">EXPENSES ← </text>
+          <text x={COL_X.middle + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">HOUSEHOLD (buckets · goals · obligations)</text>
+          <text x={COL_X.income + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600"> → INCOME</text>
 
-          {/* edges */}
+          {/* edges — anchors adapt to flow direction (right→left) and same-column arcs */}
           {edges.map((e, i) => {
             const a = pos.get(e.src);
             const b = pos.get(e.dst);
             if (!a || !b) return null;
-            const x1 = a.x + NODE_W;
-            const y1 = a.y + NODE_H / 2;
-            const x2 = b.x;
-            const y2 = b.y + NODE_H / 2;
-            const mx = (x1 + x2) / 2;
             const style = REL_STYLE[e.rel] ?? { stroke: "#999" };
             const w = 1.5 + (e.flow / maxFlow) * 7;
+
+            let d: string;
+            let lx: number;
+            let ly: number;
+            if (a.x === b.x) {
+              // same column (e.g. bucket → goal): arc out to the right
+              const x = a.x + NODE_W;
+              const y1 = a.y + NODE_H / 2;
+              const y2 = b.y + NODE_H / 2;
+              const bow = x + 70;
+              d = `M ${x} ${y1} C ${bow} ${y1}, ${bow} ${y2}, ${x} ${y2}`;
+              lx = bow + 4;
+              ly = (y1 + y2) / 2;
+            } else {
+              // source anchors on the side facing the destination
+              const leftward = b.x < a.x;
+              const x1 = leftward ? a.x : a.x + NODE_W;
+              const x2 = leftward ? b.x + NODE_W : b.x;
+              const y1 = a.y + NODE_H / 2;
+              const y2 = b.y + NODE_H / 2;
+              const mx = (x1 + x2) / 2;
+              d = `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+              lx = mx;
+              ly = (y1 + y2) / 2 - 6;
+            }
             return (
               <g key={i}>
-                <path
-                  d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
-                  fill="none"
-                  stroke={style.stroke}
-                  strokeWidth={w}
-                  strokeDasharray={style.dash}
-                  opacity="0.65"
-                />
-                <text x={mx} y={(y1 + y2) / 2 - 6} textAnchor="middle" fontSize="10" className="fill-zinc-500">
+                <path d={d} fill="none" stroke={style.stroke} strokeWidth={w} strokeDasharray={style.dash} opacity="0.65" />
+                <text x={lx} y={ly} textAnchor={a.x === b.x ? "start" : "middle"} fontSize="10" className="fill-zinc-500">
                   {e.label}
                 </text>
               </g>
