@@ -1,0 +1,62 @@
+# ─── Environment & Secrets (NEVER commit these) ───────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+secrets/
+
+# ─── Python / FastAPI ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.log
+
+# ─── Database ────────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+# Allow schema/migration files
+!api/db/schema.sql
+!api/db/migrations/
+!supabase/migrations/
+!supabase/seed.sql
+
+# ─── Supabase / Vercel local ─────────────────────────────────────────────────
+supabase/.temp/
+supabase/.branches/
+.turbo/
+
+# ─── Next.js / Node ──────────────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+.next/
+web/.next/
+out/
+.vercel/
+web/.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/settings.json
