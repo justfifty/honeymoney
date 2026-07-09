@@ -1,0 +1,27 @@
+# Fly.io config for the HoneyMoney PocketBase database.
+# Deploy from this directory:  cd pocketbase && fly launch --no-deploy   (edit app name)
+#   fly volumes create pb_data --size 1 --region sin
+#   fly secrets set POCKETBASE_ADMIN_EMAIL=admin@yourdomain POCKETBASE_ADMIN_PASSWORD=<strong>
+#   fly deploy
+# Then use the resulting https://<app>.fly.dev as POCKETBASE_URL in Vercel.
+
+app = "honeymoney-pb"          # <-- change to your unique app name
+primary_region = "sin"         # Singapore — closest Fly region to Malaysia
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8090
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0      # scales to zero when idle (free-tier friendly)
+
+[[mounts]]
+  source = "pb_data"            # persistent volume — keeps testers' data across deploys
+  destination = "/pb/pb_data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
