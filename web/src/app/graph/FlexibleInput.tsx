@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import SpendCapture from "./SpendCapture";
 
 interface Opt {
   id: string;
@@ -104,6 +105,17 @@ export default function FlexibleInput({
             </button>
           ))}
         </div>
+
+        {mode === "spend" && (
+          <div className="mb-3">
+            <SpendCapture
+              onResult={({ vendor, amount: amt }) => {
+                if (vendor) setLabel(vendor);
+                if (amt) setAmount(String(amt));
+              }}
+            />
+          </div>
+        )}
 
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           {mode === "spend" && (
