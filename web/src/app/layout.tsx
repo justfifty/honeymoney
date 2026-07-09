@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -16,6 +16,15 @@ export const metadata: Metadata = {
   title: "HoneyMoney — AI Financial Wellness",
   description:
     "Funding transparency, spending autonomy. A knowledge-graph financial wellness engine for families and businesses. MAIC Nexus 2026, Track T3.",
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  appleWebApp: { capable: true, title: "HoneyMoney", statusBarStyle: "default" },
+};
+
+// Mobile-first: fit the viewport, allow zoom (accessibility), amber theme.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#E09112",
 };
 
 export default function RootLayout({

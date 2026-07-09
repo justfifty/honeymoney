@@ -118,7 +118,7 @@ export default async function GraphPage({
     kind === "business" ? "🏢" : /solo|freelance/i.test(name) ? "🧑‍💻" : "🏠";
 
   return (
-    <main className="mx-auto min-h-full max-w-5xl px-6 py-12">
+    <main className="mx-auto min-h-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">🕸️ {tr("app.title")}</h1>
