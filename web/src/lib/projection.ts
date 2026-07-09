@@ -49,7 +49,7 @@ function monthWindow(asOf: Date) {
 // Recursive allocation walk: income_source -> ALLOCATES_* edges -> buckets.
 // Mirrors the SQL: fixed edges carry their own amount; percentage edges take
 // a share of the flowing amount; depth-guarded against cycles.
-function computeAllocations(nodes: PBNode[], edges: PBEdge[]): Map<string, number> {
+export function computeAllocations(nodes: PBNode[], edges: PBEdge[]): Map<string, number> {
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const active = edges.filter((e) => !e.valid_to && ALLOC_RELS.has(e.rel));
   const bySrc = new Map<string, PBEdge[]>();
@@ -90,7 +90,7 @@ export async function getBucketProjection(
   tenantId: string,
   asOf = new Date(),
 ): Promise<BucketProjection[]> {
-  const { start, daysInMonth, elapsed } = monthWindow(asOf);
+  const { start } = monthWindow(asOf);
   const startStr = start.toISOString().replace("T", " ");
 
   const [nodes, edges, txns] = await Promise.all([
@@ -109,6 +109,19 @@ export async function getBucketProjection(
     mtd.set(t.wallet_node, (mtd.get(t.wallet_node) ?? 0) + Number(t.amount));
   }
 
+  return projectBuckets(nodes, allocated, mtd, asOf);
+}
+
+// Pure projection: given buckets (as nodes), their allocations, and month-to-date
+// spend per bucket, produce the status-annotated projection. Factored out so the
+// focus lens can pass member-filtered spend through the same math.
+export function projectBuckets(
+  nodes: Array<{ id: string; kind: string; label: string }>,
+  allocated: Map<string, number>,
+  mtdByBucket: Map<string, number>,
+  asOf: Date = new Date(),
+): BucketProjection[] {
+  const { daysInMonth, elapsed } = monthWindow(asOf);
   const round = (v: number) => Math.round(v * 100) / 100;
 
   return nodes
@@ -116,7 +129,7 @@ export async function getBucketProjection(
     .sort((a, b) => a.label.localeCompare(b.label))
     .map((b) => {
       const alloc = allocated.get(b.id) ?? 0;
-      const spent = mtd.get(b.id) ?? 0;
+      const spent = mtdByBucket.get(b.id) ?? 0;
       const projectedSpend = (spent / elapsed) * daysInMonth;
       const status: BucketProjection["status"] =
         alloc === 0

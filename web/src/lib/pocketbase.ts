@@ -56,6 +56,8 @@ async function pbFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const detail = await res.text();
     throw new Error(`PocketBase ${res.status} on ${path}: ${detail.slice(0, 300)}`);
   }
+  // DELETE and some writes return 204 No Content — nothing to parse.
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -90,6 +92,12 @@ export async function pbCreate<T>(
   return pbFetch<T>(`/api/collections/${collection}/records`, {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export async function pbDelete(collection: string, id: string): Promise<void> {
+  await pbFetch<unknown>(`/api/collections/${collection}/records/${id}`, {
+    method: "DELETE",
   });
 }
 
