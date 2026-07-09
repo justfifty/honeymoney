@@ -87,6 +87,14 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [x] **Persona-aware** categories & roles switch on `tenant.kind` (household ⇄ business); business staff seeded.
 - [x] Monitoring headline (income / allocated / spent / unallocated), member attribution across ~4 months of history.
 
+### Public showcase — hosting + onboarding (decided; see `DEPLOY.md`) `[Technical][Commercial]`
+- Decision: **hosted PocketBase + Vercel** (no code change — app is env-driven) and **anonymous showcase → optional sign-up** (don't gate browsing behind an account).
+- [ ] Host PocketBase (PocketHost or Fly.io w/ volume) → get an `https` `POCKETBASE_URL`.
+- [ ] Import repo to Vercel (root = `web/`), set env vars, deploy → public URL.
+- [ ] Handle the shared-sandbox problem before wide sharing: nightly reseed **or** guard demo-tenant mutations **or** ephemeral per-visitor tenant.
+- [ ] Telegram bot live (@BotFather + webhook) — the lowest-friction acquisition channel ("forward one receipt").
+- [ ] P3: optional sign-up via PocketBase auth (bind user→tenant; gate persist/Telegram only, never the showcase).
+
 ### Business tier — P3 (next, after semi-final polish) `[Scalability][Commercial]`
 - [ ] **Departments / subject-matter tagging** (`props.department`) → auto-adds a Department focus dimension.
 - [ ] **Cashflow statement** — monthly inflow / outflow / net + runway, from the multi-month history.
