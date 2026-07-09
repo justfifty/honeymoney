@@ -24,6 +24,8 @@ export const CURRENCIES: CurrencyDef[] = [
   { code: "SGD", symbol: "S$", locale: "en-SG", perMYR: 0.30 },
   { code: "THB", symbol: "฿", locale: "th-TH", perMYR: 7.7 },
   { code: "CNY", symbol: "¥", locale: "zh-CN", perMYR: 1.55 },
+  { code: "HKD", symbol: "HK$", locale: "zh-HK", perMYR: 1.73 },
+  { code: "TWD", symbol: "NT$", locale: "zh-TW", perMYR: 7.1, zeroDp: true },
   { code: "JPY", symbol: "¥", locale: "ja-JP", perMYR: 34, zeroDp: true },
   { code: "USD", symbol: "$", locale: "en-US", perMYR: 0.22 },
   { code: "GBP", symbol: "£", locale: "en-GB", perMYR: 0.17 },
