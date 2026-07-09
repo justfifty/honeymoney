@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { fmtMoney } from "@/lib/format";
 
 // Sankey money-flow: Income → Buckets → where it lands (Spending vs Saved).
 // Node height ∝ RM throughput, ribbon width ∝ RM flow. Everything is derived
@@ -33,8 +34,6 @@ const AMBER = "#E09112";
 const RED = "#C94F4F";
 const GREEN = "#3E9C5C";
 
-const rm0 = (n: number) => `RM ${Math.round(n).toLocaleString()}`;
-
 interface Placed {
   id: string;
   label: string;
@@ -55,7 +54,8 @@ interface Ribbon {
   label: string;
 }
 
-function build(nodes: SankNode[], edges: SankEdge[]) {
+function build(nodes: SankNode[], edges: SankEdge[], ccy: string) {
+  const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const col = (id: string): number => {
     const k = byId.get(id)?.kind;
@@ -191,9 +191,10 @@ function build(nodes: SankNode[], edges: SankEdge[]) {
   return { placed: [...placed.values()], ribbons };
 }
 
-export default function SankeyFlow({ nodes, edges }: { nodes: SankNode[]; edges: SankEdge[] }) {
+export default function SankeyFlow({ nodes, edges, ccy = "MYR" }: { nodes: SankNode[]; edges: SankEdge[]; ccy?: string }) {
   const [focus, setFocus] = useState<string | null>(null);
-  const { placed, ribbons } = useMemo(() => build(nodes, edges), [nodes, edges]);
+  const { placed, ribbons } = useMemo(() => build(nodes, edges, ccy), [nodes, edges, ccy]);
+  const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
 
   const dim = (id: string) => focus !== null && id !== focus;
   const labelFits = (h: number) => h >= 13;

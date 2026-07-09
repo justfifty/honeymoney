@@ -10,7 +10,9 @@ import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
 import FlexibleInput from "./FlexibleInput";
 import LanguageSwitcher from "./LanguageSwitcher";
+import CurrencySwitcher from "./CurrencySwitcher";
 import { normalizeLocale, t as translate } from "@/lib/i18n";
+import { normalizeCurrency, fmtMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -66,12 +68,11 @@ function columnOf(n: GNode): keyof typeof COL_X {
   return "middle"; // buckets, wallets, goals, obligations = household context
 }
 
-const rm0 = (n: number) => `RM ${Math.round(n).toLocaleString()}`;
 
 export default async function GraphPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tenantId?: string; mode?: string; focus?: string; lang?: string }>;
+  searchParams: Promise<{ tenantId?: string; mode?: string; focus?: string; lang?: string; ccy?: string }>;
 }) {
   if (!isDatabaseConfigured()) {
     return (
@@ -90,6 +91,9 @@ export default async function GraphPage({
   const focusParam = focusToParam(focus);
   const lang = normalizeLocale(params.lang);
   const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
+  const ccy = normalizeCurrency(params.ccy);
+  const sticky = `&focus=${focusParam}&lang=${lang}&ccy=${ccy}`;
+  const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const view = await getFocusedView(tenantId, focus);
   const { nodes, edges } = view.graph;
   const money = view.money;
@@ -128,7 +132,8 @@ export default async function GraphPage({
               : tr("app.focusedOn", { label: `${view.focusBadge} ${view.focusLabel}`, nodes: nodes.length, edges: edges.length })}
           </p>
         </div>
-        <nav className="flex items-center gap-4 text-sm">
+        <nav className="flex items-center gap-3 text-sm">
+          <CurrencySwitcher current={ccy} />
           <LanguageSwitcher current={lang} />
           <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ Guide</Link>
           <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")} →</Link>
@@ -141,7 +146,7 @@ export default async function GraphPage({
         {view.personas.map((p) => (
           <Link
             key={p.id}
-            href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all&lang=${lang}`}
+            href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all&lang=${lang}&ccy=${ccy}`}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
               p.id === tenantId
                 ? "border-amber-500 bg-amber-500 text-white"
@@ -208,7 +213,7 @@ export default async function GraphPage({
         {MODES.map((m) => (
           <Link
             key={m.key}
-            href={`/graph?tenantId=${tenantId}&mode=${m.key}&focus=${focusParam}&lang=${lang}`}
+            href={`/graph?tenantId=${tenantId}&mode=${m.key}${sticky}`}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
               mode === m.key
                 ? "border-amber-500 bg-amber-500 text-white"
@@ -236,6 +241,7 @@ export default async function GraphPage({
           <>
         {mode === "sankey" && (
           <SankeyFlow
+            ccy={ccy}
             nodes={nodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label }))}
             edges={edges.map((e) => ({ src: e.src, dst: e.dst, rel: e.rel, flow: e.flow }))}
           />
@@ -243,6 +249,7 @@ export default async function GraphPage({
 
         {mode === "treemap" && (
           <Treemap
+            ccy={ccy}
             cells={money.buckets.map((b) => ({
               id: b.bucket_id,
               label: b.bucket_label,
@@ -256,6 +263,7 @@ export default async function GraphPage({
 
         {mode === "tree" && (
           <TreeGraph
+            ccy={ccy}
             rootLabel={rootLabel}
             tierMeta={view.tierMeta}
             buckets={money.buckets.map((b) => ({
@@ -282,9 +290,9 @@ export default async function GraphPage({
               kind: n.kind,
               label: n.label,
               sub: n.props?.monthly_amount
-                ? `RM ${Number(n.props.monthly_amount).toLocaleString()}/mo`
+                ? `${rm0(Number(n.props.monthly_amount))}/mo`
                 : n.props?.target
-                  ? `RM ${Number(n.props.current ?? 0).toLocaleString()} / ${Number(n.props.target).toLocaleString()}`
+                  ? `${rm0(Number(n.props.current ?? 0))} / ${rm0(Number(n.props.target))}`
                   : undefined,
             }))}
             edges={edges}
@@ -293,6 +301,7 @@ export default async function GraphPage({
 
         {mode === "bars" && (
           <BudgetBars
+            ccy={ccy}
             rows={money.buckets.map((b) => ({
               id: b.bucket_id,
               label: b.bucket_label,
@@ -352,8 +361,8 @@ export default async function GraphPage({
               const p = pos.get(n.id);
               if (!p) return null;
               const isPrivate = Boolean(n.props?.private);
-              const monthly = n.props?.monthly_amount ? `RM ${Number(n.props.monthly_amount).toLocaleString()}/mo` : "";
-              const goal = n.props?.target ? `RM ${Number(n.props.current ?? 0).toLocaleString()} / ${Number(n.props.target).toLocaleString()}` : "";
+              const monthly = n.props?.monthly_amount ? `${rm0(Number(n.props.monthly_amount))}/mo` : "";
+              const goal = n.props?.target ? `${rm0(Number(n.props.current ?? 0))} / ${rm0(Number(n.props.target))}` : "";
               return (
                 <g key={n.id}>
                   <rect
@@ -400,6 +409,7 @@ export default async function GraphPage({
       <FlexibleInput
         tenantId={tenantId}
         lang={lang}
+        ccy={ccy}
         buckets={money.buckets.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
         incomes={money.incomes.map((i) => ({ id: i.id, label: i.label }))}
         members={view.groups.member.map((m) => ({ id: m.value.split(":")[1], label: m.label }))}

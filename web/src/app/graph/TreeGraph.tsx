@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { fmtMoney } from "@/lib/format";
 
 // Tidy hierarchical "tree branch": Household → spending tier → bucket → vendor.
 // A genuine tree (single parent per node), laid out left→right with the classic
@@ -51,7 +52,6 @@ const COL_W = 214;
 const MARGIN_X = 24;
 const TOP = 40;
 const NODE_H = 24;
-const rm0 = (n: number) => `RM ${Math.round(n).toLocaleString()}`;
 const widthOf = (label: string, sub?: string) =>
   Math.max(64, 22 + Math.max(label.length, (sub?.length ?? 0)) * 6.4);
 
@@ -60,15 +60,18 @@ export default function TreeGraph({
   buckets,
   vendors,
   tierMeta = DEFAULT_TIER_META,
+  ccy = "MYR",
 }: {
   rootLabel: string;
   buckets: TreeBucket[];
   vendors: TreeVendor[];
   tierMeta?: Record<number, { label: string; badge: string }>;
+  ccy?: string;
 }) {
   const [focus, setFocus] = useState<string | null>(null);
 
   const { root, width, height, parentOf } = useMemo(() => {
+    const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
     const vendorsByBucket = new Map<string, TreeVendor[]>();
     for (const v of vendors) {
       (vendorsByBucket.get(v.bucketId) ?? vendorsByBucket.set(v.bucketId, []).get(v.bucketId)!).push(v);
@@ -147,7 +150,7 @@ export default function TreeGraph({
     const height = TOP + leaves * ROW + 8;
     const width = MARGIN_X * 2 + maxDepth * COL_W + 190;
     return { root, width, height, parentOf };
-  }, [rootLabel, buckets, vendors, tierMeta]);
+  }, [rootLabel, buckets, vendors, tierMeta, ccy]);
 
   const flat = useMemo(() => {
     const out: TNode[] = [];

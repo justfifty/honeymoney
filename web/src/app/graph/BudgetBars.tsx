@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { fmtMoney } from "@/lib/format";
 
 // Budget vs Actual — one shared RM scale across every bucket, so bar lengths are
 // directly comparable (unlike the dashboard's per-bucket % bars). Each row shows
@@ -27,7 +28,6 @@ const ROW = 40;
 const TOP = 34;
 const LABEL_W = 150;
 const RIGHT = 60;
-const rm0 = (n: number) => `RM ${Math.round(n).toLocaleString()}`;
 
 function niceTicks(max: number, count = 4): number[] {
   if (max <= 0) return [0];
@@ -40,8 +40,9 @@ function niceTicks(max: number, count = 4): number[] {
   return ticks;
 }
 
-export default function BudgetBars({ rows }: { rows: BarRow[] }) {
+export default function BudgetBars({ rows, ccy = "MYR" }: { rows: BarRow[]; ccy?: string }) {
   const [hover, setHover] = useState<string | null>(null);
+  const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const data = useMemo(() => rows.slice().sort((a, b) => b.allocated - a.allocated), [rows]);
 
   const max = Math.max(...data.map((r) => Math.max(r.allocated, r.projected)), 1);

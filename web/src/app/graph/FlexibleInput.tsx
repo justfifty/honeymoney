@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t as translate, type Locale } from "@/lib/i18n";
+import { toMYR, symbolOf } from "@/lib/format";
 import SpendCapture from "./SpendCapture";
 
 interface Opt {
@@ -28,6 +29,7 @@ export default function FlexibleInput({
   members,
   categoryLabels,
   lang = "en",
+  ccy = "MYR",
 }: {
   tenantId: string;
   buckets: Opt[];
@@ -35,8 +37,10 @@ export default function FlexibleInput({
   members: Opt[];
   categoryLabels: { tier: number; label: string }[];
   lang?: Locale;
+  ccy?: string;
 }) {
   const tr = (k: string) => translate(lang, k);
+  const sym = symbolOf(ccy);
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("spend");
   const [busy, setBusy] = useState(false);
@@ -59,14 +63,16 @@ export default function FlexibleInput({
     setBusy(true);
     setMsg(null);
     try {
+      // amounts are entered in the display currency → store in base (MYR)
+      const base = toMYR(Number(amount), ccy);
       let payload: Record<string, unknown> = { tenantId, entity: mode };
-      if (mode === "spend") payload = { ...payload, vendorLabel: label, amount: Number(amount), walletNodeId: bucket, memberId: member || undefined };
-      else if (mode === "income") payload = { ...payload, label, monthly: Number(amount), subject };
+      if (mode === "spend") payload = { ...payload, vendorLabel: label, amount: base, walletNodeId: bucket, memberId: member || undefined };
+      else if (mode === "income") payload = { ...payload, label, monthly: base, subject };
       else if (mode === "bucket") payload = { ...payload, label, tier: Number(tier), subject };
       else if (mode === "allocation")
         payload = allocMode === "pct"
           ? { ...payload, srcNode: src, dstNode: dst, percentage: Number(amount) }
-          : { ...payload, srcNode: src, dstNode: dst, amount: Number(amount) };
+          : { ...payload, srcNode: src, dstNode: dst, amount: base };
 
       const res = await fetch("/api/graph", {
         method: "POST",
@@ -128,7 +134,7 @@ export default function FlexibleInput({
               <label className={`${lbl} min-w-40 flex-1`}>Where did you spend?
                 <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. 99 Speedmart" className={field} />
               </label>
-              <label className={`${lbl} w-28`}>Amount (RM)
+              <label className={`${lbl} w-28`}>Amount ({sym})
                 <input required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={field} />
               </label>
               <label className={`${lbl} min-w-36`}>From bucket
@@ -150,7 +156,7 @@ export default function FlexibleInput({
               <label className={`${lbl} min-w-40 flex-1`}>Income source
                 <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Freelance, Rental, Bonus" className={field} />
               </label>
-              <label className={`${lbl} w-32`}>RM / month
+              <label className={`${lbl} w-32`}>{sym} / month
                 <input required type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={field} />
               </label>
               <label className={`${lbl} min-w-36`}>Subject / dept (optional)
@@ -187,7 +193,7 @@ export default function FlexibleInput({
                   {buckets.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
               </label>
-              <label className={`${lbl} w-24`}>{allocMode === "pct" ? "%" : "RM/mo"}
+              <label className={`${lbl} w-24`}>{allocMode === "pct" ? "%" : `${sym}/mo`}
                 <input required type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={field} />
               </label>
               <label className={`${lbl} w-24`}>Type

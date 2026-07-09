@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { fmtMoney } from "@/lib/format";
 
 // Squarified treemap of buckets: cell AREA ∝ monthly allocation (where the plan
 // commits money), cell COLOR ∝ status, and a solid fill rising from the baseline
@@ -93,10 +94,9 @@ function squarify(items: { cell: TreemapCell; area: number }[]): Rect[] {
   return out;
 }
 
-const rm0 = (n: number) => `RM ${Math.round(n).toLocaleString()}`;
-
-export default function Treemap({ cells }: { cells: TreemapCell[] }) {
+export default function Treemap({ cells, ccy = "MYR" }: { cells: TreemapCell[]; ccy?: string }) {
   const [hover, setHover] = useState<string | null>(null);
+  const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
 
   const rects = useMemo(() => {
     const total = cells.reduce((s, c) => s + Math.max(c.allocated, 0), 0) || 1;
