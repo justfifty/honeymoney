@@ -40,7 +40,7 @@ const STATUS_COLOR: Record<string, string> = {
   over_budget: "#C94F4F",
   unfunded: "#9AA0A6",
 };
-const TIER_META: Record<number, { label: string; badge: string }> = {
+const DEFAULT_TIER_META: Record<number, { label: string; badge: string }> = {
   1: { label: "Needs & Fixed", badge: "🏠" },
   2: { label: "Savings & Goals", badge: "🎯" },
   3: { label: "Personal & Lifestyle", badge: "🛍️" },
@@ -59,10 +59,12 @@ export default function TreeGraph({
   rootLabel,
   buckets,
   vendors,
+  tierMeta = DEFAULT_TIER_META,
 }: {
   rootLabel: string;
   buckets: TreeBucket[];
   vendors: TreeVendor[];
+  tierMeta?: Record<number, { label: string; badge: string }>;
 }) {
   const [focus, setFocus] = useState<string | null>(null);
 
@@ -76,7 +78,7 @@ export default function TreeGraph({
     const tiers = [1, 2, 3]
       .filter((t) => buckets.some((b) => b.tier === t))
       .map((t) => {
-        const meta = TIER_META[t];
+        const meta = tierMeta[t] ?? DEFAULT_TIER_META[t];
         const kids = buckets
           .filter((b) => b.tier === t)
           .sort((a, b) => b.allocated - a.allocated)
@@ -145,7 +147,7 @@ export default function TreeGraph({
     const height = TOP + leaves * ROW + 8;
     const width = MARGIN_X * 2 + maxDepth * COL_W + 190;
     return { root, width, height, parentOf };
-  }, [rootLabel, buckets, vendors]);
+  }, [rootLabel, buckets, vendors, tierMeta]);
 
   const flat = useMemo(() => {
     const out: TNode[] = [];

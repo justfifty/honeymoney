@@ -65,6 +65,8 @@ export default function FocusBar({
   groups,
   focusLabel,
   focusBadge,
+  roleOptions,
+  categoryBadge,
 }: {
   tenantId: string;
   mode: string;
@@ -72,17 +74,20 @@ export default function FocusBar({
   groups: FocusGroups;
   focusLabel: string;
   focusBadge: string;
+  roleOptions: string[];
+  categoryBadge: string;
 }) {
   const focused = focusParam !== "all";
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2">
       <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Lens</span>
 
+      <PeopleMenu tenantId={tenantId} mode={mode} active={focusParam} members={groups.member} roleOptions={roleOptions} />
+      <span className="text-zinc-300 dark:text-zinc-700">|</span>
       <Dropdown title="Income" badge="💰" options={groups.income} active={focusParam} tenantId={tenantId} mode={mode} />
       <Dropdown title="Bucket" badge="🪣" options={groups.bucket} active={focusParam} tenantId={tenantId} mode={mode} />
       <Dropdown title="Vendor" badge="🏪" options={groups.vendor} active={focusParam} tenantId={tenantId} mode={mode} />
-      <Dropdown title="Category" badge="🗂️" options={groups.category} active={focusParam} tenantId={tenantId} mode={mode} />
-      <PeopleMenu tenantId={tenantId} mode={mode} active={focusParam} members={groups.member} />
+      <Dropdown title="Category" badge={categoryBadge} options={groups.category} active={focusParam} tenantId={tenantId} mode={mode} />
 
       {focused ? (
         <span className="ml-1 flex items-center gap-2 rounded-full bg-amber-100 py-1 pl-3 pr-1 text-xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">

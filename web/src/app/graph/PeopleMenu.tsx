@@ -8,28 +8,35 @@ import type { FocusOption } from "@/lib/focusView";
 // People lens + roster management. A household is 4 today, 5 after a new baby;
 // a café is 3 staff today, 8 in December — so the roster is editable inline and
 // the "focus by person" list is always whatever the roster currently is.
+// Removal is two-step (confirm) because it is destructive; each action shows its
+// own pending state so the menu never feels frozen.
+
+const ADD = "__add__";
 
 export default function PeopleMenu({
   tenantId,
   mode,
   active,
   members,
+  roleOptions,
 }: {
   tenantId: string;
   mode: string;
   active: string;
   members: FocusOption[];
+  roleOptions: string[];
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [role, setRole] = useState("member");
-  const [busy, setBusy] = useState(false);
+  const [role, setRole] = useState(roleOptions[1] ?? roleOptions[0] ?? "member");
+  const [pending, setPending] = useState<string | null>(null); // member id or ADD
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   const activeHere = members.some((m) => m.value === active);
 
-  async function call(method: "POST" | "DELETE", body: Record<string, unknown>) {
-    setBusy(true);
+  async function call(method: "POST" | "DELETE", body: Record<string, unknown>, token: string) {
+    setPending(token);
     setErr(null);
     try {
       const res = await fetch("/api/members", {
@@ -39,12 +46,13 @@ export default function PeopleMenu({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Request failed");
-      setName("");
+      if (method === "POST") setName("");
+      setConfirmId(null);
       router.refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Request failed");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   }
 
@@ -58,29 +66,76 @@ export default function PeopleMenu({
         }`}
       >
         🧑 People
-        <span className="rounded-full bg-zinc-200 px-1.5 text-[10px] text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">{members.length}</span>
+        <span className={`rounded-full px-1.5 text-[10px] ${members.length === 0 ? "animate-pulse bg-amber-200 text-amber-700 dark:bg-amber-900 dark:text-amber-300" : "bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300"}`}>{members.length === 0 ? "+" : members.length}</span>
         <span className="text-zinc-400">▾</span>
       </summary>
-      <div className="absolute left-0 z-20 mt-1 w-64 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="absolute left-0 z-20 mt-1 w-72 rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="flex items-center justify-between px-3 py-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Focus on a person</span>
+          {members.length > 0 && <span className="text-[10px] text-zinc-400">{members.length} on roster</span>}
+        </div>
+
         <div className="max-h-56 overflow-y-auto">
-          {members.length === 0 && <p className="px-3 py-2 text-xs text-zinc-400">No people yet — add one below.</p>}
+          {members.length === 0 && (
+            <p className="px-3 py-2 text-xs text-zinc-400">No people yet — add your first below.</p>
+          )}
           {members.map((m) => {
             const id = m.value.split(":")[1];
+            const isActive = m.value === active;
+            const isPending = pending === id;
+            const isConfirming = confirmId === id;
             return (
-              <div key={m.value} className={`flex items-center justify-between gap-1 rounded-lg pr-1 ${m.value === active ? "bg-amber-500 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}>
-                <Link href={`/graph?tenantId=${tenantId}&mode=${mode}&focus=${m.value}`} className="flex flex-1 items-center justify-between gap-2 truncate px-3 py-1.5 text-xs">
-                  <span className="truncate">🧑 {m.label}</span>
-                  {m.hint && <span className={`shrink-0 text-[10px] ${m.value === active ? "text-amber-100" : "text-zinc-400"}`}>{m.hint}</span>}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => call("DELETE", { memberId: id })}
-                  disabled={busy}
-                  aria-label={`Remove ${m.label}`}
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] ${m.value === active ? "text-amber-100 hover:bg-amber-600" : "text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+              <div
+                key={m.value}
+                className={`flex items-center justify-between gap-1 rounded-lg pr-1 ${isActive ? "bg-amber-500 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
+              >
+                <Link
+                  href={`/graph?tenantId=${tenantId}&mode=${mode}&focus=${m.value}`}
+                  className="flex flex-1 items-center justify-between gap-2 truncate px-3 py-1.5 text-xs"
                 >
-                  ✕
-                </button>
+                  <span className="truncate">🧑 {m.label}</span>
+                  {m.hint && <span className={`shrink-0 text-[10px] ${isActive ? "text-amber-100" : "text-zinc-400"}`}>{m.hint}</span>}
+                </Link>
+
+                {isPending ? (
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center text-[11px] ${isActive ? "text-amber-100" : "text-zinc-400"}`} aria-live="polite">
+                    <span className="inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent" />
+                  </span>
+                ) : isConfirming ? (
+                  <span className="flex shrink-0 items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => call("DELETE", { memberId: id }, id)}
+                      aria-label={`Confirm remove ${m.label}`}
+                      title="Remove"
+                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${isActive ? "bg-white/20 text-white hover:bg-white/30" : "bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-950/60 dark:text-rose-300"}`}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmId(null)}
+                      aria-label="Cancel"
+                      className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${isActive ? "text-amber-100 hover:bg-amber-600" : "text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                    >
+                      ↩
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErr(null);
+                      setConfirmId(id);
+                    }}
+                    disabled={pending !== null}
+                    aria-label={`Remove ${m.label}`}
+                    title={`Remove ${m.label}`}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] disabled:opacity-40 ${isActive ? "text-amber-100 hover:bg-amber-600" : "text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"}`}
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             );
           })}
@@ -89,7 +144,7 @@ export default function PeopleMenu({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (name.trim()) call("POST", { displayName: name.trim(), role });
+            if (name.trim()) call("POST", { displayName: name.trim(), role }, ADD);
           }}
           className="mt-1 border-t border-zinc-100 p-2 dark:border-zinc-800"
         >
@@ -97,28 +152,30 @@ export default function PeopleMenu({
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Add a person / staff…"
+              maxLength={40}
+              placeholder="Name / staff…"
               className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-transparent px-2 py-1 text-xs outline-none focus:border-amber-500 dark:border-zinc-700"
             />
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="rounded-md border border-zinc-300 bg-transparent px-1 py-1 text-xs outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
+              aria-label="Role"
+              className="rounded-md border border-zinc-300 bg-transparent px-1 py-1 text-xs capitalize outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
             >
-              <option value="owner">owner</option>
-              <option value="member">member</option>
-              <option value="child">child</option>
-              <option value="staff">staff</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
             </select>
             <button
               type="submit"
-              disabled={busy || !name.trim()}
-              className="rounded-md bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+              disabled={pending !== null || !name.trim()}
+              className="flex h-6 w-7 items-center justify-center rounded-md bg-amber-500 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
             >
-              +
+              {pending === ADD ? <span className="inline-block h-3 w-3 animate-spin rounded-full border border-white border-t-transparent" /> : "+"}
             </button>
           </div>
-          {err && <p className="mt-1 text-[10px] text-rose-600">{err}</p>}
+          {err && <p className="mt-1 text-[10px] text-rose-600">⚠️ {err}</p>}
+          <p className="mt-1 text-[10px] text-zinc-400">Removing a person keeps their past spend — it just becomes unattributed.</p>
         </form>
       </div>
     </details>

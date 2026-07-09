@@ -80,7 +80,21 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [ ] Register Telegram bot (@BotFather) + expose webhook via tunnel (`cloudflared`/`ngrok`) for the demo
 - [ ] Curate 20 real TNG/MAE/GrabPay screenshots → measure OCR accuracy vs a golden set
 
-> **Scope discipline for the MVP demo:** one household, one killer graph insight ("your food velocity moves your Future Shield goal 6 weeks later"). Corporate dashboard + credit scoring stay **narrated roadmap**, not built code, until after semi-finals.
+### Monitoring & visualization layer — built P1.5 `[Technical][Scalability]`
+- [x] **`/graph` gallery** — six views over one dataset: Sankey, Treemap, Tree, Organic network, Budget-vs-actual bars, Flow branch (`web/src/app/graph/`). Hand-rolled SVG, no chart library.
+- [x] **Focus lens** — slice every view by income stream, bucket, vendor, category, or **person** (spend re-weighted to a member's transactions); one-click clear; graceful empty state (`web/src/lib/focusView.ts`).
+- [x] **Editable roster** — add/remove people/staff inline; tenant-scoped, non-destructive to history (`api/members` + `PeopleMenu.tsx`).
+- [x] **Persona-aware** categories & roles switch on `tenant.kind` (household ⇄ business); business staff seeded.
+- [x] Monitoring headline (income / allocated / spent / unallocated), member attribution across ~4 months of history.
+
+### Business tier — P3 (next, after semi-final polish) `[Scalability][Commercial]`
+- [ ] **Departments / subject-matter tagging** (`props.department`) → auto-adds a Department focus dimension.
+- [ ] **Cashflow statement** — monthly inflow / outflow / net + runway, from the multi-month history.
+- [ ] **Reporting** — per-department / person / category roll-ups; CSV/PDF export for an accountant.
+- [ ] **Graph-management CRUD** — add income/bucket/department, set allocations, edit goals/obligations from the UI.
+- [ ] Corporate anonymized-aggregate roll-up (k-anonymity, P4).
+
+> **Scope discipline:** the household demo is the pitch centrepiece — one killer graph insight ("your food velocity moves your Future Shield goal 6 weeks later"). The business tier is **now demonstrable** (persona-aware graph, staff roster, business seeds) but the P3 items above (cashflow, reporting, CRUD) stay a **narrated + partially-built roadmap** until after semi-finals. Don't let business scope dilute the household story judges score first.
 
 ---
 
@@ -99,9 +113,10 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 
 ## 7. This week (do now)
 1. [ ] Confirm Malaysian-citizen team member. *(blocker)*
-2. [ ] Create a Supabase free project; run `0001_init_graph.sql` + `seed.sql`; verify `bucket_projection()` returns rows.
-3. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot.
-4. [ ] Push repo to GitHub (private ok), keep committing real progress.
-5. [ ] Draft the LOI + send to first 3 HR contacts.
+2. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot.
+3. [ ] Push repo to GitHub (private ok), keep committing real progress. *(the `/graph` + focus-lens + roster work is a strong, honest commit block)*
+4. [ ] Draft the LOI + send to first 3 HR contacts.
+5. [ ] Record a 60-sec screen capture of the `/graph` gallery + Focus lens (household → business) for the pitch — the scalability story now demos live, not just on a slide.
+6. [ ] Decide P3 sequencing: **cashflow statement** first (highest business-demo value) vs **department tagging** (unlocks the most lens value). Recommend cashflow.
 
 _Last updated: 2026-07-09_

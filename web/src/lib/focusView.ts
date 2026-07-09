@@ -6,9 +6,9 @@
 // One read, one focus applied, both the graph-view and money-view shapes derived,
 // so the six visualizations consume filtered data unchanged.
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbList, pbFirst, pbStr } from "./pocketbase";
 import { computeAllocations, projectBuckets } from "./projection";
-import { tierLabel, type MoneyView } from "./moneyView";
+import { categoryMeta, ROLE_OPTIONS, type MoneyView, type TenantKind, type CategoryMeta } from "./moneyView";
 import type { GNode } from "./graphView";
 
 interface RawNode {
@@ -94,9 +94,11 @@ export interface FocusedView {
   scope: "structure" | "person"; // person = spend re-weighted to one member
   groups: FocusGroups;
   memberCount: number;
+  tenantKind: TenantKind;
+  tierMeta: Record<number, CategoryMeta>; // persona-aware category names
+  roleOptions: string[]; // roster roles appropriate to the persona
 }
 
-const TIER_BADGE: Record<number, string> = { 1: "🏠", 2: "🎯", 3: "🛍️" };
 const KIND_BADGE: Record<string, string> = {
   income_source: "💰",
   bucket: "🪣",
@@ -174,13 +176,16 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
   monthStart.setHours(0, 0, 0, 0);
   const startStr = monthStart.toISOString().replace("T", " ");
 
-  const [nodes, edges, txns, members] = await Promise.all([
+  const [nodes, edges, txns, members, tenant] = await Promise.all([
     pbList<RawNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<RawEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<RawTxn>("transactions", { filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)}` }),
     pbList<Member>("members", { filter: `tenant = ${pbStr(tenantId)}`, sort: "created" }),
+    pbFirst<{ kind: string }>("tenants", `id = ${pbStr(tenantId)}`),
   ]);
 
+  const tenantKind: TenantKind = tenant?.kind === "business" ? "business" : "household";
+  const tierMeta = categoryMeta(tenantKind);
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const labelOf = (id: string) => nodeById.get(id)?.label ?? "Unknown";
 
@@ -193,7 +198,7 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
     member: members.map((m) => ({ value: `member:${m.id}`, label: m.display_name, badge: "🧑", hint: m.role })),
     category: [...new Set(byKind("bucket").map((n) => Number(n.props?.bucket) || 3))]
       .sort((a, b) => a - b)
-      .map((t) => ({ value: `tier:${t}`, label: tierLabel(t), badge: TIER_BADGE[t] ?? "🗂️" })),
+      .map((t) => ({ value: `tier:${t}`, label: tierMeta[t]?.label ?? "Other", badge: tierMeta[t]?.badge ?? "🗂️" })),
   };
 
   // ── spend maps, re-weighted to a member when a person focus is active ──
@@ -227,8 +232,8 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
     keep = new Set(tierBuckets.map((b) => b.id));
     // add each bucket's upstream income + downstream vendors/goals
     for (const b of tierBuckets) for (const id of flowSlice(b.id, allEdges)) keep.add(id);
-    focusLabel = tierLabel(focus.tier);
-    focusBadge = TIER_BADGE[focus.tier] ?? "🗂️";
+    focusLabel = tierMeta[focus.tier]?.label ?? "Category";
+    focusBadge = tierMeta[focus.tier]?.badge ?? "🗂️";
   } else if (scope === "person" && focus.id) {
     // buckets the member spent from + vendors they used + upstream income/goals
     keep = new Set<string>();
@@ -296,5 +301,8 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
     scope,
     groups,
     memberCount: members.length,
+    tenantKind,
+    tierMeta,
+    roleOptions: ROLE_OPTIONS[tenantKind],
   };
 }

@@ -107,9 +107,9 @@ export default async function GraphPage({
   const maxFlow = Math.max(...edges.map((e) => e.flow), 1);
   const width = COL_X.income + NODE_W + 40;
 
-  const isBiz = tenantId === "bizsedap2222222";
-  const otherTenant = isBiz ? "hhrahman1111111" : "bizsedap2222222";
-  const otherLabel = isBiz ? "household 🏠" : "business ☕";
+  const isBiz = view.tenantKind === "business";
+  const otherTenant = tenantId === "bizsedap2222222" ? "hhrahman1111111" : "bizsedap2222222";
+  const otherLabel = tenantId === "bizsedap2222222" ? "household 🏠" : "business ☕";
   const rootLabel = isBiz ? "Business" : "Household";
 
   return (
@@ -138,6 +138,8 @@ export default async function GraphPage({
         groups={view.groups}
         focusLabel={view.focusLabel}
         focusBadge={view.focusBadge}
+        roleOptions={view.roleOptions}
+        categoryBadge={view.tierMeta[1]?.badge ?? "🗂️"}
       />
 
       {/* monitoring headline — adapts to a person lens */}
@@ -223,6 +225,7 @@ export default async function GraphPage({
         {mode === "tree" && (
           <TreeGraph
             rootLabel={rootLabel}
+            tierMeta={view.tierMeta}
             buckets={money.buckets.map((b) => ({
               id: b.bucket_id,
               label: b.bucket_label,

@@ -40,17 +40,53 @@ HoneyMoney does three things differently:
 
 Distribution is **B2B2C**: sold to corporate HR as an employee financial-wellness benefit; companies get anonymized aggregate workforce health data, employees get private household optimization.
 
+### 1.1 One engine, three personas — *personal → family → business*
+
+HoneyMoney is deliberately built so **the same knowledge-graph engine scales up the org chart** with no schema change — only labels, views, and aggregations differ. This is both the product's north star and the rubric's Scalability argument made literal:
+
+| | **Personal** (1 person) | **Family** (a household) | **Business** (an SME) |
+|---|---|---|---|
+| Income | one salary/gig | multiple earners | revenue streams / departments |
+| The 3 tiers | Needs · Save · Play | Needs & Fixed · Savings & Goals · Personal | Operating Costs · Reserves & Growth · Owner & Distributions |
+| Roster (`members`) | you | spouses + children | staff, managers, contractors |
+| Subject matters | tags on spend | shared vs private wallets | **departments / cost-centres / projects** |
+| Goal / obligation | a holiday fund | house deposit, car loan | runway, tax reserve, supplier terms |
+| Question it answers | "can I afford this?" | "is our goal still on track?" | "which department is bleeding cash, and what's our runway?" |
+
+The tier tables above are **persona-aware in the running app today** (category names and roster roles switch on `tenant.kind`). "Departments" and "flexible subject matters" are the graph's real strength: because every node carries a JSON `props` bag, a *subject* (`Dine-in`, `Catering`, `Marketing`, `School`, `Ramadan`) is a **tag, not a table** — you can slice by any subject matter without a migration.
+
+### 1.2 The monitoring layer — *see the money as structure, then focus it*
+
+On top of the graph sits a **visualization gallery** (`/graph`) with six lenses on the identical data — Sankey money-flow, Treemap composition, hierarchical Tree, organic Network, Budget-vs-actual bars, and the branch Flow — plus a **Focus lens** that re-renders every view through one chosen slice: an income stream, an expense (bucket/vendor), a category, or a **person** (spend re-weighted to that member's transactions). This is how a family *or* a business reads the same graph: pick the subject that matters, and the whole picture narrows to it.
+
 ---
 
 ## 2. Requirements
 
 ### 2.1 Functional
+
+**Capture & model (built)**
 - Ingest a transaction from a forwarded screenshot (Telegram) → parse → store in graph.
 - Model income → buckets → wallets → vendors/goals as a temporal graph.
 - Project month-end position per bucket from allocation vs. spend velocity.
 - "Honey" chat/insight: marital-safe, forward-looking guidance grounded in the graph.
 - Dashboard: buckets, recent spend, Honey insight.
 - Multi-tenant: households and businesses isolated by `tenant_id` + RLS.
+
+**Monitoring & visualization (built)**
+- `/graph` gallery: six views over one dataset — **Sankey** (income→bucket→spend/saved), **Treemap** (allocation area × status colour × spend fill), **Tree** (household/business → category → bucket → vendor), **Organic** network, **Budget-vs-actual** bars (shared RM scale), **Flow** branch.
+- **Focus lens**: slice every view by income stream, bucket, vendor, category, or **person** (spend re-weighted to that member's transactions); one-click clear; graceful empty state.
+- Persona-aware framing: category names and roster roles switch on `tenant.kind` (household vs business).
+
+**Roster & management (built + roadmap)**
+- Editable **roster** (`members`): add/remove people inline — a household grows with a newborn, a café with a hire; removing a person keeps their spend (relation nulled), never loses history. *(built)*
+- **Subject-matter tagging**: any node carries flexible `props` (department, project, tag) → focusable as a lens dimension. *(roadmap — P3)*
+- **Graph management/CRUD**: add income sources, create buckets/departments, set allocation edges, edit goals/obligations from the UI. *(roadmap — P3)*
+
+**Business workflow (roadmap — P3)**
+- **Departments** as first-class subject matters: per-department income, expenses, needs, and their own cashflow.
+- **Cashflow statement**: monthly inflow / outflow / net + runway, from the multi-month transaction history.
+- **Reporting**: per-department / per-person / per-category summaries; export (CSV/PDF); a corporate anonymized-aggregate roll-up (k-anonymity).
 
 ### 2.2 Non-functional
 - **Cost:** RM 0/month at MVP/demo scale (Vercel + Supabase + Gemini free tiers).
@@ -67,9 +103,11 @@ Distribution is **B2B2C**: sold to corporate HR as an employee financial-wellnes
 
 | Phase | Window | Outcome |
 |-------|--------|---------|
-| **P1 — MVP vertical slice** | Jul–Aug 2026 | Telegram → OCR → graph → Honey insight → dashboard, deployed on Vercel + Supabase. Repo with real history. |
-| **P2 — Semi-final polish** | Sep–Oct 2026 | Curated OCR accuracy ≥95% on golden set; refined Honey persona; 3-min live demo; 1 signed corporate LOI; alternative credit-scoring narrative. |
-| **P3 — B2B scalability** | Nov 2026+ | Multi-tenant corporate HR dashboard (anonymized aggregates); business-persona graph; pilot onboarding. |
+| **P1 — MVP vertical slice** ✅ | Jul–Aug 2026 | Telegram → OCR → graph → Honey insight → dashboard. Knowledge-graph engine on local-first PocketBase; household + business seeds. Repo with real history. |
+| **P1.5 — Monitoring layer** ✅ | Jul 2026 | Six-view visualization gallery; **Focus lens** (income/expense/category/person); editable roster; persona-aware categories & roles. *(built this cycle)* |
+| **P2 — Semi-final polish** | Aug–Oct 2026 | Deploy to Vercel + Supabase; curated OCR accuracy ≥95% on golden set; refined Honey persona; 3-min live demo; 1 signed corporate LOI; alternative credit-scoring narrative. |
+| **P3 — Business tier** | Oct–Nov 2026 | **Departments / subject-matter tagging** as a lens dimension; **cashflow statement** (in/out/net + runway); **reporting** (per-department/person/category + export); graph-management CRUD from the UI. |
+| **P4 — B2B scalability** | Nov 2026+ | Multi-tenant corporate HR dashboard (anonymized k-anonymity aggregates); pilot onboarding; role-based access. |
 
 ---
 
@@ -270,11 +308,43 @@ Manual test: `POST /api/parse` with `{ "imageBase64": "...", "mimeType": "image/
 `web/src/lib/graph.ts::ingestReceipt()` finds-or-creates the vendor node, resolves the spending wallet/bucket, ensures a `SPENT_AT` edge, and inserts a `transactions` row (with `parse_confidence`, `source`, `raw`) attached to that edge.
 
 ### 12.4 Projection & Honey
-`web/src/lib/projection.ts` calls the `bucket_projection` RPC + recent transactions, builds a compact context, and asks Gemini for the Honey insight. If Gemini is unconfigured it falls back to a deterministic rule-based message so the demo always works.
+`web/src/lib/projection.ts` calls the `bucket_projection` RPC + recent transactions, builds a compact context, and asks Gemini for the Honey insight. If Gemini is unconfigured it falls back to a deterministic rule-based message so the demo always works. `computeAllocations()` and `projectBuckets()` are exported so other read models can reuse the allocation walk with a different spend filter (e.g. one person's transactions).
+
+### 12.5 Read models for visualization
+Two server-only read models shape the graph for the `/graph` gallery, both dependency-free:
+- `web/src/lib/moneyView.ts` — aggregates income, per-bucket allocation vs spend (with `tier`), vendor-level spend, and goals; also owns the persona-aware `CATEGORY_META` / `ROLE_OPTIONS`.
+- `web/src/lib/focusView.ts` — the **focus engine**: one read, one focus applied. Structural focuses (income/bucket/vendor/category) compute a **directional flow-slice** (upstream funders + downstream spend); a **person** focus re-weights the spend maps to that member's transactions. Returns both the graph-view `{nodes, edges}` and money-view shapes so all six chart components consume filtered data unchanged.
+
+### 12.6 The visualization gallery (`web/src/app/graph/`)
+Every chart is hand-rolled SVG (no chart library), deterministic so server and client renders agree, with a per-mark hover layer. `SankeyFlow` stacks node heights and ribbon widths ∝ RM; `Treemap` is a squarified layout coloured by the reserved status palette; `TreeGraph` uses leaf-packing; `BudgetBars` shares one RM scale across buckets; `NetworkGraph` is a small deterministic force simulation; `Flow` is the column-branch view. Colour follows entity/status, never rank, and every mark is text-labelled (the accessible secondary encoding).
+
+### 12.7 Roster management
+`web/src/app/api/members/route.ts` (POST/DELETE) plus `PeopleMenu.tsx` let the roster grow and shrink inline. Deletes are tenant-scoped (a tenant can't remove another's people) and **non-destructive to history** — PocketBase nulls the `transactions.member` relation, so past spend survives as unattributed. Removal is a two-step confirm; each action shows its own pending state.
 
 ---
 
 ## 13. Scalability: household → business
+
+The **same node/edge engine** serves both — this is the core scalability argument for the rubric. Nothing below is a new core; it is new labels, views, and aggregations over the identical graph.
+
+| Concept | Household | Business |
+|---------|-----------|----------|
+| `income_source` | Salary, side gig | Revenue streams (Dine-in, Catering, Delivery) |
+| `bucket` (the 3 tiers) | Needs & Fixed · Savings & Goals · Personal | Operating Costs · Reserves & Growth · Owner & Distributions |
+| **subject matter** (`props`) | shared vs private wallet | **department / cost-centre / project** |
+| `obligation` (`OWES`) | Loans | Suppliers, payroll, tax |
+| `goal` | House deposit, Umrah | Runway, tax reserve, expansion |
+| `member` (roster) | Aiman, Siti, kids | Owner, manager, staff, contractor |
+| Focus lens reads | "show me Siti's spend" | "show me the Kitchen department's cashflow" |
+
+### 13.1 Business workflow — the P3 build
+
+The graph already supports this; P3 surfaces it:
+
+1. **Departments as flexible subject matters.** A department is a `props.department` tag (and/or a `department` node with `BELONGS_TO` edges) on income, buckets, and vendors — *a tag, not a schema change*. The Focus lens gains a **Department/Subject** dimension automatically (same pattern as the person lens).
+2. **Cashflow statement.** From the multi-month transaction history: monthly **inflow (income) − outflow (spend) = net**, plus **runway** (reserves ÷ average net burn). Rendered as an in/out/net time series — the business analogue of the household's bucket projection.
+3. **Reporting & management.** Roll-ups per department / person / category; CSV/PDF export for an accountant; and graph-management CRUD (add revenue stream, create department bucket, set an allocation, adjust a goal) — extending the roster CRUD that already ships.
+4. **Corporate B2B roll-up (P4).** HR analytics reads **materialized anonymized aggregates** (k-anonymity: suppress cohorts < 5) — never raw household/employee rows — so the "anonymized aggregate" promise holds by construction. `tenant_id` + RLS everywhere from day one.
 
 The **same node/edge engine** serves both — this is the core scalability argument for the rubric:
 
@@ -310,7 +380,7 @@ Rubric weights: Technical Feasibility 25 · Commercial Viability 25 · Industry 
 3. Why existing apps fail: surveillance, manual entry churn, flat data. `[Relevance]`
 4. Solution: 3-Bucket model — funding transparency, spending autonomy. `[Relevance]`
 5. Live demo: Telegram screenshot → graph → Honey insight. `[Technical]`
-6. Under the hood: financial knowledge graph + projection. `[Technical][Scalability]`
+6. Under the hood: financial knowledge graph + projection + six-lens monitoring & Focus. `[Technical][Scalability]`
 7. Zero-integration + zero-cost stack. `[Technical]`
 8. Business model: B2B2C employee wellness; unit economics. `[Commercial]`
 9. Traction: signed LOI + pipeline. `[Commercial]`
