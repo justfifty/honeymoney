@@ -24,8 +24,8 @@ Every submission is scored 1–10 by three independent judges on five weighted c
 ## 1. Disqualifiers — check these FIRST (a fail here = instant out)
 
 - [ ] **Malaysian citizen on team.** ≥1 member must be a MyKad holder. PRs / international students do **not** count. **Confirm today.**
-- [ ] **Real commit history.** Artifact repo needs **≥3 commits over ≥2 calendar days**. Backdating commits is an explicit disqualifier — never do it. (We start real history now.)
-- [ ] **AI disclosure.** Mandatory statement; this app is AI-native — disclose Gemini + AI-assisted coding honestly. See `docs/AI_DISCLOSURE.md` (to write).
+- [~] **Real commit history.** Strong local history (15+ real commits over ≥2 days) — but it's **local only until pushed**. `git push` to `justfifty/honeymoney` to make it count. Never backdate.
+- [x] **AI disclosure.** Drafted — `docs/AI_DISCLOSURE.md`. Keep honest: Gemini is *optional*; on-device OCR (tesseract.js) + voice (browser) use no tokens; coding is AI-assisted.
 - [ ] **Track locked at submission.** Commit to T3, no hedging.
 - [ ] **One person = one team.** No cross-team participation.
 
@@ -87,12 +87,28 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [x] **Persona-aware** categories & roles switch on `tenant.kind` (household ⇄ business); business staff seeded.
 - [x] Monitoring headline (income / allocated / spent / unallocated), member attribution across ~4 months of history.
 
+### Three personas + realistic data — built P1.6 `[Scalability][Relevance]`
+- [x] **Third persona** — a **solo freelancer + shop owner** (Aisha, household-of-one, 5 income streams) completes personal → family → business. A **persona switcher** in the header.
+- [x] **Realistic Malaysian finance** seeded: **EPF/SOCSO/EIS, income tax (PCB), insurance**, and a full **Bills & Subscriptions** bucket (TNB, Unifi, mobile, Astro, **AI subscription**, water, device installment, **credit-card late fee**), plus **multi-stream income** for household + café.
+
+### UX, capture & reach — built P1.6 `[Technical][ESG][Relevance]`
+- [x] **Flexible in-app input** (`/api/graph` + `FlexibleInput`) — add income / bucket / allocation / spend for any person, with subject-matter tags.
+- [x] **No-token capture** — 🎤 voice (browser Speech API) + 📷 receipt scan (tesseract.js), on-device, **no AI tokens** (answers the PDPA/data-residency + RM-0 story). Parser handles EN + Malay.
+- [x] **Multi-language** — EN + Bahasa Melayu complete; Chinese/Tamil/Hindi core, graceful English fallback; language switcher (`?lang=`).
+- [x] **Multi-currency** — display + capture in MYR · SGD · THB · CNY · HKD · TWD · JPY · USD · GBP (converts from MYR base; capture normalizes back). *(Rates are indicative — wire a live FX source before real use.)*
+- [x] **Mobile-first + installable PWA** (never forced) — manifest, icon, theme-color, responsive.
+- [x] **In-app `/guide`** — how-to + privacy promise + disclaimer (`docs/DISCLAIMER.md`).
+
 ### Public showcase — hosting + onboarding (decided; see `DEPLOY.md`) `[Technical][Commercial]`
 - Decision: **hosted PocketBase + Vercel** (no code change — app is env-driven) and **anonymous showcase → optional sign-up** (don't gate browsing behind an account).
-- [ ] Host PocketBase (PocketHost or Fly.io w/ volume) → get an `https` `POCKETBASE_URL`.
-- [ ] Import repo to Vercel (root = `web/`), set env vars, deploy → public URL.
+- [x] **Production build verified** (`next build` green — 13 routes) → confirmed Vercel-ready.
+- [x] **Reproducible PocketBase container** — `pocketbase/Dockerfile` + `fly.toml` (pins v0.39.6, bakes migrations, seeds all 3 personas on boot).
+- [~] **Interim public URL live** via Cloudflare quick tunnel (temporary — needs the PC on). For a permanent URL: the 3 steps below.
+- [ ] Host PocketBase (Fly.io via the Dockerfile, or PocketHost) → get an `https` `POCKETBASE_URL`.
+- [ ] Import repo to Vercel (root = `web/`), set env vars, deploy → free `.vercel.app` URL (**first cut**). Buy + attach a domain later (2-min, no redeploy).
 - [ ] Handle the shared-sandbox problem before wide sharing: nightly reseed **or** guard demo-tenant mutations **or** ephemeral per-visitor tenant.
 - [ ] Telegram bot live (@BotFather + webhook) — the lowest-friction acquisition channel ("forward one receipt").
+- [ ] Play Store later via TWA (PWA is ready) — needs the permanent URL + PNG icons + a $25 Play account. PWA "Add to Home Screen" already works with zero fees.
 - [ ] P3: optional sign-up via PocketBase auth (bind user→tenant; gate persist/Telegram only, never the showcase).
 
 ### Business tier — P3 (next, after semi-final polish) `[Scalability][Commercial]`
@@ -107,6 +123,13 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 ---
 
 ## 5. Commercial track `[Commercial Viability — 25%]`
+
+> Full competitor + demand-driver research: **`docs/MARKET_STRATEGY.md`** (7-agent sweep; figures flagged for primary re-check before the deck).
+
+- Key finding: **no incumbent occupies our cell** — Malaysia + envelope + couples + AI + cross-e-wallet. The couples category is a graveyard; "marital harmony" is an **unclaimed brand**.
+- GTM reality: in Malaysia, EWA is **employee-pays / employer-pays-nothing** (Paywatch RM2/withdrawal) — the UK employer-PEPM model hasn't crossed over. **Lead free/consumer + sponsor-subsidized.** **MLM distribution = credibility red flag** for a salary-data product → use **family-referral (built-in K-factor) + B2B**.
+- Funding: **Cradle CIP Spark (RM150k, non-dilutive)** is the realistic entry; **MD status** for tax; VC/Khazanah are indirect/later.
+- Market priority (for i18n/currency + expansion): **Tier 1** Malaysia → Indonesia, **Thailand (฿)**, Philippines, Vietnam; **Tier 2** **Singapore (S$)**, **Hong Kong / Taiwan** (addressable — no super-app monopoly), India; **Tier 3 (park)** mainland China, Japan (super-app/cash-culture walls), US/UK (crowded but the marital-brand angle resonates in the US).
 - [ ] Unit economics one-pager: per-seat price × seats, ~100% gross margin on free-tier infra, CAC via HR channel.
 - [ ] TAM/SAM/SOM for Malaysian household + employee-wellness market.
 - [ ] Outreach list: 10 Malaysian SME/HR contacts → send LOI template this week.
@@ -117,14 +140,25 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [ ] Local grounding: TNG/MAE/GrabPay/ShopeePay, PDPA compliance note, BNM inclusion agenda.
 - [ ] Impact quantification: 9 lost productive days/employee → national productivity; underbanked reach; SDG 1/3/8 mapping.
 
+## 6.5 Research-backed product backlog (features to differentiate)
+
+From `docs/MARKET_STRATEGY.md` — most are **native to the graph**, so cheaper for us than for incumbents. **Recommended top 3 to build next** (highest differentiation × lowest effort):
+
+1. [ ] **Couples hide/share toggles** (Honeydue) — flag any wallet/vendor node shared-vs-private between partners; + **"mine/theirs/ours"** views (Monarch). *The wedge nobody owns.*
+2. [ ] **Round-ups → Future Shield** (Raiz) — round each captured spend up, sweep the difference to savings.
+3. [ ] **Goal countdown / ETA** (StashAway) — "House Deposit in ~14 months at this pace" from existing goal target/current.
+
+Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-spend-today (EWA anxiety, no lending) · net-worth via the unused `asset` node kind (Maybe) · auto-categorization rules (Firefly/Actual) · invite-a-partner referral loop · **name & brand the 3-bucket method** (à la YNAB's "Four Rules") · daily-yield nudge that refers to Versa/KDI (don't hold funds).
+
 ---
 
 ## 7. This week (do now)
-1. [ ] Confirm Malaysian-citizen team member. *(blocker)*
-2. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot.
-3. [ ] Push repo to GitHub (private ok), keep committing real progress. *(the `/graph` + focus-lens + roster work is a strong, honest commit block)*
-4. [ ] Draft the LOI + send to first 3 HR contacts.
-5. [ ] Record a 60-sec screen capture of the `/graph` gallery + Focus lens (household → business) for the pitch — the scalability story now demos live, not just on a slide.
-6. [ ] Decide P3 sequencing: **cashflow statement** first (highest business-demo value) vs **department tagging** (unlocks the most lens value). Recommend cashflow.
+1. [ ] **`git push`** — 15+ commits are local only; push to `justfifty/honeymoney` (`gh auth login` as justfifty first). *This also makes the commit-history disqualifier count.* **← top blocker.**
+2. [ ] Confirm Malaysian-citizen team member. *(eligibility blocker)*
+3. [ ] **First cut deploy** — Fly PocketBase (via `pocketbase/Dockerfile`) + Vercel (root `web/`) → free `.vercel.app` URL. Build is already verified green. Buy a domain after.
+4. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot. *(App runs fine without it — on-device capture already works token-free.)*
+5. [ ] Draft the LOI + send to first 3 HR contacts.
+6. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
+7. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
 
 _Last updated: 2026-07-09_

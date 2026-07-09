@@ -78,10 +78,19 @@ On top of the graph sits a **visualization gallery** (`/graph`) with six lenses 
 - **Focus lens**: slice every view by income stream, bucket, vendor, category, or **person** (spend re-weighted to that member's transactions); one-click clear; graceful empty state.
 - Persona-aware framing: category names and roster roles switch on `tenant.kind` (household vs business).
 
-**Roster & management (built + roadmap)**
-- Editable **roster** (`members`): add/remove people inline — a household grows with a newborn, a café with a hire; removing a person keeps their spend (relation nulled), never loses history. *(built)*
-- **Subject-matter tagging**: any node carries flexible `props` (department, project, tag) → focusable as a lens dimension. *(roadmap — P3)*
-- **Graph management/CRUD**: add income sources, create buckets/departments, set allocation edges, edit goals/obligations from the UI. *(roadmap — P3)*
+**Three personas (built)**
+- One engine, three seeded personas: **personal** (Aisha, a solo freelancer + shop owner, household-of-one, 5 income streams), **family** (the Rahman household of four), **business** (a café with staff). A header **persona switcher** flips between them.
+- Realistic Malaysian detail: gross salary + **EPF/SOCSO/EIS**, **income tax (PCB)**, **insurance**, itemised **Bills & Subscriptions** (utilities, broadband, TV, AI subscription, device instalments, credit-card penalty), multi-stream income, employer statutory + SST for the business.
+
+**Input, capture & reach (built)**
+- **Flexible in-app input** (`/api/graph` + `FlexibleInput`): add income / bucket / allocation / spend for any person, with a subject-matter tag (`props.subject`) — *the graph is now editable from the UI, no schema change*.
+- **No-token capture**: 🎤 voice (browser Speech API) + 📷 receipt scan (tesseract.js) → prefill a spend, **on-device, no AI tokens** (parses EN + Malay). Gemini stays the optional premium path.
+- **Multi-language**: EN + Bahasa Melayu complete; Chinese/Tamil/Hindi core with graceful English fallback; `?lang=` switcher (dependency-free, no routing refactor).
+- **Multi-currency**: display + capture in MYR · SGD · THB · CNY · HKD · TWD · JPY · USD · GBP (converts from the MYR base; capture normalises back). *Rates are indicative — wire a live FX source before real use.*
+- **Mobile-first + installable PWA** (never forced); **in-app `/guide`** with how-to + privacy + disclaimer (`docs/DISCLAIMER.md`).
+
+**Roster & management (built)**
+- Editable **roster** (`members`): add/remove people inline — a household grows with a newborn, a café with a hire; removing a person keeps their spend (relation nulled), never loses history.
 
 **Business workflow (roadmap — P3)**
 - **Departments** as first-class subject matters: per-department income, expenses, needs, and their own cashflow.
@@ -104,8 +113,9 @@ On top of the graph sits a **visualization gallery** (`/graph`) with six lenses 
 | Phase | Window | Outcome |
 |-------|--------|---------|
 | **P1 — MVP vertical slice** ✅ | Jul–Aug 2026 | Telegram → OCR → graph → Honey insight → dashboard. Knowledge-graph engine on local-first PocketBase; household + business seeds. Repo with real history. |
-| **P1.5 — Monitoring layer** ✅ | Jul 2026 | Six-view visualization gallery; **Focus lens** (income/expense/category/person); editable roster; persona-aware categories & roles. *(built this cycle)* |
-| **P2 — Semi-final polish** | Aug–Oct 2026 | Deploy to Vercel + Supabase; curated OCR accuracy ≥95% on golden set; refined Honey persona; 3-min live demo; 1 signed corporate LOI; alternative credit-scoring narrative. |
+| **P1.5 — Monitoring layer** ✅ | Jul 2026 | Six-view visualization gallery; **Focus lens** (income/expense/category/person); editable roster; persona-aware categories & roles. |
+| **P1.6 — Reach & realism** ✅ | Jul 2026 | Third persona (solo); realistic Malaysian finance data; flexible in-app input; no-token voice/scan capture; multi-language (EN+BM); multi-currency (9); mobile-first PWA; in-app guide/disclaimer. Competitive research → `docs/MARKET_STRATEGY.md`. |
+| **P2 — Semi-final polish** | Aug–Oct 2026 | **First cut deploy** (Fly PocketBase + Vercel, `pocketbase/Dockerfile` — see `DEPLOY.md`); curated OCR ≥95% on a golden set; refined Honey persona; 3-min live demo; 1 signed corporate LOI; the top-3 differentiators (couples hide/share · round-ups · goal ETA — see `NEXT.md §6.5`). |
 | **P3 — Business tier** | Oct–Nov 2026 | **Departments / subject-matter tagging** as a lens dimension; **cashflow statement** (in/out/net + runway); **reporting** (per-department/person/category + export); graph-management CRUD from the UI. |
 | **P4 — B2B scalability** | Nov 2026+ | Multi-tenant corporate HR dashboard (anonymized k-anonymity aggregates); pilot onboarding; role-based access. |
 
@@ -321,6 +331,12 @@ Every chart is hand-rolled SVG (no chart library), deterministic so server and c
 ### 12.7 Roster management
 `web/src/app/api/members/route.ts` (POST/DELETE) plus `PeopleMenu.tsx` let the roster grow and shrink inline. Deletes are tenant-scoped (a tenant can't remove another's people) and **non-destructive to history** — PocketBase nulls the `transactions.member` relation, so past spend survives as unattributed. Removal is a two-step confirm; each action shows its own pending state.
 
+### 12.8 Flexible input & no-token capture
+`web/src/app/api/graph/route.ts` is one endpoint for adding to the graph — income / bucket / allocation / spend — with a `props.subject` tag (flexibility without a schema change). `FlexibleInput.tsx` drives it; `SpendCapture.tsx` prefills a spend from **voice** (the browser's on-device Speech Recognition, mapped to en-MY/ms-MY/zh/ta/hi) or a **receipt scan** (`tesseract.js`, the WASM Tesseract, dynamically imported). Both run on-device with **no AI tokens** and parse `{vendor, amount}` from EN + Malay; Gemini stays the optional premium path.
+
+### 12.9 Localisation & currency
+`web/src/lib/i18n.ts` is a dependency-free dictionary with graceful per-key English fallback (EN + BM complete; zh/ta/hi core) — no next-intl/routing refactor; the locale is a `?lang=` param. `web/src/lib/format.ts` holds the currency table (`CURRENCIES`, 9 currencies) and `fmtMoney()` — display amounts convert from the MYR base at an indicative rate and format in the currency's own locale; captured amounts normalise back to MYR so graph math stays single-currency. `?ccy=` selects the display currency.
+
 ---
 
 ## 13. Scalability: household → business
@@ -346,18 +362,6 @@ The graph already supports this; P3 surfaces it:
 3. **Reporting & management.** Roll-ups per department / person / category; CSV/PDF export for an accountant; and graph-management CRUD (add revenue stream, create department bucket, set an allocation, adjust a goal) — extending the roster CRUD that already ships.
 4. **Corporate B2B roll-up (P4).** HR analytics reads **materialized anonymized aggregates** (k-anonymity: suppress cohorts < 5) — never raw household/employee rows — so the "anonymized aggregate" promise holds by construction. `tenant_id` + RLS everywhere from day one.
 
-The **same node/edge engine** serves both — this is the core scalability argument for the rubric:
-
-| Concept | Household | Business |
-|---------|-----------|----------|
-| `income_source` | Salary | Revenue streams |
-| `bucket` | Fixed / Future Shield / Personal | Opex / Reserves / Payroll |
-| `obligation` (`OWES`) | Loans | Suppliers, payroll |
-| `goal` | House deposit, holiday | Runway, tax reserve |
-| `member` | Spouses | Employees / departments |
-
-Moving to business = **new views and aggregations, not a new core.** B2B corporate analytics reads **materialized anonymized aggregates** (k-anonymity: suppress cohorts < 5 employees) — never raw household rows — so the "anonymized aggregate" promise holds by construction. `tenant_id` + RLS everywhere from day one.
-
 ---
 
 ## 14. Security, privacy & compliance
@@ -373,6 +377,8 @@ Moving to business = **new views and aggregations, not a new core.** B2B corpora
 ## 15. Deliverables & competition mapping
 
 Rubric weights: Technical Feasibility 25 · Commercial Viability 25 · Industry Relevance 20 · Scalability 15 · ESG/National 15. Full task board and per-deliverable owners in **`NEXT.md`**.
+
+**Companion docs:** `NEXT.md` (action board) · `DEPLOY.md` (first-cut deploy runbook + `pocketbase/Dockerfile`) · `docs/MARKET_STRATEGY.md` (competitor + demand-driver research; market prioritisation) · `docs/DISCLAIMER.md` (disclaimer + PDPA privacy, mirrored in-app at `/guide`) · `docs/AI_DISCLOSURE.md` · `docs/USER_GUIDE.md`.
 
 ### Suggested pitch-deck outline (slide → target dimension)
 1. Title / one-liner — *Happy wife, happy life; healthy workforce.*
