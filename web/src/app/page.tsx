@@ -10,9 +10,9 @@ export default function Home() {
         🍯 HoneyMoney
       </h1>
       <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-        Funding transparency, spending autonomy. An AI-native financial wellness
-        engine that turns household money into a living knowledge graph — no bank
-        integration, no tracking fatigue.
+        Funding transparency, spending autonomy. AI supported financial wellness
+        engine that turns household money into a living knowledge graph, with no
+        tracking fatigue. Positive cashflow, Happy wife, Happy life.
       </p>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
