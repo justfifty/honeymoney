@@ -58,6 +58,7 @@ export default async function Dashboard() {
           </div>
           <nav className="flex gap-4 text-sm">
             <Link href="/graph" className="text-amber-600 hover:underline">🕸️ Graph</Link>
+            <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ Guide</Link>
             <Link href="/" className="text-zinc-500 hover:underline">← Home</Link>
           </nav>
         </header>
