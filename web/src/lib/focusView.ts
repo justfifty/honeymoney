@@ -6,7 +6,7 @@
 // One read, one focus applied, both the graph-view and money-view shapes derived,
 // so the six visualizations consume filtered data unchanged.
 
-import { pbList, pbFirst, pbStr } from "./pocketbase";
+import { pbList, pbStr } from "./pocketbase";
 import { computeAllocations, projectBuckets } from "./projection";
 import { categoryMeta, ROLE_OPTIONS, type MoneyView, type TenantKind, type CategoryMeta } from "./moneyView";
 import type { GNode } from "./graphView";
@@ -97,6 +97,7 @@ export interface FocusedView {
   tenantKind: TenantKind;
   tierMeta: Record<number, CategoryMeta>; // persona-aware category names
   roleOptions: string[]; // roster roles appropriate to the persona
+  personas: Array<{ id: string; name: string; kind: TenantKind }>; // all tenants, for the switcher
 }
 
 const KIND_BADGE: Record<string, string> = {
@@ -176,15 +177,17 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
   monthStart.setHours(0, 0, 0, 0);
   const startStr = monthStart.toISOString().replace("T", " ");
 
-  const [nodes, edges, txns, members, tenant] = await Promise.all([
+  const [nodes, edges, txns, members, tenants] = await Promise.all([
     pbList<RawNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<RawEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<RawTxn>("transactions", { filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)}` }),
     pbList<Member>("members", { filter: `tenant = ${pbStr(tenantId)}`, sort: "created" }),
-    pbFirst<{ kind: string }>("tenants", `id = ${pbStr(tenantId)}`),
+    pbList<{ id: string; name: string; kind: string }>("tenants", { sort: "created" }),
   ]);
 
+  const tenant = tenants.find((t) => t.id === tenantId);
   const tenantKind: TenantKind = tenant?.kind === "business" ? "business" : "household";
+  const personas = tenants.map((t) => ({ id: t.id, name: t.name || t.id, kind: (t.kind === "business" ? "business" : "household") as TenantKind }));
   const tierMeta = categoryMeta(tenantKind);
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const labelOf = (id: string) => nodeById.get(id)?.label ?? "Unknown";
@@ -304,5 +307,6 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
     tenantKind,
     tierMeta,
     roleOptions: ROLE_OPTIONS[tenantKind],
+    personas,
   };
 }

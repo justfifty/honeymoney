@@ -108,9 +108,9 @@ export default async function GraphPage({
   const width = COL_X.income + NODE_W + 40;
 
   const isBiz = view.tenantKind === "business";
-  const otherTenant = tenantId === "bizsedap2222222" ? "hhrahman1111111" : "bizsedap2222222";
-  const otherLabel = tenantId === "bizsedap2222222" ? "household 🏠" : "business ☕";
   const rootLabel = isBiz ? "Business" : "Household";
+  const personaIcon = (kind: string, name: string) =>
+    kind === "business" ? "🏢" : /solo|freelance/i.test(name) ? "🧑‍💻" : "🏠";
 
   return (
     <main className="mx-auto min-h-full max-w-5xl px-6 py-12">
@@ -124,12 +124,27 @@ export default async function GraphPage({
           </p>
         </div>
         <nav className="flex items-center gap-4 text-sm">
-          <Link href={`/graph?tenantId=${otherTenant}&mode=${mode}&focus=all`} className="text-amber-600 hover:underline">
-            View {otherLabel}
-          </Link>
           <Link href="/dashboard" className="text-zinc-500 hover:underline">Dashboard →</Link>
         </nav>
       </header>
+
+      {/* persona switcher — personal · family · business on one engine */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Persona</span>
+        {view.personas.map((p) => (
+          <Link
+            key={p.id}
+            href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all`}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+              p.id === tenantId
+                ? "border-amber-500 bg-amber-500 text-white"
+                : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            }`}
+          >
+            {personaIcon(p.kind, p.name)} {p.name}
+          </Link>
+        ))}
+      </div>
 
       <FocusBar
         tenantId={tenantId}
