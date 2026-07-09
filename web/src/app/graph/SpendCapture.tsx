@@ -1,6 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { t as translate, type Locale } from "@/lib/i18n";
+
+// map an app locale to a BCP-47 speech-recognition locale
+const SPEECH_LANG: Record<string, string> = {
+  en: "en-MY", ms: "ms-MY", zh: "zh-CN", ta: "ta-IN", hi: "hi-IN",
+};
 
 // No-token capture: fill a spend by SPEAKING or SCANNING a receipt — zero AI
 // tokens, zero cost. Voice uses the browser's built-in Speech Recognition
@@ -58,11 +64,13 @@ interface SpeechRecognitionLike {
 
 export default function SpendCapture({
   onResult,
-  lang = "en-MY",
+  lang = "en",
 }: {
   onResult: (c: Captured) => void;
-  lang?: string;
+  lang?: Locale;
 }) {
+  const tr = (k: string) => translate(lang, k);
+  const speechLang = SPEECH_LANG[lang] ?? "en-MY";
   const [status, setStatus] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
@@ -81,7 +89,7 @@ export default function SpendCapture({
     }
     const rec = new Ctor();
     recRef.current = rec;
-    rec.lang = lang;
+    rec.lang = speechLang;
     rec.interimResults = false;
     rec.maxAlternatives = 1;
     rec.onresult = (e) => {
@@ -126,14 +134,14 @@ export default function SpendCapture({
           onClick={speak}
           className={`flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium ${listening ? "border-rose-400 bg-rose-50 text-rose-600 dark:bg-rose-950/40" : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}
         >
-          {listening ? "⏹ Stop" : "🎤 Speak"}
+          {listening ? "⏹" : "🎤"} {tr("cap.speak")}
         </button>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           className="flex items-center gap-1 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
         >
-          📷 Scan receipt
+          📷 {tr("cap.scan")}
         </button>
         <input
           ref={fileRef}
@@ -147,7 +155,7 @@ export default function SpendCapture({
             e.target.value = "";
           }}
         />
-        <span className="text-[10px] text-zinc-400">free · on-device · no AI tokens</span>
+        <span className="text-[10px] text-zinc-400">{tr("cap.noTokens")}</span>
       </div>
       {status && <p className="text-[11px] text-zinc-500">{status}</p>}
     </div>

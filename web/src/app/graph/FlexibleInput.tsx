@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { t as translate, type Locale } from "@/lib/i18n";
 import SpendCapture from "./SpendCapture";
 
 interface Opt {
@@ -10,11 +11,11 @@ interface Opt {
 }
 
 type Mode = "spend" | "income" | "bucket" | "allocation";
-const MODES: { key: Mode; label: string; icon: string }[] = [
-  { key: "spend", label: "Spend", icon: "🧾" },
-  { key: "income", label: "Income", icon: "💰" },
-  { key: "bucket", label: "Bucket", icon: "🪣" },
-  { key: "allocation", label: "Allocation", icon: "➡️" },
+const MODES: { key: Mode; icon: string }[] = [
+  { key: "spend", icon: "🧾" },
+  { key: "income", icon: "💰" },
+  { key: "bucket", icon: "🪣" },
+  { key: "allocation", icon: "➡️" },
 ];
 
 // Flexible in-app input: add any item — a spend, an income stream, a bucket, or
@@ -26,13 +27,16 @@ export default function FlexibleInput({
   incomes,
   members,
   categoryLabels,
+  lang = "en",
 }: {
   tenantId: string;
   buckets: Opt[];
   incomes: Opt[];
   members: Opt[];
   categoryLabels: { tier: number; label: string }[];
+  lang?: Locale;
 }) {
+  const tr = (k: string) => translate(lang, k);
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("spend");
   const [busy, setBusy] = useState(false);
@@ -89,8 +93,8 @@ export default function FlexibleInput({
   return (
     <details className="mt-8 rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold">
-        ➕ Add to the graph
-        <span className="ml-2 text-xs font-normal text-zinc-400">income · bucket · allocation · spend — for any person</span>
+        ➕ {tr("add.title")}
+        <span className="ml-2 text-xs font-normal text-zinc-400">{tr("add.hint")}</span>
       </summary>
       <div className="border-t border-zinc-100 p-4 dark:border-zinc-800">
         <div className="mb-3 flex flex-wrap gap-1.5">
@@ -101,7 +105,7 @@ export default function FlexibleInput({
               onClick={() => { setMode(m.key); setMsg(null); }}
               className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${mode === m.key ? "border-amber-500 bg-amber-500 text-white" : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}
             >
-              {m.icon} {m.label}
+              {m.icon} {tr(`add.${m.key}`)}
             </button>
           ))}
         </div>
@@ -109,6 +113,7 @@ export default function FlexibleInput({
         {mode === "spend" && (
           <div className="mb-3">
             <SpendCapture
+              lang={lang}
               onResult={({ vendor, amount: amt }) => {
                 if (vendor) setLabel(vendor);
                 if (amt) setAmount(String(amt));
@@ -195,7 +200,7 @@ export default function FlexibleInput({
           )}
 
           <button type="submit" disabled={busy} className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50">
-            {busy ? "Saving…" : "Add"}
+            {busy ? "…" : tr("add.submit")}
           </button>
         </form>
         {msg && <p className={`mt-2 text-xs ${msg.ok ? "text-emerald-600" : "text-rose-600"}`}>{msg.ok ? "✅ " : "⚠️ "}{msg.text}</p>}

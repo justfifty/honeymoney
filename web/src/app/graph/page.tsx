@@ -9,6 +9,8 @@ import TreeGraph from "./TreeGraph";
 import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
 import FlexibleInput from "./FlexibleInput";
+import LanguageSwitcher from "./LanguageSwitcher";
+import { normalizeLocale, t as translate } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -69,7 +71,7 @@ const rm0 = (n: number) => `RM ${Math.round(n).toLocaleString()}`;
 export default async function GraphPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tenantId?: string; mode?: string; focus?: string }>;
+  searchParams: Promise<{ tenantId?: string; mode?: string; focus?: string; lang?: string }>;
 }) {
   if (!isDatabaseConfigured()) {
     return (
@@ -86,6 +88,8 @@ export default async function GraphPage({
   const mode: Mode = MODES.some((m) => m.key === params.mode) ? (params.mode as Mode) : "sankey";
   const focus = parseFocus(params.focus);
   const focusParam = focusToParam(focus);
+  const lang = normalizeLocale(params.lang);
+  const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
   const view = await getFocusedView(tenantId, focus);
   const { nodes, edges } = view.graph;
   const money = view.money;
@@ -117,25 +121,26 @@ export default async function GraphPage({
     <main className="mx-auto min-h-full max-w-5xl px-6 py-12">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">🕸️ Money, Visualized</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">🕸️ {tr("app.title")}</h1>
           <p className="text-sm text-zinc-500">
             {focusParam === "all"
-              ? `${nodes.length} nodes · ${edges.length} edges · six lenses on one living graph`
-              : `Focused on ${view.focusBadge} ${view.focusLabel} — ${nodes.length} nodes · ${edges.length} edges`}
+              ? tr("app.subtitle", { nodes: nodes.length, edges: edges.length })
+              : tr("app.focusedOn", { label: `${view.focusBadge} ${view.focusLabel}`, nodes: nodes.length, edges: edges.length })}
           </p>
         </div>
         <nav className="flex items-center gap-4 text-sm">
-          <Link href="/dashboard" className="text-zinc-500 hover:underline">Dashboard →</Link>
+          <LanguageSwitcher current={lang} />
+          <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")} →</Link>
         </nav>
       </header>
 
       {/* persona switcher — personal · family · business on one engine */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Persona</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{tr("persona.label")}</span>
         {view.personas.map((p) => (
           <Link
             key={p.id}
-            href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all`}
+            href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all&lang=${lang}`}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
               p.id === tenantId
                 ? "border-amber-500 bg-amber-500 text-white"
@@ -156,6 +161,16 @@ export default async function GraphPage({
         focusBadge={view.focusBadge}
         roleOptions={view.roleOptions}
         categoryBadge={view.tierMeta[1]?.badge ?? "🗂️"}
+        lang={lang}
+        labels={{
+          lens: tr("lens.label"),
+          income: tr("lens.income"),
+          bucket: tr("lens.bucket"),
+          vendor: tr("lens.vendor"),
+          category: tr("lens.category"),
+          wholeGraph: tr("lens.wholeGraph"),
+          clear: tr("lens.clear"),
+        }}
       />
 
       {/* monitoring headline — adapts to a person lens */}
@@ -175,11 +190,11 @@ export default async function GraphPage({
           })()
         ) : (
           <>
-            <Stat label="Income / mo" value={rm0(money.totalIncome)} tone="income" />
-            <Stat label="Allocated / mo" value={rm0(money.totalAllocated)} tone="alloc" />
-            <Stat label="Spent (mtd)" value={rm0(money.totalSpent)} tone="spend" />
+            <Stat label={tr("stat.incomeMo")} value={rm0(money.totalIncome)} tone="income" />
+            <Stat label={tr("stat.allocatedMo")} value={rm0(money.totalAllocated)} tone="alloc" />
+            <Stat label={tr("stat.spentMtd")} value={rm0(money.totalSpent)} tone="spend" />
             <Stat
-              label="Unallocated"
+              label={tr("stat.unallocated")}
               value={rm0(money.totalIncome - money.totalAllocated)}
               tone={money.totalIncome - money.totalAllocated >= 0 ? "save" : "spend"}
             />
@@ -192,14 +207,14 @@ export default async function GraphPage({
         {MODES.map((m) => (
           <Link
             key={m.key}
-            href={`/graph?tenantId=${tenantId}&mode=${m.key}&focus=${focusParam}`}
+            href={`/graph?tenantId=${tenantId}&mode=${m.key}&focus=${focusParam}&lang=${lang}`}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
               mode === m.key
                 ? "border-amber-500 bg-amber-500 text-white"
                 : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
             }`}
           >
-            {m.icon} {m.label}
+            {m.icon} {tr(`mode.${m.key}`)}
           </Link>
         ))}
       </div>
@@ -383,6 +398,7 @@ export default async function GraphPage({
 
       <FlexibleInput
         tenantId={tenantId}
+        lang={lang}
         buckets={money.buckets.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
         incomes={money.incomes.map((i) => ({ id: i.id, label: i.label }))}
         members={view.groups.member.map((m) => ({ id: m.value.split(":")[1], label: m.label }))}

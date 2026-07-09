@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { FocusGroups, FocusOption } from "@/lib/focusView";
+import { type Locale } from "@/lib/i18n";
 import PeopleMenu from "./PeopleMenu";
 
 // The focus selector: pick a lens from any dimension — income stream, bucket,
@@ -7,8 +8,8 @@ import PeopleMenu from "./PeopleMenu";
 // Structural dimensions are plain <details> + <Link> (server nav, no JS needed);
 // the People dimension is a client menu so the roster can grow or shrink.
 
-function href(tenantId: string, mode: string, focus: string) {
-  return `/graph?tenantId=${tenantId}&mode=${mode}&focus=${focus}`;
+function href(tenantId: string, mode: string, focus: string, lang: string) {
+  return `/graph?tenantId=${tenantId}&mode=${mode}&focus=${focus}&lang=${lang}`;
 }
 
 function Dropdown({
@@ -18,6 +19,7 @@ function Dropdown({
   active,
   tenantId,
   mode,
+  lang,
 }: {
   title: string;
   badge: string;
@@ -25,6 +27,7 @@ function Dropdown({
   active: string;
   tenantId: string;
   mode: string;
+  lang: string;
 }) {
   const activeHere = options.some((o) => o.value === active);
   return (
@@ -44,7 +47,7 @@ function Dropdown({
         {options.map((o) => (
           <Link
             key={o.value}
-            href={href(tenantId, mode, o.value)}
+            href={href(tenantId, mode, o.value, lang)}
             className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-xs ${
               o.value === active ? "bg-amber-500 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
             }`}
@@ -67,6 +70,8 @@ export default function FocusBar({
   focusBadge,
   roleOptions,
   categoryBadge,
+  lang,
+  labels,
 }: {
   tenantId: string;
   mode: string;
@@ -76,32 +81,34 @@ export default function FocusBar({
   focusBadge: string;
   roleOptions: string[];
   categoryBadge: string;
+  lang: Locale;
+  labels: { lens: string; income: string; bucket: string; vendor: string; category: string; wholeGraph: string; clear: string };
 }) {
   const focused = focusParam !== "all";
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Lens</span>
+      <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{labels.lens}</span>
 
-      <PeopleMenu tenantId={tenantId} mode={mode} active={focusParam} members={groups.member} roleOptions={roleOptions} />
+      <PeopleMenu tenantId={tenantId} mode={mode} active={focusParam} members={groups.member} roleOptions={roleOptions} lang={lang} />
       <span className="text-zinc-300 dark:text-zinc-700">|</span>
-      <Dropdown title="Income" badge="💰" options={groups.income} active={focusParam} tenantId={tenantId} mode={mode} />
-      <Dropdown title="Bucket" badge="🪣" options={groups.bucket} active={focusParam} tenantId={tenantId} mode={mode} />
-      <Dropdown title="Vendor" badge="🏪" options={groups.vendor} active={focusParam} tenantId={tenantId} mode={mode} />
-      <Dropdown title="Category" badge={categoryBadge} options={groups.category} active={focusParam} tenantId={tenantId} mode={mode} />
+      <Dropdown title={labels.income} badge="💰" options={groups.income} active={focusParam} tenantId={tenantId} mode={mode} lang={lang} />
+      <Dropdown title={labels.bucket} badge="🪣" options={groups.bucket} active={focusParam} tenantId={tenantId} mode={mode} lang={lang} />
+      <Dropdown title={labels.vendor} badge="🏪" options={groups.vendor} active={focusParam} tenantId={tenantId} mode={mode} lang={lang} />
+      <Dropdown title={labels.category} badge={categoryBadge} options={groups.category} active={focusParam} tenantId={tenantId} mode={mode} lang={lang} />
 
       {focused ? (
         <span className="ml-1 flex items-center gap-2 rounded-full bg-amber-100 py-1 pl-3 pr-1 text-xs font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
           {focusBadge} {focusLabel}
           <Link
-            href={href(tenantId, mode, "all")}
-            aria-label="Clear focus"
+            href={href(tenantId, mode, "all", lang)}
+            aria-label={labels.clear}
             className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-amber-800 hover:bg-amber-300 dark:bg-amber-900 dark:text-amber-200"
           >
             ✕
           </Link>
         </span>
       ) : (
-        <span className="ml-1 text-xs text-zinc-400">🌐 whole graph</span>
+        <span className="ml-1 text-xs text-zinc-400">🌐 {labels.wholeGraph}</span>
       )}
     </div>
   );

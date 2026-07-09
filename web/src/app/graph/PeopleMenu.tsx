@@ -19,12 +19,14 @@ export default function PeopleMenu({
   active,
   members,
   roleOptions,
+  lang = "en",
 }: {
   tenantId: string;
   mode: string;
   active: string;
   members: FocusOption[];
   roleOptions: string[];
+  lang?: string;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -90,7 +92,7 @@ export default function PeopleMenu({
                 className={`flex items-center justify-between gap-1 rounded-lg pr-1 ${isActive ? "bg-amber-500 text-white" : "hover:bg-zinc-100 dark:hover:bg-zinc-800"}`}
               >
                 <Link
-                  href={`/graph?tenantId=${tenantId}&mode=${mode}&focus=${m.value}`}
+                  href={`/graph?tenantId=${tenantId}&mode=${mode}&focus=${m.value}&lang=${lang}`}
                   className="flex flex-1 items-center justify-between gap-2 truncate px-3 py-1.5 text-xs"
                 >
                   <span className="truncate">🧑 {m.label}</span>
