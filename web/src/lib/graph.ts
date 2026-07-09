@@ -111,9 +111,17 @@ export async function ingestReceipt(
 }
 
 // Manual entry from the dashboard form: explicit bucket, typed vendor/amount.
+// Optionally attributed to a member (the person lens) and given a subject tag.
 export async function addManualTransaction(
   tenantId: string,
-  input: { vendorLabel: string; amount: number; walletNodeId: string; occurredAt?: string },
+  input: {
+    vendorLabel: string;
+    amount: number;
+    walletNodeId: string;
+    occurredAt?: string;
+    memberId?: string;
+    source?: string;
+  },
 ): Promise<IngestResult> {
   const vendorNodeId = await ensureVendorNode(tenantId, input.vendorLabel);
   const wallet = await pbFirst<PBNode>(
@@ -128,10 +136,11 @@ export async function addManualTransaction(
     edge: edgeId,
     wallet_node: wallet.id,
     vendor_node: vendorNodeId,
+    ...(input.memberId ? { member: input.memberId } : {}),
     amount: input.amount,
     currency: "MYR",
     occurred_at: input.occurredAt ?? new Date().toISOString().replace("T", " "),
-    source: "manual",
+    source: input.source ?? "manual",
     parse_confidence: 1,
   });
 
@@ -141,6 +150,42 @@ export async function addManualTransaction(
     vendorNodeId,
     walletLabel: wallet.label,
   };
+}
+
+// Create a graph node (income source / bucket / goal / obligation …) with a
+// flexible props bag — the "subject matter" is just props.subject, no schema
+// change. This is how the graph stays flexible across personal/family/business.
+export async function createGraphNode(
+  tenantId: string,
+  input: { kind: string; label: string; props?: Record<string, unknown> },
+): Promise<{ id: string; label: string; kind: string }> {
+  const label = input.label.trim();
+  if (!label) throw new Error("Label is required.");
+  const node = await pbCreate<{ id: string; label: string; kind: string }>("nodes", {
+    tenant: tenantId,
+    kind: input.kind,
+    label,
+    props: input.props ?? {},
+  });
+  return node;
+}
+
+// Create an allocation edge (income/bucket -> bucket): fixed RM or percentage.
+export async function createAllocationEdge(
+  tenantId: string,
+  input: { srcNode: string; dstNode: string; rel: string; amount?: number; percentage?: number },
+): Promise<{ id: string }> {
+  const src = await pbFirst<PBNode>("nodes", `id = ${pbStr(input.srcNode)} && tenant = ${pbStr(tenantId)}`);
+  const dst = await pbFirst<PBNode>("nodes", `id = ${pbStr(input.dstNode)} && tenant = ${pbStr(tenantId)}`);
+  if (!src || !dst) throw new Error("Both source and destination must belong to this tenant.");
+  return pbCreate<{ id: string }>("edges", {
+    tenant: tenantId,
+    src_node: input.srcNode,
+    dst_node: input.dstNode,
+    rel: input.rel,
+    ...(input.rel === "ALLOCATES_PCT" ? { percentage: input.percentage ?? 0 } : { amount: input.amount ?? 0 }),
+    cadence: "monthly",
+  });
 }
 
 // Resolve a Telegram chat id to a tenant via channel_links.

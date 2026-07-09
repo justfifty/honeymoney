@@ -8,6 +8,7 @@ import Treemap from "./Treemap";
 import TreeGraph from "./TreeGraph";
 import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
+import FlexibleInput from "./FlexibleInput";
 
 export const dynamic = "force-dynamic";
 
@@ -379,6 +380,14 @@ export default async function GraphPage({
         )}
         {mode === "organic" && <LegendDot color="#5B7DB1" label="bucket" />}
       </div>
+
+      <FlexibleInput
+        tenantId={tenantId}
+        buckets={money.buckets.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
+        incomes={money.incomes.map((i) => ({ id: i.id, label: i.label }))}
+        members={view.groups.member.map((m) => ({ id: m.value.split(":")[1], label: m.label }))}
+        categoryLabels={[1, 2, 3].map((t) => ({ tier: t, label: view.tierMeta[t]?.label ?? `Tier ${t}` }))}
+      />
 
       <p className="mt-6 max-w-2xl text-sm text-zinc-500">
         This is the same graph the AI reasons over: when the red spending edges thicken faster
