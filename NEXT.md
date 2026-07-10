@@ -5,6 +5,26 @@
 
 ---
 
+## ✅ Shipped — 2026-07-10 (live app + accounts + admin analytics)
+
+**The app is LIVE at https://honeymoney.app** — served local-first from the team PC
+via a named Cloudflare Tunnel (own everything, RM 0; PocketBase + data stay local).
+See `DEPLOY.md` + `deploy/` (start/stop scripts, logon auto-start task, `secrets/deploy-credentials.md`).
+
+- [x] **Custom domain** honeymoney.app (Cloudflare Registrar) → tunnel → app; auto-HTTPS, Singapore edge.
+- [x] **Time-schedule records viewer** `/records` — spending audit by day/week/month, date ranges, currency-aware.
+- [x] **User accounts + roles** — PocketBase `app_users` auth (user | admin); `/login`, `/signup`; seeded admin login.
+- [x] **Admin analytics** `/admin` (admin-gated) — total/unique visits, top pages + durations, countries, visitor IPs, recent visits; first-party tracking (`/api/track`, Cloudflare edge IP/country).
+- [x] **Cost monitoring** — `costs` ledger (seeded domain buy USD 15.48) + AI dev-token spend (est.), totalled in `/admin`.
+- [x] **AI token ledger** — every AI call logged to `ai_usage`; JSON export at `/api/usage`.
+- [x] **Multi-provider AI** — Groq · Gemini Flash · Ollama via `AI_PROVIDER`; agentic check at `/api/ai/check`. Setup + login links: `docs/AI_SETUP.md`.
+- [x] **Real-app shell** — global header (nav + auth state) + footer across all pages.
+
+> Reminder: the PC must stay on/awake for the public URL to be reachable (local-first).
+> To shed the PC dependency later: a ~USD 4/mo Singapore VPS runs the identical stack.
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:
@@ -161,4 +181,4 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 6. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
 7. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
 
-_Last updated: 2026-07-09_
+_Last updated: 2026-07-10_

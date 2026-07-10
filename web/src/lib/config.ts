@@ -15,6 +15,13 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
   geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
 
+  // Multi-provider AI: which text engine to use — "gemini" | "groq" | "ollama".
+  aiProvider: (process.env.AI_PROVIDER ?? "gemini").toLowerCase(),
+  groqApiKey: process.env.GROQ_API_KEY ?? "",
+  groqModel: process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile",
+  ollamaUrl: (process.env.OLLAMA_URL ?? "").replace(/\/$/, ""),
+  ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.2",
+
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
 
@@ -33,6 +40,21 @@ export const isSupabaseConfigured = (): boolean =>
 export const isDatabaseConfigured = isPocketBaseConfigured;
 
 export const isGeminiConfigured = (): boolean => Boolean(config.geminiApiKey);
+export const isGroqConfigured = (): boolean => Boolean(config.groqApiKey);
+export const isOllamaConfigured = (): boolean => Boolean(config.ollamaUrl);
+
+export type AiProvider = "gemini" | "groq" | "ollama";
+
+export function activeAiProvider(): AiProvider {
+  const p = config.aiProvider;
+  return p === "groq" || p === "ollama" ? p : "gemini";
+}
+
+export function isProviderConfigured(p: AiProvider): boolean {
+  if (p === "groq") return isGroqConfigured();
+  if (p === "ollama") return isOllamaConfigured();
+  return isGeminiConfigured();
+}
 
 export const isTelegramConfigured = (): boolean =>
   Boolean(config.telegramBotToken && config.telegramWebhookSecret);

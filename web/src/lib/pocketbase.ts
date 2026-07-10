@@ -95,6 +95,17 @@ export async function pbCreate<T>(
   });
 }
 
+export async function pbUpdate<T>(
+  collection: string,
+  id: string,
+  body: Record<string, unknown>,
+): Promise<T> {
+  return pbFetch<T>(`/api/collections/${collection}/records/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function pbDelete(collection: string, id: string): Promise<void> {
   await pbFetch<unknown>(`/api/collections/${collection}/records/${id}`, {
     method: "DELETE",

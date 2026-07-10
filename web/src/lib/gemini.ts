@@ -1,7 +1,9 @@
 // Gemini via REST (fetch) — no SDK dependency, edge-safe, no version churn.
 // Docs: https://ai.google.dev/api/generate-content
 
-import { config, isGeminiConfigured } from "./config";
+import { config, isGeminiConfigured, isPocketBaseConfigured } from "./config";
+import { pbCreate } from "./pocketbase";
+import { aiGenerate } from "./ai";
 import type { ParsedReceipt } from "./types";
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -11,7 +13,44 @@ interface GeminiPart {
   inlineData?: { mimeType: string; data: string };
 }
 
-async function generate(parts: GeminiPart[], jsonMode: boolean): Promise<string> {
+// Optional call context, logged to the ai_usage ledger alongside token counts.
+export interface AiMeta {
+  tenantId?: string;
+  source?: string; // "web" | "telegram" | …
+}
+
+interface GeminiUsage {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+}
+
+// Persist one row per Gemini call so token usage is a queryable, exportable
+// record (MAIC AI disclosure + cost metrics). Never let telemetry break a request.
+async function logUsage(fn: string, usage: GeminiUsage | undefined, meta?: AiMeta): Promise<void> {
+  if (!isPocketBaseConfigured()) return;
+  try {
+    await pbCreate("ai_usage", {
+      fn,
+      model: config.geminiModel,
+      prompt_tokens: Number(usage?.promptTokenCount) || 0,
+      output_tokens: Number(usage?.candidatesTokenCount) || 0,
+      total_tokens: Number(usage?.totalTokenCount) || 0,
+      tenant: meta?.tenantId ?? "",
+      source: meta?.source ?? "",
+      ok: true,
+    });
+  } catch {
+    /* swallow — usage logging must never fail the AI call */
+  }
+}
+
+async function generate(
+  parts: GeminiPart[],
+  jsonMode: boolean,
+  fn: string,
+  meta?: AiMeta,
+): Promise<string> {
   if (!isGeminiConfigured()) {
     throw new Error("Gemini is not configured. Set GEMINI_API_KEY.");
   }
@@ -36,6 +75,7 @@ async function generate(parts: GeminiPart[], jsonMode: boolean): Promise<string>
     .join("")
     .trim();
   if (!text) throw new Error("Gemini returned an empty response.");
+  await logUsage(fn, data?.usageMetadata as GeminiUsage | undefined, meta);
   return text;
 }
 
@@ -59,10 +99,13 @@ No commentary, no markdown.`;
 export async function parseReceipt(
   imageBase64: string,
   mimeType: string,
+  meta?: AiMeta,
 ): Promise<ParsedReceipt> {
   const raw = await generate(
     [{ text: RECEIPT_PROMPT }, { inlineData: { mimeType, data: imageBase64 } }],
     true,
+    "parseReceipt",
+    meta,
   );
   let obj: Record<string, unknown>;
   try {
@@ -88,9 +131,11 @@ Voice: warm, encouraging, forward-looking, and MARITAL-SAFE — never blame a sp
 never interrogate past purchases ("what was this RM50 for?"). Focus on proactive
 alignment toward shared goals. Keep it to 2-3 short sentences. Use RM for amounts.`;
 
-export async function honeyInsight(contextText: string): Promise<string> {
-  return generate(
-    [{ text: `${HONEY_SYSTEM}\n\nHousehold snapshot:\n${contextText}\n\nGive one insight now:` }],
-    false,
-  );
+export async function honeyInsight(contextText: string, meta?: AiMeta): Promise<string> {
+  // Routed through the multi-provider layer (Gemini / Groq / Ollama per AI_PROVIDER).
+  return aiGenerate(`Household snapshot:\n${contextText}\n\nGive one insight now:`, {
+    system: HONEY_SYSTEM,
+    fn: "honeyInsight",
+    meta,
+  });
 }

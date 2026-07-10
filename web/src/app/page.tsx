@@ -10,9 +10,12 @@ export default function Home() {
         🍯 HoneyMoney
       </h1>
       <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-        Funding transparency, spending autonomy. AI supported financial wellness
-        engine that turns household money into a living knowledge graph, with no
-        tracking fatigue. Positive cashflow, Happy wife, Happy life.
+        Household money as a living knowledge graph — financial wellness, AI-supported, no tracking fatigue.
+      </p>
+      <p className="mt-3 max-w-xl text-xl font-semibold text-amber-700 dark:text-amber-300">
+        Happy Honey, Happy Money.
+        <br />
+        Happy Wife, Happy Life.
       </p>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -28,6 +31,15 @@ export default function Home() {
         >
           View the repo
         </a>
+      </div>
+
+      {/* accounts */}
+      <div className="mt-4 flex items-center gap-3 text-sm">
+        <Link href="/login" className="font-medium text-amber-600 hover:underline">Log in</Link>
+        <span className="text-zinc-300 dark:text-zinc-700">·</span>
+        <Link href="/signup" className="font-medium text-amber-600 hover:underline">Create account</Link>
+        <span className="text-zinc-300 dark:text-zinc-700">·</span>
+        <Link href="/admin" className="text-zinc-500 hover:underline">Admin</Link>
       </div>
 
       <div className="mt-16 grid max-w-3xl gap-6 text-left sm:grid-cols-3">

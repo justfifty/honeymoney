@@ -135,6 +135,7 @@ export default async function GraphPage({
         <nav className="flex items-center gap-3 text-sm">
           <CurrencySwitcher current={ccy} />
           <LanguageSwitcher current={lang} />
+          <Link href="/records" className="text-zinc-500 hover:underline">🧾 Records</Link>
           <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ Guide</Link>
           <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")} →</Link>
         </nav>

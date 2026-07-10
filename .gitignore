@@ -4,6 +4,7 @@
 .env.*.local
 *.env
 secrets/
+deploy/*.log
 
 # ─── Python / FastAPI ─────────────────────────────────────────────────────────
 __pycache__/

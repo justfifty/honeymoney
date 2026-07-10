@@ -396,4 +396,38 @@ Rubric weights: Technical Feasibility 25 · Commercial Viability 25 · Industry 
 
 ---
 
+## 15. Live deployment, accounts, analytics & multi-provider AI (2026-07-10)
+
+**Hosting — local-first + Cloudflare Tunnel.** The app is live at
+**https://honeymoney.app**, served from the team's own PC (Next.js `next start`
+:3000 + PocketBase :8090) exposed by a **named Cloudflare Tunnel**. RM 0, own
+everything, PocketBase + data never leave the machine. Ops in `deploy/`
+(`start-honeymoney.ps1` / `stop-honeymoney.ps1`, logon auto-start task); the tunnel
+only publishes :3000, so PocketBase stays localhost-only. Trade-off: the PC must be
+on/awake. Upgrade path: a ~USD 4/mo Singapore VPS runs the identical stack always-on.
+
+**Accounts & roles.** PocketBase auth collection `app_users` with `role`
+(`user` | `admin`). Server-mediated: `/api/auth/{login,signup,logout}` set an
+httpOnly cookie holding the PB token; `lib/auth.ts#getSessionUser` verifies it via
+`auth-refresh`. Browser never touches PocketBase. Pages: `/login`, `/signup`; a
+global header shows auth state. Seeded admin: `admin@honeymoney.app`.
+
+**Admin analytics** (`/admin`, admin-gated). First-party page-view tracking
+(`Track.tsx` beacon → `/api/track`) records path, referrer, session, duration, and
+**IP + country from Cloudflare edge headers** (`CF-Connecting-IP`, `CF-IPCountry`).
+`lib/analytics.ts` rolls up total/unique visits, top pages + avg duration, countries,
+visitor IPs, recent visits — no third-party trackers.
+
+**Cost monitoring.** `costs` ledger (seeded: honeymoney.app domain, USD 15.48,
+Cloudflare) + AI **development-token** spend estimated from the `ai_usage` ledger,
+totalled in `/admin`. Token ledger also at `/api/usage`. Feeds the MAIC AI disclosure.
+
+**Multi-provider AI.** `lib/ai.ts` unifies three free-tier engines behind
+`aiGenerate()`, chosen by `AI_PROVIDER`: **Groq** (OpenAI-compatible), **Gemini
+Flash** (also does receipt OCR), **Ollama** (local, zero-cost). Agentic health probe
+at `/api/ai/check`; per-call tokens logged to `ai_usage`. Setup + login links:
+`docs/AI_SETUP.md`.
+
+---
+
 _This manual evolves with the build. Keep it honest — judges reward clarity and realism over buzzwords._
