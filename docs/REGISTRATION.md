@@ -10,7 +10,7 @@
 
 ## 0. Do this FIRST — the eligibility gate (a fail here = instant out)
 
-- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Member 1 (PONG Woon Wei) is Singaporean, so this rests entirely on Member 2 (the friend): he must be a Malaysian MyKad holder and provide the number. Confirm before registering — no MyKad = ineligible.**
+- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Member 1 (PONG Woon Wei) is Singaporean; the gate is satisfied by Member 2 (Chua Kia Wah, Malaysian). Still needed: his MyKad number as proof — provide it before final submit.**
 - [ ] **One person = one team** (no cross-team participation).
 - [ ] **Track locked = T3** (Financial Services & Fintech). Commit, no hedging.
 - [ ] **Genuine commit history** — HoneyMoney already has real, non-backdated commits; keep committing through submission (never backdate). Repo: `github.com/justfifty/honeymoney`.
@@ -199,11 +199,11 @@ pilot / mentorship you want].
 
 ## 8. Member profiles
 
-> ⚠️ **Eligibility:** Member 1 (PONG Woon Wei) is **Singaporean — not a Malaysian
-> citizen**, so he does **not** satisfy the T3 eligibility gate on his own. **Member 2
-> (the friend) MUST be a Malaysian citizen with a valid MyKad, and that MyKad number
-> must be provided.** If neither member holds a MyKad, the team is **ineligible** for T3
-> — resolve this before registering (see §0).
+> ⚠️ **Eligibility:** Member 1 (PONG Woon Wei) is **Singaporean**, so the T3
+> Malaysian-citizen gate is met by **Member 2, Chua Kia Wah (Malaysian)**. The one
+> outstanding item is his **MyKad number** (the eligibility proof) — plus his email/phone
+> — which must be filled in before final submit. A LinkedIn profile is not proof on its
+> own; the form needs the MyKad number.
 
 ### Member 1 — filled
 
@@ -220,18 +220,19 @@ Bio: Architect-trained and a buildingSMART Singapore–accredited Tier 2 Digital
      knowledge-graph model and the multi-provider AI pipeline behind the app.
 ```
 
-### Member 2 — the friend (REQUIRED Malaysian citizen — fill in)
+### Member 2 — Chua Kia Wah (the REQUIRED Malaysian citizen)
 
 ```
-Name:            ____________________
+Name:            Chua Kia Wah
 Role:            Engineering & Growth (community / content)
-Nationality:     Malaysian   (Malaysian citizen: YES)   ← required for T3
-IC/MyKad (MY):   ____________________   ← eligibility proof, must be provided
-Email / phone:   ____________________
-LinkedIn/GitHub: ____________________
-Bio: An engineer and content creator who leads HoneyMoney's go-to-market and community
-     growth, pairing hands-on technical understanding with an audience-building instinct
-     to bring the app to Malaysian households. Malaysian citizen (MyKad holder).
+Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
+IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
+Email / phone:   ____________________   ← still needed
+LinkedIn:        https://www.linkedin.com/in/kia-wah-chua-72946935/
+Bio: Chua Kia Wah — an engineer and content creator who leads HoneyMoney's go-to-market
+     and community growth, pairing hands-on technical understanding with an
+     audience-building instinct to bring the app to Malaysian households. Malaysian
+     citizen (MyKad holder).
 ```
 
 ---
