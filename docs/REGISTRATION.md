@@ -68,7 +68,7 @@ For **each** member (have IDs on hand):
 | LinkedIn / GitHub | optional but strengthens profiles |
 | Short bio | 2–3 sentences (template in §8) |
 
-**Team lead / primary contact:** PONG Woon Wei — <justfifty1976@gmail.com> / +65 9067 4823
+**Team lead / primary contact:** Chua Kia Wah — <justfifty1976@gmail.com> / +60 17-477 7266
 
 ---
 
@@ -218,11 +218,11 @@ pilot / mentorship you want].
 > portal requires a **unique email per member** (many do), give Chua his own address
 > before submitting to avoid a validation error or an "account already exists" clash.
 
-### Member 1 — Chua Kia Wah (Malaysian citizen — satisfies the T3 gate)
+### Member 1 — Chua Kia Wah (Team Leader · Malaysian citizen — satisfies the T3 gate)
 
 ```
 Name:            Chua Kia Wah
-Role:            Business Lead
+Role:            Business Lead (Team Leader / primary contact)
 Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
 IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
 Email / phone:   justfifty1976@gmail.com / +60 17-477 7266
