@@ -217,7 +217,7 @@ Role:            Business Lead
 Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
 IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
 Email / phone:   justfifty1976@gmail.com / +60 17-477 7266
-LinkedIn:        https://www.linkedin.com/in/kia-wah-chua-72946935/
+LinkedIn/GitHub: https://github.com/justfifty/honeymoney
 Bio: Chua Kia Wah — HoneyMoney's business lead: an entrepreneur and business owner who
      also builds an audience as a content creator/influencer. He drives go-to-market,
      partnerships, and community growth, bringing the app to Malaysian households and
