@@ -1,19 +1,24 @@
 import Link from "next/link";
+import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
-export default function Home() {
+export default async function Home() {
+  const locale = await getLocale();
+  const tr = (k: string) => t(locale, k);
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center bg-gradient-to-b from-amber-50 to-white px-6 py-20 text-center dark:from-zinc-950 dark:to-black">
       <span className="mb-4 rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-        MAIC Nexus 2026 · Track T3 — Fintech
+        {tr("home.badge")}
       </span>
       <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
         🍯 HoneyMoney
       </h1>
       <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400 sm:max-w-none sm:whitespace-nowrap">
-        A personal financial wellness app, AI-supported, no tracking fatigue.
+        {tr("home.tagline")}
       </p>
       <p className="mt-3 max-w-xl text-xl font-semibold text-amber-700 dark:text-amber-300">
-        Happy Wife, Happy Life.
+        {tr("home.slogan")}
       </p>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -21,7 +26,7 @@ export default function Home() {
           href="/dashboard"
           className="rounded-full bg-amber-500 px-6 py-3 font-medium text-white transition-colors hover:bg-amber-600"
         >
-          Open the demo dashboard →
+          {tr("home.ctaDemo")} →
         </Link>
         <a
           href="https://github.com/justfifty/honeymoney"
@@ -29,32 +34,23 @@ export default function Home() {
           rel="noopener noreferrer"
           className="rounded-full border border-zinc-300 px-6 py-3 font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >
-          View the repo
+          {tr("home.ctaRepo")}
         </a>
       </div>
 
       {/* accounts */}
       <div className="mt-4 flex items-center gap-3 text-sm">
-        <Link href="/login" className="font-medium text-amber-600 hover:underline">Log in</Link>
+        <Link href="/login" className="font-medium text-amber-600 hover:underline">{tr("auth.login")}</Link>
         <span className="text-zinc-300 dark:text-zinc-700">·</span>
-        <Link href="/signup" className="font-medium text-amber-600 hover:underline">Create account</Link>
+        <Link href="/signup" className="font-medium text-amber-600 hover:underline">{tr("auth.createAccount")}</Link>
         <span className="text-zinc-300 dark:text-zinc-700">·</span>
-        <Link href="/admin" className="text-zinc-500 hover:underline">Admin</Link>
+        <Link href="/admin" className="text-zinc-500 hover:underline">{tr("auth.admin")}</Link>
       </div>
 
       <div className="mt-16 grid max-w-3xl gap-6 text-left sm:grid-cols-3">
-        <Feature
-          title="3-Bucket model"
-          body="Fixed non-negotiables, a Future Shield %, and personal wallets where tracking stops — autonomy over surveillance."
-        />
-        <Feature
-          title="Zero-integration capture"
-          body="Forward a TNG/MAE/GrabPay screenshot to Telegram; Gemini reads vendor, amount and time automatically."
-        />
-        <Feature
-          title="Knowledge graph"
-          body="Money modelled as nodes + edges in Postgres, so Honey warns you when spending velocity threatens a goal."
-        />
+        <Feature title={tr("home.card1.title")} body={tr("home.card1.body")} />
+        <Feature title={tr("home.card2.title")} body={tr("home.card2.body")} />
+        <Feature title={tr("home.card3.title")} body={tr("home.card3.body")} />
       </div>
     </div>
   );

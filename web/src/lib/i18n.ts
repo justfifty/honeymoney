@@ -4,14 +4,15 @@
 // three are scaffolded (core chrome) to prove the architecture scales.
 // No next-intl / routing changes — the locale is a `?lang=` param (or cookie).
 
-export const LOCALES = ["en", "ms", "zh", "ta", "hi"] as const;
+export const LOCALES = ["en", "ms", "zh", "zh-Hant", "ta", "hi"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "en";
 
 export const LOCALE_LABEL: Record<Locale, string> = {
   en: "English",
   ms: "Bahasa Melayu",
-  zh: "中文",
+  zh: "中文（简体）",
+  "zh-Hant": "繁體中文",
   ta: "தமிழ்",
   hi: "हिन्दी",
 };
@@ -52,6 +53,29 @@ const en: Dict = {
   "cap.speak": "Speak",
   "cap.scan": "Scan receipt",
   "cap.noTokens": "free · on-device · no AI tokens",
+  // global nav + auth (header/footer, every page)
+  "nav.records": "Records",
+  "nav.graph": "Graph",
+  "nav.guide": "Guide",
+  "nav.home": "Home",
+  "auth.login": "Log in",
+  "auth.signup": "Sign up",
+  "auth.createAccount": "Create account",
+  "auth.admin": "Admin",
+  "common.language": "Language",
+  // landing page
+  "home.badge": "MAIC Nexus 2026 · Track T3 — Fintech",
+  "home.tagline": "A personal financial wellness app, AI-supported, no tracking fatigue.",
+  "home.slogan": "Happy Wife, Happy Life.",
+  "home.ctaDemo": "Open the demo dashboard",
+  "home.ctaRepo": "View the repo",
+  "home.card1.title": "3-Bucket model",
+  "home.card1.body": "Fixed non-negotiables, a Future Shield %, and personal wallets where tracking stops — autonomy over surveillance.",
+  "home.card2.title": "Zero-integration capture",
+  "home.card2.body": "Forward a TNG/MAE/GrabPay screenshot to Telegram; Gemini reads vendor, amount and time automatically.",
+  "home.card3.title": "Knowledge graph",
+  "home.card3.body": "Money modelled as nodes + edges in Postgres, so Honey warns you when spending velocity threatens a goal.",
+  "footer.meta": "Local-first · MAIC Nexus 2026 · T3",
 };
 
 const ms: Dict = {
@@ -88,6 +112,27 @@ const ms: Dict = {
   "cap.speak": "Cakap",
   "cap.scan": "Imbas resit",
   "cap.noTokens": "percuma · atas peranti · tanpa token AI",
+  "nav.records": "Rekod",
+  "nav.graph": "Graf",
+  "nav.guide": "Panduan",
+  "nav.home": "Laman Utama",
+  "auth.login": "Log Masuk",
+  "auth.signup": "Daftar",
+  "auth.createAccount": "Buka Akaun",
+  "auth.admin": "Admin",
+  "common.language": "Bahasa",
+  "home.badge": "MAIC Nexus 2026 · Trek T3 — Fintech",
+  "home.tagline": "Aplikasi kesejahteraan kewangan peribadi, disokong AI, tanpa penat menjejak.",
+  "home.slogan": "Isteri Gembira, Hidup Bahagia.",
+  "home.ctaDemo": "Buka papan pemuka demo",
+  "home.ctaRepo": "Lihat repo",
+  "home.card1.title": "Model 3-Baldi",
+  "home.card1.body": "Kos tetap yang wajib, peratusan Future Shield, dan dompet peribadi yang berhenti dijejak — autonomi mengatasi pengawasan.",
+  "home.card2.title": "Tangkapan tanpa integrasi",
+  "home.card2.body": "Majukan tangkapan skrin TNG/MAE/GrabPay ke Telegram; Gemini membaca penjual, jumlah dan masa secara automatik.",
+  "home.card3.title": "Graf pengetahuan",
+  "home.card3.body": "Wang dimodelkan sebagai nod + tepi dalam Postgres, jadi Honey memberi amaran apabila kelajuan perbelanjaan mengancam matlamat.",
+  "footer.meta": "Local-first · MAIC Nexus 2026 · T3",
 };
 
 // Scaffolded locales — core chrome only; everything else falls back to English.
@@ -124,7 +169,22 @@ const hi: Dict = {
   "cap.scan": "रसीद स्कैन करें",
 };
 
-const DICTS: Record<Locale, Dict> = { en, ms, zh, ta, hi };
+// Traditional Chinese — scaffolded (Traditional conversion of the zh chrome);
+// the rest falls back to English until the full dict is filled.
+const zhHant: Dict = {
+  "app.title": "金錢可視化",
+  "persona.label": "身份",
+  "lens.label": "視角",
+  "nav.dashboard": "儀表板",
+  "stat.incomeMo": "月收入",
+  "stat.allocatedMo": "已分配",
+  "stat.spentMtd": "已花費",
+  "add.title": "新增到圖表",
+  "cap.speak": "語音",
+  "cap.scan": "掃描收據",
+};
+
+const DICTS: Record<Locale, Dict> = { en, ms, zh, "zh-Hant": zhHant, ta, hi };
 
 export function normalizeLocale(raw?: string): Locale {
   return (LOCALES as readonly string[]).includes(raw ?? "") ? (raw as Locale) : DEFAULT_LOCALE;

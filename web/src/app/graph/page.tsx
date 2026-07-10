@@ -9,9 +9,9 @@ import TreeGraph from "./TreeGraph";
 import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
 import FlexibleInput from "./FlexibleInput";
-import LanguageSwitcher from "./LanguageSwitcher";
 import CurrencySwitcher from "./CurrencySwitcher";
-import { normalizeLocale, t as translate } from "@/lib/i18n";
+import { t as translate } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 import { normalizeCurrency, fmtMoney } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +89,7 @@ export default async function GraphPage({
   const mode: Mode = MODES.some((m) => m.key === params.mode) ? (params.mode as Mode) : "sankey";
   const focus = parseFocus(params.focus);
   const focusParam = focusToParam(focus);
-  const lang = normalizeLocale(params.lang);
+  const lang = await getLocale();
   const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
   const ccy = normalizeCurrency(params.ccy);
   const sticky = `&focus=${focusParam}&lang=${lang}&ccy=${ccy}`;
@@ -134,7 +134,6 @@ export default async function GraphPage({
         </div>
         <nav className="flex items-center gap-3 text-sm">
           <CurrencySwitcher current={ccy} />
-          <LanguageSwitcher current={lang} />
           <Link href="/records" className="text-zinc-500 hover:underline">🧾 Records</Link>
           <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ Guide</Link>
           <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")} →</Link>

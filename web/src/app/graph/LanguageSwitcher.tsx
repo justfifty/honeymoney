@@ -1,19 +1,17 @@
 "use client";
 
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { LOCALES, LOCALE_LABEL, type Locale } from "@/lib/i18n";
 
-// Language switcher — sets ?lang= while preserving every other query param, so a
-// person/lens/mode selection survives a language change. Dependency-free.
-export default function LanguageSwitcher({ current }: { current: Locale }) {
+// Language switcher — writes the `hm_lang` cookie (kept in sync with
+// lib/locale.ts LOCALE_COOKIE) and refreshes, so the choice applies to EVERY
+// page (header/footer included), not just the current URL. Dependency-free.
+export default function LanguageSwitcher({ current, label = "Language" }: { current: Locale; label?: string }) {
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
 
   function set(lang: string) {
-    const next = new URLSearchParams(params.toString());
-    next.set("lang", lang);
-    router.push(`${pathname}?${next.toString()}`);
+    document.cookie = `hm_lang=${lang}; path=/; max-age=31536000; samesite=lax`;
+    router.refresh();
   }
 
   return (
@@ -22,7 +20,7 @@ export default function LanguageSwitcher({ current }: { current: Locale }) {
       <select
         value={current}
         onChange={(e) => set(e.target.value)}
-        aria-label="Language"
+        aria-label={label}
         className="rounded-md border border-zinc-300 bg-transparent px-1.5 py-1 text-xs text-inherit outline-none focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900"
       >
         {LOCALES.map((l) => (
