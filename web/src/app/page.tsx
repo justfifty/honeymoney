@@ -24,7 +24,9 @@ export default function Home() {
           Open the demo dashboard →
         </Link>
         <a
-          href="https://github.com"
+          href="https://github.com/justfifty/honeymoney"
+          target="_blank"
+          rel="noopener noreferrer"
           className="rounded-full border border-zinc-300 px-6 py-3 font-medium transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-900"
         >
           View the repo
