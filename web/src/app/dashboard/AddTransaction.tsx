@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { t, type Locale } from "@/lib/i18n";
 
 interface BucketOption {
   id: string;
@@ -13,11 +14,14 @@ interface BucketOption {
 export default function AddTransaction({
   buckets,
   tenantId,
+  lang,
 }: {
   buckets: BucketOption[];
   tenantId: string;
+  lang: Locale;
 }) {
   const router = useRouter();
+  const tr = (k: string, vars?: Record<string, string | number>) => t(lang, k, vars);
   const [vendor, setVendor] = useState("");
   const [amount, setAmount] = useState("");
   const [bucket, setBucket] = useState(buckets[0]?.id ?? "");
@@ -40,13 +44,20 @@ export default function AddTransaction({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not save");
-      setMsg({ ok: true, text: `Saved RM ${Number(amount).toFixed(2)} at ${vendor} → ${data.stored.walletLabel}` });
+      if (!res.ok) throw new Error(data.error ?? tr("dash.add.couldNotSave"));
+      setMsg({
+        ok: true,
+        text: tr("dash.add.saved", {
+          amount: Number(amount).toFixed(2),
+          vendor,
+          label: data.stored.walletLabel,
+        }),
+      });
       setVendor("");
       setAmount("");
       router.refresh(); // re-render buckets + Honey with the new spend
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : "Could not save" });
+      setMsg({ ok: false, text: err instanceof Error ? err.message : tr("dash.add.couldNotSave") });
     } finally {
       setBusy(false);
     }
@@ -59,17 +70,17 @@ export default function AddTransaction({
     >
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-36 flex-1 flex-col gap-1 text-xs text-zinc-500">
-          Where did you spend?
+          {tr("dash.add.vendorLabel")}
           <input
             required
             value={vendor}
             onChange={(e) => setVendor(e.target.value)}
-            placeholder="e.g. 99 Speedmart"
+            placeholder={tr("dash.add.vendorPlaceholder")}
             className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm text-inherit outline-none focus:border-amber-500 dark:border-zinc-700"
           />
         </label>
         <label className="flex w-28 flex-col gap-1 text-xs text-zinc-500">
-          Amount (RM)
+          {tr("dash.add.amountLabel")}
           <input
             required
             type="number"
@@ -82,7 +93,7 @@ export default function AddTransaction({
           />
         </label>
         <label className="flex min-w-36 flex-col gap-1 text-xs text-zinc-500">
-          From bucket
+          {tr("dash.add.bucketLabel")}
           <select
             value={bucket}
             onChange={(e) => setBucket(e.target.value)}
@@ -100,7 +111,7 @@ export default function AddTransaction({
           disabled={busy || !bucket}
           className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Add spend"}
+          {busy ? tr("dash.add.saving") : tr("dash.add.submit")}
         </button>
       </div>
       {msg && (
@@ -110,7 +121,7 @@ export default function AddTransaction({
         </p>
       )}
       <p className="mt-2 text-xs text-zinc-400">
-        Tip: the fastest input is still forwarding a receipt screenshot to the Telegram bot — no typing at all.
+        {tr("dash.add.tip")}
       </p>
     </form>
   );

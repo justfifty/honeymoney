@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { FocusGroups, FocusOption } from "@/lib/focusView";
-import { type Locale } from "@/lib/i18n";
+import { t as translate, type Locale } from "@/lib/i18n";
 import PeopleMenu from "./PeopleMenu";
 
 // The focus selector: pick a lens from any dimension — income stream, bucket,
@@ -27,7 +27,7 @@ function Dropdown({
   active: string;
   tenantId: string;
   mode: string;
-  lang: string;
+  lang: Locale;
 }) {
   const activeHere = options.some((o) => o.value === active);
   return (
@@ -43,7 +43,7 @@ function Dropdown({
         <span className="text-zinc-400">▾</span>
       </summary>
       <div className="absolute left-0 z-20 mt-1 max-h-72 w-56 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-        {options.length === 0 && <p className="px-3 py-2 text-xs text-zinc-400">none yet</p>}
+        {options.length === 0 && <p className="px-3 py-2 text-xs text-zinc-400">{translate(lang, "g.focus.noneYet")}</p>}
         {options.map((o) => (
           <Link
             key={o.value}

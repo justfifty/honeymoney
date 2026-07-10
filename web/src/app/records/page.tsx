@@ -8,31 +8,35 @@ import {
   rangeBounds,
   type Period,
 } from "@/lib/records";
+import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 import CurrencySwitcher from "../graph/CurrencySwitcher";
 
 export const dynamic = "force-dynamic";
 
-const PERIODS: { key: Period; label: string; icon: string; noun: string }[] = [
-  { key: "day", label: "Day", icon: "📆", noun: "Days" },
-  { key: "week", label: "Week", icon: "🗓️", noun: "Weeks" },
-  { key: "month", label: "Month", icon: "📅", noun: "Months" },
+type Tr = (k: string, vars?: Record<string, string | number>) => string;
+
+const PERIODS: { key: Period; labelKey: string; icon: string; nounKey: string }[] = [
+  { key: "day", labelKey: "rec.period.day", icon: "📆", nounKey: "rec.noun.days" },
+  { key: "week", labelKey: "rec.period.week", icon: "🗓️", nounKey: "rec.noun.weeks" },
+  { key: "month", labelKey: "rec.period.month", icon: "📅", nounKey: "rec.noun.months" },
 ];
 
-const RANGES: { key: string; label: string }[] = [
-  { key: "30d", label: "30 days" },
-  { key: "90d", label: "90 days" },
-  { key: "365d", label: "12 months" },
-  { key: "all", label: "All time" },
+const RANGES: { key: string; labelKey: string }[] = [
+  { key: "30d", labelKey: "rec.range.30d" },
+  { key: "90d", labelKey: "rec.range.90d" },
+  { key: "365d", labelKey: "rec.range.365d" },
+  { key: "all", labelKey: "rec.range.all" },
 ];
 
-function Notice({ reason }: { reason: string }) {
+function Notice({ tr, reason }: { tr: Tr; reason: string }) {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
       <div className="rounded-2xl border border-amber-300 bg-amber-50 p-8 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-        <h2 className="text-lg font-semibold">Records unavailable</h2>
+        <h2 className="text-lg font-semibold">{tr("rec.notice.title")}</h2>
         <p className="mt-2 text-sm">{reason}</p>
         <p className="mt-4 text-xs opacity-80">
-          Start PocketBase with <code>npm run pb:start</code>, then reload.
+          {tr("rec.notice.hintBefore")} <code>npm run pb:start</code>{tr("rec.notice.hintAfter")}
         </p>
       </div>
     </main>
@@ -44,14 +48,17 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<{ tenantId?: string; period?: string; range?: string; ccy?: string }>;
 }) {
+  const locale = await getLocale();
+  const tr: Tr = (k, vars) => t(locale, k, vars);
+
   if (!isDatabaseConfigured()) {
-    return <Notice reason="PocketBase isn't configured, so there are no records to show." />;
+    return <Notice tr={tr} reason={tr("rec.notice.notConfigured")} />;
   }
 
   const params = await searchParams;
   const tenantId = params.tenantId || config.demoTenantId;
   if (!tenantId) {
-    return <Notice reason="Set DEMO_TENANT_ID in web/.env.local (the demo household is hhrahman1111111)." />;
+    return <Notice tr={tr} reason={tr("rec.notice.noTenant")} />;
   }
 
   const period: Period = PERIODS.some((p) => p.key === params.period)
@@ -72,22 +79,23 @@ export default async function RecordsPage({
     const groups = groupByPeriod(records, period);
     const s = summarize(groups);
     const maxTotal = Math.max(1, ...groups.map((g) => g.total));
-    const periodNoun = PERIODS.find((p) => p.key === period)!.noun;
+    const activePeriod = PERIODS.find((p) => p.key === period)!;
+    const activeRange = RANGES.find((r) => r.key === range)!;
 
     return (
       <main className="mx-auto min-h-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">🧾 Spending records</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">🧾 {tr("rec.title")}</h1>
             <p className="text-sm text-zinc-500">
-              Time-schedule audit · {RANGES.find((r) => r.key === range)!.label.toLowerCase()}
+              {tr("rec.subtitle")} · {tr(activeRange.labelKey).toLowerCase()}
             </p>
           </div>
           <nav className="flex items-center gap-3 text-sm">
             <CurrencySwitcher current={ccy} />
-            <Link href="/graph" className="text-zinc-500 hover:underline">🕸️ Graph</Link>
-            <Link href="/dashboard" className="text-zinc-500 hover:underline">📊 Dashboard</Link>
-            <Link href="/" className="text-zinc-500 hover:underline">← Home</Link>
+            <Link href="/graph" className="text-zinc-500 hover:underline">🕸️ {tr("nav.graph")}</Link>
+            <Link href="/dashboard" className="text-zinc-500 hover:underline">📊 {tr("nav.dashboard")}</Link>
+            <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
           </nav>
         </header>
 
@@ -104,7 +112,7 @@ export default async function RecordsPage({
                     : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
                 }`}
               >
-                {p.icon} {p.label}
+                {p.icon} {tr(p.labelKey)}
               </Link>
             ))}
           </div>
@@ -119,7 +127,7 @@ export default async function RecordsPage({
                     : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
                 }`}
               >
-                {r.label}
+                {tr(r.labelKey)}
               </Link>
             ))}
           </div>
@@ -127,18 +135,18 @@ export default async function RecordsPage({
 
         {/* summary */}
         <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Total spent" value={money(s.total)} tone="spend" />
-          <Stat label="Transactions" value={String(s.count)} />
-          <Stat label={`${periodNoun} with spend`} value={String(s.periods)} />
+          <Stat label={tr("rec.stat.totalSpent")} value={money(s.total)} tone="spend" />
+          <Stat label={tr("rec.stat.transactions")} value={String(s.count)} />
+          <Stat label={tr("rec.stat.withSpend", { noun: tr(activePeriod.nounKey) })} value={String(s.periods)} />
           <Stat
-            label={`Busiest ${period}`}
+            label={tr("rec.stat.busiest", { period: tr(activePeriod.labelKey).toLowerCase() })}
             value={s.busiest ? money(s.busiest.total) : "—"}
             sub={s.busiest?.label}
           />
         </section>
 
         {ccy !== "MYR" && (
-          <p className="mt-2 text-xs text-zinc-400">≈ converted from MYR at an indicative rate.</p>
+          <p className="mt-2 text-xs text-zinc-400">{tr("rec.rateNote")}</p>
         )}
 
         {/* schedule */}
@@ -146,9 +154,9 @@ export default async function RecordsPage({
           {groups.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-700">
               <p className="text-3xl">🗓️</p>
-              <p className="mt-2 text-sm font-medium">No spending in this window.</p>
+              <p className="mt-2 text-sm font-medium">{tr("rec.emptyTitle")}</p>
               <p className="mt-1 text-xs text-zinc-500">
-                Try a wider range, or capture a spend from the dashboard or graph.
+                {tr("rec.emptyHint")}
               </p>
             </div>
           ) : (
@@ -173,7 +181,7 @@ export default async function RecordsPage({
                             <div className="h-full bg-amber-500" style={{ width: `${pct}%` }} />
                           </div>
                           <span className="whitespace-nowrap text-xs text-zinc-400">
-                            {g.count} {g.count === 1 ? "txn" : "txns"}
+                            {g.count} {g.count === 1 ? tr("rec.txn") : tr("rec.txns")}
                           </span>
                         </div>
                       </div>
@@ -185,7 +193,7 @@ export default async function RecordsPage({
                           className="flex items-center justify-between border-b border-zinc-50 px-4 py-2.5 text-sm last:border-0 dark:border-zinc-800/60"
                         >
                           <div className="min-w-0">
-                            <span className="font-medium">{t.vendor ?? "Unknown"}</span>
+                            <span className="font-medium">{t.vendor ?? tr("rec.unknownVendor")}</span>
                             <span className="ml-2 text-xs text-zinc-400">{stamp(t.occurred_at)}</span>
                           </div>
                           <div className="flex items-center gap-3">
@@ -207,14 +215,13 @@ export default async function RecordsPage({
         </section>
 
         <p className="mt-8 max-w-2xl text-xs text-zinc-500">
-          Every ringgit, on a timeline — group by day, week or month to audit spending velocity.
-          This is a read-only view over the same graph the dashboard and Honey reason about.
+          {tr("rec.footer")}
         </p>
       </main>
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return <Notice reason={`Could not load records: ${message}`} />;
+    return <Notice tr={tr} reason={tr("rec.notice.loadError", { message })} />;
   }
 }
 

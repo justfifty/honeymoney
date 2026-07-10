@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
+import { t as translate, type Locale } from "@/lib/i18n";
 
 // Sankey money-flow: Income → Buckets → where it lands (Spending vs Saved).
 // Node height ∝ RM throughput, ribbon width ∝ RM flow. Everything is derived
@@ -54,8 +55,9 @@ interface Ribbon {
   label: string;
 }
 
-function build(nodes: SankNode[], edges: SankEdge[], ccy: string) {
+function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) {
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
+  const tr = (k: string) => translate(lang, k);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const col = (id: string): number => {
     const k = byId.get(id)?.kind;
@@ -103,7 +105,7 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string) {
 
   const savedTotal = buckets.reduce((s, b) => s + Math.max(0, b.inV - b.spent), 0);
   const dests = [...vendors];
-  if (savedTotal > 0.5) dests.push({ id: SAVED_ID, label: "Saved / Unspent", col: 2, value: savedTotal, color: GREEN });
+  if (savedTotal > 0.5) dests.push({ id: SAVED_ID, label: tr("g.sankey.saved"), col: 2, value: savedTotal, color: GREEN });
 
   const columns = [incomes, buckets, dests];
   const availH = H - TOP - BOT;
@@ -136,15 +138,15 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string) {
   const links: Array<{ src: string; dst: string; flow: number; color: string; label: string }> = [];
   for (const [k, flow] of alloc) {
     const [src, dst] = k.split(" ");
-    links.push({ src, dst, flow, color: AMBER, label: "allocation" });
+    links.push({ src, dst, flow, color: AMBER, label: tr("g.sankey.allocation") });
   }
   for (const [k, flow] of spend) {
     const [src, dst] = k.split(" ");
-    links.push({ src, dst, flow, color: RED, label: "spend" });
+    links.push({ src, dst, flow, color: RED, label: tr("g.sankey.spend") });
   }
   for (const b of buckets) {
     const saved = Math.max(0, b.inV - b.spent);
-    if (saved > 0.5) links.push({ src: b.id, dst: SAVED_ID, flow: saved, color: GREEN, label: "saved" });
+    if (saved > 0.5) links.push({ src: b.id, dst: SAVED_ID, flow: saved, color: GREEN, label: tr("g.sankey.savedRibbon") });
   }
 
   const yOf = (id: string) => placed.get(id)?.y ?? 0;
@@ -191,10 +193,11 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string) {
   return { placed: [...placed.values()], ribbons };
 }
 
-export default function SankeyFlow({ nodes, edges, ccy = "MYR" }: { nodes: SankNode[]; edges: SankEdge[]; ccy?: string }) {
+export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: { nodes: SankNode[]; edges: SankEdge[]; ccy?: string; lang?: Locale }) {
   const [focus, setFocus] = useState<string | null>(null);
-  const { placed, ribbons } = useMemo(() => build(nodes, edges, ccy), [nodes, edges, ccy]);
+  const { placed, ribbons } = useMemo(() => build(nodes, edges, ccy, lang), [nodes, edges, ccy, lang]);
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
+  const tr = (k: string) => translate(lang, k);
 
   const dim = (id: string) => focus !== null && id !== focus;
   const labelFits = (h: number) => h >= 13;
@@ -202,9 +205,9 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR" }: { nodes: SankN
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 680 }} role="img" aria-label="Sankey money flow: income to buckets to spending and savings">
       {/* column captions */}
-      <text x={64} y={26} fontSize="12" fontWeight="700" className="fill-zinc-400">INCOME</text>
-      <text x={W / 2} y={26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-zinc-400">BUCKETS</text>
-      <text x={W - 64} y={26} textAnchor="end" fontSize="12" fontWeight="700" className="fill-zinc-400">WHERE IT LANDS</text>
+      <text x={64} y={26} fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.income")}</text>
+      <text x={W / 2} y={26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.buckets")}</text>
+      <text x={W - 64} y={26} textAnchor="end" fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.landing")}</text>
 
       {ribbons.map((r) => {
         const active = focus === null || focus === r.src || focus === r.dst;

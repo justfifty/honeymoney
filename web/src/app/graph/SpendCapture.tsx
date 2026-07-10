@@ -69,7 +69,7 @@ export default function SpendCapture({
   onResult: (c: Captured) => void;
   lang?: Locale;
 }) {
-  const tr = (k: string) => translate(lang, k);
+  const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
   const speechLang = SPEECH_LANG[lang] ?? "en-MY";
   const [status, setStatus] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
@@ -80,7 +80,7 @@ export default function SpendCapture({
     const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
     const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!Ctor) {
-      setStatus("Voice not supported in this browser — try Chrome/Edge.");
+      setStatus(tr("g.cap.noVoice"));
       return;
     }
     if (listening) {
@@ -96,33 +96,36 @@ export default function SpendCapture({
       const transcript = e.results[0][0].transcript;
       const parsed = parseVoice(transcript);
       onResult(parsed);
-      setStatus(`Heard: “${transcript}”`);
+      setStatus(tr("g.cap.heard", { text: transcript }));
     };
-    rec.onerror = (e) => setStatus(`Voice error: ${e.error ?? "unknown"}`);
+    rec.onerror = (e) => setStatus(tr("g.cap.voiceError", { error: e.error ?? tr("g.cap.unknown") }));
     rec.onend = () => setListening(false);
-    setStatus("Listening… say e.g. “25 ringgit at Speedmart”");
+    setStatus(tr("g.cap.listening"));
     setListening(true);
     rec.start();
   }
 
   async function scan(file: File) {
-    setStatus("Scanning receipt… 0%");
+    setStatus(tr("g.cap.scanning", { pct: 0 }));
     try {
       const { recognize } = await import("tesseract.js");
       const { data } = await recognize(file, "eng", {
         logger: (m: { status: string; progress: number }) => {
-          if (m.status === "recognizing text") setStatus(`Scanning receipt… ${Math.round(m.progress * 100)}%`);
+          if (m.status === "recognizing text") setStatus(tr("g.cap.scanning", { pct: Math.round(m.progress * 100) }));
         },
       });
       const parsed = parseReceipt(data.text || "");
       onResult(parsed);
       setStatus(
         parsed.amount || parsed.vendor
-          ? `Read${parsed.vendor ? ` “${parsed.vendor}”` : ""}${parsed.amount ? ` · RM ${parsed.amount}` : ""} — check & adjust`
-          : "Couldn't read it — type it in instead",
+          ? tr("g.cap.readResult", {
+              vendor: parsed.vendor ? ` “${parsed.vendor}”` : "",
+              amount: parsed.amount ? ` · RM ${parsed.amount}` : "",
+            })
+          : tr("g.cap.readFail"),
       );
     } catch {
-      setStatus("Scan failed — type it in instead");
+      setStatus(tr("g.cap.scanFail"));
     }
   }
 

@@ -39,7 +39,7 @@ export default function FlexibleInput({
   lang?: Locale;
   ccy?: string;
 }) {
-  const tr = (k: string) => translate(lang, k);
+  const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
   const sym = symbolOf(ccy);
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("spend");
@@ -80,14 +80,14 @@ export default function FlexibleInput({
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not save");
-      setMsg({ ok: true, text: `Added ${mode}${label ? `: ${label}` : ""}.` });
+      if (!res.ok) throw new Error(data.error ?? tr("g.input.saveFail"));
+      setMsg({ ok: true, text: tr("g.input.added", { item: tr(`add.${mode}`) + (label ? `: ${label}` : "") }) });
       setLabel("");
       setAmount("");
       setSubject("");
       router.refresh();
     } catch (err) {
-      setMsg({ ok: false, text: err instanceof Error ? err.message : "Could not save" });
+      setMsg({ ok: false, text: err instanceof Error ? err.message : tr("g.input.saveFail") });
     } finally {
       setBusy(false);
     }
@@ -131,20 +131,20 @@ export default function FlexibleInput({
         <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
           {mode === "spend" && (
             <>
-              <label className={`${lbl} min-w-40 flex-1`}>Where did you spend?
-                <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. 99 Speedmart" className={field} />
+              <label className={`${lbl} min-w-40 flex-1`}>{tr("g.input.whereSpend")}
+                <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder={tr("g.input.whereSpendPh")} className={field} />
               </label>
-              <label className={`${lbl} w-28`}>Amount ({sym})
+              <label className={`${lbl} w-28`}>{tr("g.input.amount", { sym })}
                 <input required type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={field} />
               </label>
-              <label className={`${lbl} min-w-36`}>From bucket
+              <label className={`${lbl} min-w-36`}>{tr("g.input.fromBucket")}
                 <select value={bucket} onChange={(e) => setBucket(e.target.value)} className={field}>
                   {buckets.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
               </label>
-              <label className={`${lbl} min-w-32`}>Person (optional)
+              <label className={`${lbl} min-w-32`}>{tr("g.input.person")}
                 <select value={member} onChange={(e) => setMember(e.target.value)} className={field}>
-                  <option value="">— anyone —</option>
+                  <option value="">{tr("g.input.anyone")}</option>
                   {members.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </select>
               </label>
@@ -153,42 +153,42 @@ export default function FlexibleInput({
 
           {mode === "income" && (
             <>
-              <label className={`${lbl} min-w-40 flex-1`}>Income source
-                <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Freelance, Rental, Bonus" className={field} />
+              <label className={`${lbl} min-w-40 flex-1`}>{tr("g.input.incomeSource")}
+                <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder={tr("g.input.incomeSourcePh")} className={field} />
               </label>
-              <label className={`${lbl} w-32`}>{sym} / month
+              <label className={`${lbl} w-32`}>{tr("g.input.perMonth", { sym })}
                 <input required type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={field} />
               </label>
-              <label className={`${lbl} min-w-36`}>Subject / dept (optional)
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Dine-in, Side gig" className={field} />
+              <label className={`${lbl} min-w-36`}>{tr("g.input.subjectDept")}
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={tr("g.input.subjectDeptPh")} className={field} />
               </label>
             </>
           )}
 
           {mode === "bucket" && (
             <>
-              <label className={`${lbl} min-w-40 flex-1`}>Bucket / department
-                <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Marketing, Zakat, Travel" className={field} />
+              <label className={`${lbl} min-w-40 flex-1`}>{tr("g.input.bucketDept")}
+                <input required value={label} onChange={(e) => setLabel(e.target.value)} placeholder={tr("g.input.bucketDeptPh")} className={field} />
               </label>
-              <label className={`${lbl} min-w-44`}>Category
+              <label className={`${lbl} min-w-44`}>{tr("g.input.category")}
                 <select value={tier} onChange={(e) => setTier(e.target.value)} className={field}>
                   {categoryLabels.map((c) => <option key={c.tier} value={c.tier}>{c.label}</option>)}
                 </select>
               </label>
-              <label className={`${lbl} min-w-36`}>Subject (optional)
-                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="tag" className={field} />
+              <label className={`${lbl} min-w-36`}>{tr("g.input.subject")}
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={tr("g.input.subjectPh")} className={field} />
               </label>
             </>
           )}
 
           {mode === "allocation" && (
             <>
-              <label className={`${lbl} min-w-40 flex-1`}>From (income or bucket)
+              <label className={`${lbl} min-w-40 flex-1`}>{tr("g.input.allocFrom")}
                 <select value={src} onChange={(e) => setSrc(e.target.value)} className={field}>
                   {allocSrc.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                 </select>
               </label>
-              <label className={`${lbl} min-w-40 flex-1`}>To bucket
+              <label className={`${lbl} min-w-40 flex-1`}>{tr("g.input.toBucket")}
                 <select value={dst} onChange={(e) => setDst(e.target.value)} className={field}>
                   {buckets.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </select>
@@ -196,10 +196,10 @@ export default function FlexibleInput({
               <label className={`${lbl} w-24`}>{allocMode === "pct" ? "%" : `${sym}/mo`}
                 <input required type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={field} />
               </label>
-              <label className={`${lbl} w-24`}>Type
+              <label className={`${lbl} w-24`}>{tr("g.input.type")}
                 <select value={allocMode} onChange={(e) => setAllocMode(e.target.value as "fixed" | "pct")} className={field}>
-                  <option value="fixed">Fixed RM</option>
-                  <option value="pct">Percent</option>
+                  <option value="fixed">{tr("g.input.fixed")}</option>
+                  <option value="pct">{tr("g.input.percent")}</option>
                 </select>
               </label>
             </>

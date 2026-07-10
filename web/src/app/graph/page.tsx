@@ -54,12 +54,12 @@ const MODES: { key: Mode; label: string; icon: string }[] = [
 ];
 
 const CAPTION: Record<Mode, string> = {
-  sankey: "Every ringgit, traced: income splits into buckets, then into real spending (red) versus what stays saved (green). Ribbon width ∝ RM.",
-  treemap: "Budget composition at a glance: cell area ∝ monthly allocation, colour ∝ status, and the solid fill rises with projected spend.",
-  tree: "The household budget as a branching structure — spending tier → bucket → vendor. Hover a node to trace its lineage.",
-  organic: "The raw knowledge graph, force-relaxed. Node size ∝ connections; hover to focus a node and its neighbours.",
-  bars: "Budget vs actual on one shared RM scale, so every bucket is directly comparable. Dashed line = the allocation cap.",
-  flow: "The classic branch view — expenses on the left, household structure in the middle, income on the right.",
+  sankey: "g.caption.sankey",
+  treemap: "g.caption.treemap",
+  tree: "g.caption.tree",
+  organic: "g.caption.organic",
+  bars: "g.caption.bars",
+  flow: "g.caption.flow",
 };
 
 function columnOf(n: GNode): keyof typeof COL_X {
@@ -134,8 +134,8 @@ export default async function GraphPage({
         </div>
         <nav className="flex items-center gap-3 text-sm">
           <CurrencySwitcher current={ccy} />
-          <Link href="/records" className="text-zinc-500 hover:underline">🧾 Records</Link>
-          <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ Guide</Link>
+          <Link href="/records" className="text-zinc-500 hover:underline">🧾 {tr("nav.records")}</Link>
+          <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
           <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")} →</Link>
         </nav>
       </header>
@@ -187,10 +187,10 @@ export default async function GraphPage({
             const top = used.slice().sort((a, b) => b.mtd_spend - a.mtd_spend)[0];
             return (
               <>
-                <Stat label={`Spent by ${view.focusLabel} (mtd)`} value={rm0(money.totalSpent)} tone="spend" />
-                <Stat label="Envelopes used" value={String(used.length)} tone="alloc" />
-                <Stat label="Vendors" value={String(money.vendorSpend.length)} tone="alloc" />
-                <Stat label="Top envelope" value={top ? top.bucket_label : "—"} tone="income" />
+                <Stat label={tr("g.person.spentBy", { name: view.focusLabel })} value={rm0(money.totalSpent)} tone="spend" />
+                <Stat label={tr("g.person.envelopesUsed")} value={String(used.length)} tone="alloc" />
+                <Stat label={tr("g.person.vendors")} value={String(money.vendorSpend.length)} tone="alloc" />
+                <Stat label={tr("g.person.topEnvelope")} value={top ? top.bucket_label : "—"} tone="income" />
               </>
             );
           })()
@@ -229,12 +229,12 @@ export default async function GraphPage({
         {nodes.length === 0 ? (
           <div className="flex min-h-56 flex-col items-center justify-center gap-2 py-12 text-center">
             <span className="text-3xl">{view.focusBadge}</span>
-            <p className="text-sm font-medium">No spend attributed to {view.focusLabel} this month.</p>
+            <p className="text-sm font-medium">{tr("g.empty.title", { label: view.focusLabel })}</p>
             <p className="max-w-xs text-xs text-zinc-500">
-              Their transactions may be in earlier months — clear the lens to see the whole graph.
+              {tr("g.empty.hint")}
             </p>
             <Link href={`/graph?tenantId=${tenantId}&mode=${mode}&focus=all`} className="mt-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600">
-              🌐 Whole graph
+              🌐 {tr("g.empty.wholeGraph")}
             </Link>
           </div>
         ) : (
@@ -242,6 +242,7 @@ export default async function GraphPage({
         {mode === "sankey" && (
           <SankeyFlow
             ccy={ccy}
+            lang={lang}
             nodes={nodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label }))}
             edges={edges.map((e) => ({ src: e.src, dst: e.dst, rel: e.rel, flow: e.flow }))}
           />
@@ -314,9 +315,9 @@ export default async function GraphPage({
 
         {mode === "flow" && (
           <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ minWidth: 760 }} role="img" aria-label="Money flow graph">
-            <text x={COL_X.expense + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">EXPENSES ← </text>
-            <text x={COL_X.middle + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">HOUSEHOLD (buckets · goals · obligations)</text>
-            <text x={COL_X.income + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600"> → INCOME</text>
+            <text x={COL_X.expense + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">{tr("g.flow.expenses")} </text>
+            <text x={COL_X.middle + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600">{tr("g.flow.household")}</text>
+            <text x={COL_X.income + NODE_W / 2} y={34} textAnchor="middle" className="fill-zinc-400" fontSize="12" fontWeight="600"> {tr("g.flow.income")}</text>
 
             {edges.map((e, i) => {
               const a = pos.get(e.src);
@@ -386,24 +387,24 @@ export default async function GraphPage({
       </div>
 
       {/* per-mode caption + legend */}
-      <p className="mt-3 max-w-3xl text-xs text-zinc-500">{CAPTION[mode]}</p>
+      <p className="mt-3 max-w-3xl text-xs text-zinc-500">{tr(CAPTION[mode])}</p>
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
         {(mode === "treemap" || mode === "tree" || mode === "bars") && (
           <>
-            <LegendDot color="#3E9C5C" label="on track" />
-            <LegendDot color="#E0A312" label="at risk" />
-            <LegendDot color="#C94F4F" label="over budget" />
-            <LegendDot color="#9AA0A6" label="unfunded" />
+            <LegendDot color="#3E9C5C" label={tr("status.on_track")} />
+            <LegendDot color="#E0A312" label={tr("status.at_risk")} />
+            <LegendDot color="#C94F4F" label={tr("status.over_budget")} />
+            <LegendDot color="#9AA0A6" label={tr("status.unfunded")} />
           </>
         )}
         {(mode === "sankey" || mode === "flow" || mode === "organic") && (
           <>
-            <LegendDot color="#E09112" label="allocation" />
-            <LegendDot color="#C94F4F" label="spending" />
-            <LegendDot color="#3E9C5C" label="saved / goal" />
+            <LegendDot color="#E09112" label={tr("g.legend.allocation")} />
+            <LegendDot color="#C94F4F" label={tr("g.legend.spending")} />
+            <LegendDot color="#3E9C5C" label={tr("g.legend.savedGoal")} />
           </>
         )}
-        {mode === "organic" && <LegendDot color="#5B7DB1" label="bucket" />}
+        {mode === "organic" && <LegendDot color="#5B7DB1" label={tr("g.legend.bucket")} />}
       </div>
 
       <FlexibleInput
@@ -417,9 +418,7 @@ export default async function GraphPage({
       />
 
       <p className="mt-4 max-w-2xl text-sm text-zinc-500">
-        This is the same graph the AI reasons over: when the red spending edges thicken faster
-        than their bucket&apos;s amber allocation, Honey can see — structurally — which green goal
-        edge gets squeezed, and warns the household <em>before</em> it happens.
+        {tr("g.closing")}
       </p>
     </main>
   );

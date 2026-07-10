@@ -2,38 +2,44 @@ import Link from "next/link";
 import { isDatabaseConfigured, config } from "@/lib/config";
 import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/projection";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
+import { getLocale } from "@/lib/locale";
+import { t, type Locale } from "@/lib/i18n";
 import AddTransaction from "./AddTransaction";
 
 export const dynamic = "force-dynamic";
 
-function SetupNotice({ reason }: { reason: string }) {
+function SetupNotice({ reason, lang }: { reason: string; lang: Locale }) {
+  const tr = (k: string) => t(lang, k);
   return (
     <div className="mx-auto max-w-2xl rounded-2xl border border-amber-300 bg-amber-50 p-8 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-      <h2 className="text-lg font-semibold">Almost there — finish setup</h2>
+      <h2 className="text-lg font-semibold">{tr("dash.setup.title")}</h2>
       <p className="mt-2 text-sm">{reason}</p>
       <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm">
-        <li>Download PocketBase: <code>npm run pb:download</code> (from <code>web/</code>).</li>
-        <li>Start it: <code>npm run pb:start</code> — schema + demo data load automatically.</li>
-        <li>Copy <code>.env.example</code> → <code>web/.env.local</code> (defaults already match).</li>
-        <li>Restart <code>npm run dev</code>.</li>
+        <li>{tr("dash.setup.step1")} <code>npm run pb:download</code> ({tr("dash.setup.from")} <code>web/</code>).</li>
+        <li>{tr("dash.setup.step2")} <code>npm run pb:start</code> {tr("dash.setup.step2tail")}</li>
+        <li>{tr("dash.setup.step3")} <code>.env.example</code> → <code>web/.env.local</code> {tr("dash.setup.step3tail")}</li>
+        <li>{tr("dash.setup.step4")} <code>npm run dev</code>.</li>
       </ol>
-      <p className="mt-4 text-xs opacity-80">See PLAN.md §8–9 for the full walkthrough.</p>
+      <p className="mt-4 text-xs opacity-80">{tr("dash.setup.footer")}</p>
     </div>
   );
 }
 
 export default async function Dashboard() {
+  const locale = await getLocale();
+  const tr = (k: string, vars?: Record<string, string | number>) => t(locale, k, vars);
+
   if (!isDatabaseConfigured()) {
     return (
       <main className="min-h-full px-6 py-16">
-        <SetupNotice reason="PocketBase isn't configured yet, so there's no household graph to show." />
+        <SetupNotice reason={tr("dash.setup.reasonNoDb")} lang={locale} />
       </main>
     );
   }
   if (!config.demoTenantId) {
     return (
       <main className="min-h-full px-6 py-16">
-        <SetupNotice reason="Set DEMO_TENANT_ID in web/.env.local (the demo household is hhrahman1111111)." />
+        <SetupNotice reason={tr("dash.setup.reasonNoTenant")} lang={locale} />
       </main>
     );
   }
@@ -53,23 +59,23 @@ export default async function Dashboard() {
       <main className="mx-auto min-h-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">🍯 HoneyMoney</h1>
-            <p className="text-sm text-zinc-500">The Rahman Household · this month</p>
+            <h1 className="text-2xl font-semibold tracking-tight">🍯 {tr("dash.title")}</h1>
+            <p className="text-sm text-zinc-500">{tr("dash.subtitle")}</p>
           </div>
           <nav className="flex gap-4 text-sm">
-            <Link href="/records" className="text-amber-600 hover:underline">🧾 Records</Link>
-            <Link href="/graph" className="text-amber-600 hover:underline">🕸️ Graph</Link>
-            <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ Guide</Link>
-            <Link href="/" className="text-zinc-500 hover:underline">← Home</Link>
+            <Link href="/records" className="text-amber-600 hover:underline">🧾 {tr("nav.records")}</Link>
+            <Link href="/graph" className="text-amber-600 hover:underline">🕸️ {tr("nav.graph")}</Link>
+            <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
+            <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
           </nav>
         </header>
 
         {/* Honey insight */}
         <section className="mt-8 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg">
           <div className="flex items-center gap-2 text-sm font-medium opacity-90">
-            <span>Honey says</span>
+            <span>{tr("dash.honeySays")}</span>
             <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-              {insight.source === "gemini" ? "AI" : "insight"}
+              {insight.source === "gemini" ? tr("dash.badge.ai") : tr("dash.badge.insight")}
             </span>
           </div>
           <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
@@ -77,10 +83,10 @@ export default async function Dashboard() {
 
         {/* Summary */}
         <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <Stat label="Allocated / mo" value={rm(totalAllocated)} />
-          <Stat label="Projected spend" value={rm(totalProjected)} />
+          <Stat label={tr("dash.stat.allocated")} value={rm(totalAllocated)} />
+          <Stat label={tr("dash.stat.projectedSpend")} value={rm(totalProjected)} />
           <Stat
-            label="Projected balance"
+            label={tr("dash.stat.projectedBalance")}
             value={rm(totalAllocated - totalProjected)}
             good={totalAllocated - totalProjected >= 0}
           />
@@ -89,7 +95,7 @@ export default async function Dashboard() {
         {/* Buckets */}
         <section className="mt-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Buckets
+            {tr("dash.buckets")}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {projection.map((b) => {
@@ -106,7 +112,7 @@ export default async function Dashboard() {
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{b.bucket_label}</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.cls}`}>
-                      {style.label}
+                      {tr(`status.${b.status}`)}
                     </span>
                   </div>
                   <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -116,8 +122,8 @@ export default async function Dashboard() {
                     />
                   </div>
                   <div className="mt-2 flex justify-between text-xs text-zinc-500">
-                    <span>proj {rm(b.projected_spend)}</span>
-                    <span>of {rm(b.allocated)}</span>
+                    <span>{tr("dash.proj")} {rm(b.projected_spend)}</span>
+                    <span>{tr("dash.of")} {rm(b.allocated)}</span>
                   </div>
                 </div>
               );
@@ -128,9 +134,10 @@ export default async function Dashboard() {
         {/* Manual input */}
         <section className="mt-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Add a spend
+            {tr("dash.addSpend")}
           </h2>
           <AddTransaction
+            lang={locale}
             tenantId={tenantId}
             buckets={projection.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
           />
@@ -139,12 +146,12 @@ export default async function Dashboard() {
         {/* Recent spend */}
         <section className="mt-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            Recent (auto-captured)
+            {tr("dash.recent")}
           </h2>
           <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
             {recent.length === 0 && (
               <p className="p-4 text-sm text-zinc-500">
-                No transactions yet — forward a screenshot to the Telegram bot.
+                {tr("dash.recentEmpty")}
               </p>
             )}
             {recent.map((t) => (
@@ -153,7 +160,7 @@ export default async function Dashboard() {
                 className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 text-sm last:border-0 dark:border-zinc-800"
               >
                 <div>
-                  <span className="font-medium">{t.vendor ?? "Unknown"}</span>
+                  <span className="font-medium">{t.vendor ?? tr("dash.unknownVendor")}</span>
                   <span className="ml-2 text-xs text-zinc-400">{shortDate(t.occurred_at)}</span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -171,10 +178,10 @@ export default async function Dashboard() {
       </main>
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const message = err instanceof Error ? err.message : tr("dash.setup.unknownError");
     return (
       <main className="min-h-full px-6 py-16">
-        <SetupNotice reason={`Could not load the household graph: ${message}`} />
+        <SetupNotice reason={tr("dash.setup.reasonError", { message })} lang={locale} />
       </main>
     );
   }
