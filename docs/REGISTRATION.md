@@ -239,7 +239,8 @@ Bio: Chua Kia Wah — HoneyMoney's business lead: an entrepreneur and business o
 Name:            PONG Woon Wei
 Role:            Tech Lead
 Nationality:     Singaporean   (Malaysian citizen: NO)
-IC/MyKad (MY):   n/a — not the Malaysian member
+ID:              Singaporean NRIC on file — enter directly on the MAIC portal
+                 (kept out of this repo for privacy; not the T3 eligibility proof)
 Email / phone:   justfifty1976@gmail.com / +65 9067 4823
 LinkedIn/GitHub: https://github.com/justfifty/honeymoney
 Bio: Architect-trained and buildingSMART Singapore–accredited Tier 2 Digital Tech
