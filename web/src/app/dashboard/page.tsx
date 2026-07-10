@@ -4,6 +4,7 @@ import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/proj
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
+import { dataLabel } from "@/lib/dataLabels";
 import AddTransaction from "./AddTransaction";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,7 @@ export default async function Dashboard() {
       getBucketProjection(tenantId),
       getRecentSpend(tenantId, 8),
     ]);
-    const insight = await getHoneyInsight(projection);
+    const insight = await getHoneyInsight(projection, locale);
 
     const totalAllocated = projection.reduce((s, b) => s + b.allocated, 0);
     const totalProjected = projection.reduce((s, b) => s + b.projected_spend, 0);
@@ -110,7 +111,7 @@ export default async function Dashboard() {
                   className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{b.bucket_label}</span>
+                    <span className="font-medium">{dataLabel(locale, b.bucket_label)}</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.cls}`}>
                       {tr(`status.${b.status}`)}
                     </span>
@@ -139,7 +140,7 @@ export default async function Dashboard() {
           <AddTransaction
             lang={locale}
             tenantId={tenantId}
-            buckets={projection.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
+            buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
           />
         </section>
 

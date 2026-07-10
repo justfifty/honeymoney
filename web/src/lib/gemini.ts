@@ -5,6 +5,11 @@ import { config, isGeminiConfigured, isPocketBaseConfigured } from "./config";
 import { pbCreate } from "./pocketbase";
 import { aiGenerate } from "./ai";
 import type { ParsedReceipt } from "./types";
+import type { Locale } from "./i18n";
+
+const LANG_NAME: Record<Locale, string> = {
+  en: "English", ms: "Bahasa Melayu", zh: "Simplified Chinese", "zh-Hant": "Traditional Chinese", hi: "Hindi", ta: "Tamil",
+};
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -131,9 +136,10 @@ Voice: warm, encouraging, forward-looking, and MARITAL-SAFE — never blame a sp
 never interrogate past purchases ("what was this RM50 for?"). Focus on proactive
 alignment toward shared goals. Keep it to 2-3 short sentences. Use RM for amounts.`;
 
-export async function honeyInsight(contextText: string, meta?: AiMeta): Promise<string> {
+export async function honeyInsight(contextText: string, locale: Locale = "en", meta?: AiMeta): Promise<string> {
   // Routed through the multi-provider layer (Gemini / Groq / Ollama per AI_PROVIDER).
-  return aiGenerate(`Household snapshot:\n${contextText}\n\nGive one insight now:`, {
+  const langLine = locale === "en" ? "" : `\n\nReply in ${LANG_NAME[locale]}.`;
+  return aiGenerate(`Household snapshot:\n${contextText}\n\nGive one insight now:${langLine}`, {
     system: HONEY_SYSTEM,
     fn: "honeyInsight",
     meta,

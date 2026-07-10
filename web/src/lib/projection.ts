@@ -6,6 +6,8 @@
 import { pbList, pbStr } from "./pocketbase";
 import { isGeminiConfigured } from "./config";
 import { honeyInsight } from "./gemini";
+import { t, type Locale } from "./i18n";
+import { dataLabel } from "./dataLabels";
 import type { BucketProjection } from "./types";
 
 interface PBNode {
@@ -192,39 +194,33 @@ function buildContext(projection: BucketProjection[]): string {
 }
 
 // Deterministic, marital-safe fallback insight from the projection alone.
-function ruleBasedInsight(projection: BucketProjection[]): string {
+function ruleBasedInsight(projection: BucketProjection[], locale: Locale): string {
   const over = projection.filter((b) => b.status === "over_budget");
   const risk = projection.filter((b) => b.status === "at_risk");
 
   if (over.length > 0) {
     const b = over[0];
     const gap = Math.abs(b.projected_balance);
-    return (
-      `Heads up together: at this month's pace, ${b.bucket_label} is trending about ` +
-      `RM${gap.toFixed(0)} over its RM${b.allocated} plan. A small tweak now keeps your ` +
-      `Future Shield goal right on schedule — want to rebalance?`
-    );
+    return t(locale, "honey.over", { bucket: dataLabel(locale, b.bucket_label), gap: gap.toFixed(0), alloc: b.allocated });
   }
   if (risk.length > 0) {
     const b = risk[0];
-    return (
-      `You're doing well! ${b.bucket_label} is getting close to its RM${b.allocated} limit — ` +
-      `worth a gentle glance so nothing nudges your shared goals later.`
-    );
+    return t(locale, "honey.risk", { bucket: dataLabel(locale, b.bucket_label), alloc: b.allocated });
   }
-  return `Great teamwork this month — every bucket is on track and your Future Shield is funding on schedule. Keep it up!`;
+  return t(locale, "honey.ontrack");
 }
 
 export async function getHoneyInsight(
   projection: BucketProjection[],
+  locale: Locale = "en",
 ): Promise<{ text: string; source: "gemini" | "rule-based" }> {
   if (!isGeminiConfigured()) {
-    return { text: ruleBasedInsight(projection), source: "rule-based" };
+    return { text: ruleBasedInsight(projection, locale), source: "rule-based" };
   }
   try {
-    const text = await honeyInsight(buildContext(projection));
+    const text = await honeyInsight(buildContext(projection), locale);
     return { text, source: "gemini" };
   } catch {
-    return { text: ruleBasedInsight(projection), source: "rule-based" };
+    return { text: ruleBasedInsight(projection, locale), source: "rule-based" };
   }
 }

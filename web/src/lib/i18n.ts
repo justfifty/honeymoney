@@ -285,6 +285,9 @@ const en: Dict = {
   "g.people.role": "Role",
   "g.people.help": "Removing a person keeps their past spend — it just becomes unattributed.",
   "g.focus.noneYet": "none yet",
+  "honey.over": "Heads up together: at this month's pace, {bucket} is trending about RM{gap} over its RM{alloc} plan. A small tweak now keeps your Future Shield goal right on schedule — want to rebalance?",
+  "honey.risk": "You're doing well! {bucket} is getting close to its RM{alloc} limit — worth a gentle glance so nothing nudges your shared goals later.",
+  "honey.ontrack": "Great teamwork this month — every bucket is on track and your Future Shield is funding on schedule. Keep it up!",
 };
 
 const ms: Dict = {
@@ -550,6 +553,9 @@ const ms: Dict = {
   "g.people.role": "Peranan",
   "g.people.help": "Membuang seseorang mengekalkan perbelanjaan lalu mereka — ia cuma menjadi tidak dikaitkan.",
   "g.focus.noneYet": "belum ada",
+  "honey.over": "Perhatian bersama: pada kadar bulan ini, {bucket} dijangka melebihi kira-kira RM{gap} daripada pelan RM{alloc}. Sedikit pelarasan sekarang memastikan matlamat Future Shield anda kekal mengikut jadual — mahu imbang semula?",
+  "honey.risk": "Anda buat dengan baik! {bucket} semakin hampir dengan had RM{alloc} — eloklah pantau sedikit supaya matlamat bersama tidak terjejas kemudian.",
+  "honey.ontrack": "Kerja berpasukan yang hebat bulan ini — setiap baldi ikut jadual dan Future Shield anda dibiayai mengikut jadual. Teruskan!",
 };
 
 // Scaffolded locales — core chrome only; everything else falls back to English.
@@ -812,6 +818,9 @@ const zh: Dict = {
   "g.people.role": "角色",
   "g.people.help": "移除某人会保留其过往支出 — 只是变为无归属。",
   "g.focus.noneYet": "暂无",
+  "honey.over": "一起注意：按本月的节奏，{bucket} 预计将超出 RM{alloc} 计划约 RM{gap}。现在稍作调整，就能让你的 Future Shield 目标保持在正轨上 — 要重新平衡吗？",
+  "honey.risk": "你们做得很好！{bucket} 正接近其 RM{alloc} 上限 — 稍加留意，以免日后影响你们的共同目标。",
+  "honey.ontrack": "本月团队合作出色 — 每个预算篮都在正轨上，你的 Future Shield 也按计划注资。继续保持！",
 };
 const ta: Dict = {
   "app.title": "பணம், காட்சிப்படுத்தப்பட்டது",
@@ -1072,6 +1081,9 @@ const ta: Dict = {
   "g.people.role": "பங்கு",
   "g.people.help": "ஒரு நபரை அகற்றுவது அவர்களின் கடந்தகால செலவை வைத்திருக்கும் — அது வெறுமனே இணைக்கப்படாததாக மாறுகிறது.",
   "g.focus.noneYet": "இன்னும் இல்லை",
+  "honey.over": "ஒன்றாகக் கவனியுங்கள்: இந்த மாத வேகத்தில், {bucket} அதன் RM{alloc} திட்டத்தைவிட சுமார் RM{gap} அதிகமாகச் செல்கிறது. இப்போது ஒரு சிறிய மாற்றம் உங்கள் Future Shield இலக்கைச் சரியான நேரத்தில் வைத்திருக்கும் — மீண்டும் சமன் செய்யலாமா?",
+  "honey.risk": "நீங்கள் நன்றாகச் செய்கிறீர்கள்! {bucket} அதன் RM{alloc} வரம்பை நெருங்குகிறது — பிறகு உங்கள் பொதுவான இலக்குகள் பாதிக்கப்படாமல் இருக்க கொஞ்சம் கவனியுங்கள்.",
+  "honey.ontrack": "இந்த மாதம் அருமையான குழு முயற்சி — ஒவ்வொரு பக்கெட்டும் சரியான பாதையில் உள்ளது, உங்கள் Future Shield-ம் திட்டப்படி நிதியளிக்கப்படுகிறது. தொடருங்கள்!",
 };
 const hi: Dict = {
   "app.title": "पैसा, दृश्य रूप में",
@@ -1332,6 +1344,9 @@ const hi: Dict = {
   "g.people.role": "भूमिका",
   "g.people.help": "किसी व्यक्ति को हटाने पर उनका पिछला खर्च बना रहता है — बस उसका श्रेय हट जाता है।",
   "g.focus.noneYet": "अभी कोई नहीं",
+  "honey.over": "साथ मिलकर ध्यान दें: इस माह की रफ़्तार से, {bucket} अपने RM{alloc} प्लान से लगभग RM{gap} अधिक जा रहा है। अभी एक छोटा बदलाव आपके Future Shield लक्ष्य को सही समय पर रखेगा — रीबैलेंस करना चाहेंगे?",
+  "honey.risk": "आप अच्छा कर रहे हैं! {bucket} अपनी RM{alloc} सीमा के करीब पहुँच रहा है — थोड़ा ध्यान दें ताकि आगे आपके साझा लक्ष्य प्रभावित न हों।",
+  "honey.ontrack": "इस माह बढ़िया टीमवर्क — हर बकेट सही राह पर है और आपका Future Shield समय पर फंड हो रहा है। ऐसे ही जारी रखें!",
 };
 
 // Traditional Chinese — scaffolded (Traditional conversion of the zh chrome);
@@ -1595,6 +1610,9 @@ const zhHant: Dict = {
   "g.people.role": "角色",
   "g.people.help": "移除某位成員會保留他們過往的支出 — 只是變成未歸屬狀態。",
   "g.focus.noneYet": "尚無",
+  "honey.over": "一起注意：依本月的步調，{bucket} 預計將超出 RM{alloc} 計畫約 RM{gap}。現在稍作調整，就能讓你的 Future Shield 目標維持在正軌上 — 要重新平衡嗎？",
+  "honey.risk": "你們做得很好！{bucket} 正接近其 RM{alloc} 上限 — 稍加留意，以免日後影響你們的共同目標。",
+  "honey.ontrack": "本月團隊合作出色 — 每個帳戶籃都在正軌上，你的 Future Shield 也按計畫注資。繼續保持！",
 };
 
 const DICTS: Record<Locale, Dict> = { en, ms, zh, "zh-Hant": zhHant, ta, hi };

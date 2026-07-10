@@ -3,6 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import LanguageSwitcher from "./graph/LanguageSwitcher";
+import HeaderNav from "./HeaderNav";
 import LogoutButton from "./admin/LogoutButton";
 
 const NAV = [
@@ -16,6 +17,8 @@ const NAV = [
 export default async function SiteHeader() {
   const [user, locale] = await Promise.all([getSessionUser().catch(() => null), getLocale()]);
   const tr = (k: string) => t(locale, k);
+  const navItems = NAV.map((n) => ({ href: n.href, label: tr(n.key) }));
+  if (user?.role === "admin") navItems.push({ href: "/admin", label: tr("auth.admin") });
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/80 backdrop-blur dark:border-zinc-800/70 dark:bg-black/60">
@@ -24,16 +27,7 @@ export default async function SiteHeader() {
           <span aria-hidden>🍯</span> HoneyMoney
         </Link>
 
-        <nav className="hidden items-center gap-5 text-sm text-zinc-600 dark:text-zinc-300 md:flex">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="hover:text-amber-600 dark:hover:text-amber-400">
-              {tr(n.key)}
-            </Link>
-          ))}
-          {user?.role === "admin" && (
-            <Link href="/admin" className="hover:text-amber-600 dark:hover:text-amber-400">{tr("auth.admin")}</Link>
-          )}
-        </nav>
+        <HeaderNav items={navItems} />
 
         <div className="flex items-center gap-2 text-sm">
           <LanguageSwitcher current={locale} label={tr("common.language")} />

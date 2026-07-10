@@ -10,6 +10,8 @@ import { pbList, pbStr } from "./pocketbase";
 import { computeAllocations, projectBuckets } from "./projection";
 import { categoryMeta, ROLE_OPTIONS, type MoneyView, type TenantKind, type CategoryMeta } from "./moneyView";
 import type { GNode } from "./graphView";
+import { dataLabel } from "./dataLabels";
+import type { Locale } from "./i18n";
 
 interface RawNode {
   id: string;
@@ -171,7 +173,8 @@ function flowSlice(focusId: string, edges: GraphEdge[]): Set<string> {
   return keep;
 }
 
-export async function getFocusedView(tenantId: string, focus: Focus): Promise<FocusedView> {
+export async function getFocusedView(tenantId: string, focus: Focus, locale: Locale = "en"): Promise<FocusedView> {
+  const dl = (s: string) => dataLabel(locale, s);
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
@@ -187,7 +190,7 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
 
   const tenant = tenants.find((t) => t.id === tenantId);
   const tenantKind: TenantKind = tenant?.kind === "business" ? "business" : "household";
-  const personas = tenants.map((t) => ({ id: t.id, name: t.name || t.id, kind: (t.kind === "business" ? "business" : "household") as TenantKind }));
+  const personas = tenants.map((t) => ({ id: t.id, name: dl(t.name || t.id), kind: (t.kind === "business" ? "business" : "household") as TenantKind }));
   const tierMeta = categoryMeta(tenantKind);
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const labelOf = (id: string) => nodeById.get(id)?.label ?? "Unknown";
@@ -195,13 +198,13 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
   // ── selector options (fully data-driven; any roster size) ─────────────
   const byKind = (k: string) => nodes.filter((n) => n.kind === k);
   const groups: FocusGroups = {
-    income: byKind("income_source").map((n) => ({ value: `node:${n.id}`, label: n.label, badge: "💰", hint: n.props?.monthly_amount ? `${rm0(Number(n.props.monthly_amount))}/mo` : undefined })),
-    bucket: byKind("bucket").sort((a, b) => a.label.localeCompare(b.label)).map((n) => ({ value: `node:${n.id}`, label: n.label, badge: "🪣" })),
-    vendor: byKind("vendor").sort((a, b) => a.label.localeCompare(b.label)).map((n) => ({ value: `node:${n.id}`, label: n.label, badge: "🏪" })),
-    member: members.map((m) => ({ value: `member:${m.id}`, label: m.display_name, badge: "🧑", hint: m.role })),
+    income: byKind("income_source").map((n) => ({ value: `node:${n.id}`, label: dl(n.label), badge: "💰", hint: n.props?.monthly_amount ? `${rm0(Number(n.props.monthly_amount))}/mo` : undefined })),
+    bucket: byKind("bucket").sort((a, b) => a.label.localeCompare(b.label)).map((n) => ({ value: `node:${n.id}`, label: dl(n.label), badge: "🪣" })),
+    vendor: byKind("vendor").sort((a, b) => a.label.localeCompare(b.label)).map((n) => ({ value: `node:${n.id}`, label: dl(n.label), badge: "🏪" })),
+    member: members.map((m) => ({ value: `member:${m.id}`, label: dl(m.display_name), badge: "🧑", hint: m.role })),
     category: [...new Set(byKind("bucket").map((n) => Number(n.props?.bucket) || 3))]
       .sort((a, b) => a - b)
-      .map((t) => ({ value: `tier:${t}`, label: tierMeta[t]?.label ?? "Other", badge: tierMeta[t]?.badge ?? "🗂️" })),
+      .map((t) => ({ value: `tier:${t}`, label: dl(tierMeta[t]?.label ?? "Other"), badge: tierMeta[t]?.badge ?? "🗂️" })),
   };
 
   // ── spend maps, re-weighted to a member when a person focus is active ──
@@ -227,7 +230,7 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
   if (focus.kind === "node" && focus.id && nodeById.has(focus.id)) {
     keep = flowSlice(focus.id, allEdges);
     const n = nodeById.get(focus.id)!;
-    focusLabel = n.label;
+    focusLabel = dl(n.label);
     focusBadge = KIND_BADGE[n.kind] ?? "•";
     focusId = focus.id;
   } else if (focus.kind === "tier" && focus.tier) {
@@ -235,7 +238,7 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
     keep = new Set(tierBuckets.map((b) => b.id));
     // add each bucket's upstream income + downstream vendors/goals
     for (const b of tierBuckets) for (const id of flowSlice(b.id, allEdges)) keep.add(id);
-    focusLabel = tierMeta[focus.tier]?.label ?? "Category";
+    focusLabel = dl(tierMeta[focus.tier]?.label ?? "Category");
     focusBadge = tierMeta[focus.tier]?.badge ?? "🗂️";
   } else if (scope === "person" && focus.id) {
     // buckets the member spent from + vendors they used + upstream income/goals
@@ -249,7 +252,7 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
       if (nodeById.get(bId)?.kind === "bucket") for (const id of flowSlice(bId, allEdges)) keep.add(id);
     }
     const m = members.find((mm) => mm.id === focus.id);
-    focusLabel = m?.display_name ?? "Member";
+    focusLabel = dl(m?.display_name ?? "Member");
     focusBadge = "🧑";
   } else {
     keep = new Set(nodes.map((n) => n.id));
@@ -257,24 +260,25 @@ export async function getFocusedView(tenantId: string, focus: Focus): Promise<Fo
 
   // ── filter graph to the lens ──────────────────────────────────────────
   const keptNodes = nodes.filter((n) => keep.has(n.id));
-  const graphNodes: GNode[] = keptNodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label, props: n.props }));
+  const graphNodes: GNode[] = keptNodes.map((n) => ({ id: n.id, kind: n.kind, label: dl(n.label), props: n.props }));
   const graphEdges = allEdges.filter((e) => keep.has(e.src) && keep.has(e.dst));
 
   // ── money view over the lens (allocations full; spend per the lens) ────
   const bucketProj = projectBuckets(keptNodes, allocated, spendByBucket);
   const buckets = bucketProj.map((b) => ({
     ...b,
+    bucket_label: dl(b.bucket_label),
     tier: Number(nodeById.get(b.bucket_id)?.props?.bucket) || 3,
   }));
 
   const incomes = keptNodes
     .filter((n) => n.kind === "income_source")
-    .map((n) => ({ id: n.id, label: n.label, monthly: Number(n.props?.monthly_amount) || 0 }))
+    .map((n) => ({ id: n.id, label: dl(n.label), monthly: Number(n.props?.monthly_amount) || 0 }))
     .sort((a, b) => b.monthly - a.monthly);
 
   const goals = keptNodes
     .filter((n) => n.kind === "goal")
-    .map((n) => ({ id: n.id, label: n.label, target: Number(n.props?.target) || 0, current: Number(n.props?.current) || 0 }));
+    .map((n) => ({ id: n.id, label: dl(n.label), target: Number(n.props?.target) || 0, current: Number(n.props?.current) || 0 }));
 
   const vendorSpend = [...spendByPair.entries()]
     .map(([pair, amount]) => {

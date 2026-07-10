@@ -94,7 +94,7 @@ export default async function GraphPage({
   const ccy = normalizeCurrency(params.ccy);
   const sticky = `&focus=${focusParam}&lang=${lang}&ccy=${ccy}`;
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
-  const view = await getFocusedView(tenantId, focus);
+  const view = await getFocusedView(tenantId, focus, lang);
   const { nodes, edges } = view.graph;
   const money = view.money;
 
