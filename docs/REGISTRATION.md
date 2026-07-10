@@ -214,10 +214,10 @@ Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gat
 IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
 Email / phone:   ____________________   ← still needed
 LinkedIn:        https://www.linkedin.com/in/kia-wah-chua-72946935/
-Bio: Chua Kia Wah — HoneyMoney's business lead, driving go-to-market, partnerships, and
-     community growth. An engineer by training with an audience-building instinct, he
-     brings the app to Malaysian households and shapes the employer-sponsored wellness
-     model. Malaysian citizen (MyKad holder).
+Bio: Chua Kia Wah — HoneyMoney's business lead: an entrepreneur and business owner who
+     also builds an audience as a content creator/influencer. He drives go-to-market,
+     partnerships, and community growth, bringing the app to Malaysian households and
+     shaping the employer-sponsored wellness model. Malaysian citizen (MyKad holder).
 ```
 
 ### Member 2 — PONG Woon Wei (Tech Lead)
