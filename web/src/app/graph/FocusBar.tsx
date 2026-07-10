@@ -86,7 +86,7 @@ export default function FocusBar({
 }) {
   const focused = focusParam !== "all";
   return (
-    <div className="mt-6 flex flex-wrap items-center gap-2">
+    <div className="mt-3 flex flex-wrap items-center gap-2">
       <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{labels.lens}</span>
 
       <PeopleMenu tenantId={tenantId} mode={mode} active={focusParam} members={groups.member} roleOptions={roleOptions} lang={lang} />

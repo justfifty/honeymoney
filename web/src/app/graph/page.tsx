@@ -122,7 +122,7 @@ export default async function GraphPage({
     kind === "business" ? "🏢" : /solo|freelance/i.test(name) ? "🧑‍💻" : "🏠";
 
   return (
-    <main className="mx-auto min-h-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="mx-auto min-h-full max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">🕸️ {tr("app.title")}</h1>
@@ -142,7 +142,7 @@ export default async function GraphPage({
       </header>
 
       {/* persona switcher — personal · family · business on one engine */}
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{tr("persona.label")}</span>
         {view.personas.map((p) => (
           <Link
@@ -181,7 +181,7 @@ export default async function GraphPage({
       />
 
       {/* monitoring headline — adapts to a person lens */}
-      <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {view.scope === "person" ? (
           (() => {
             const used = money.buckets.filter((b) => b.mtd_spend > 0);
@@ -210,7 +210,7 @@ export default async function GraphPage({
       </section>
 
       {/* view switcher */}
-      <div className="mt-6 flex flex-wrap gap-1.5">
+      <div className="mt-3 flex flex-wrap gap-1.5">
         {MODES.map((m) => (
           <Link
             key={m.key}
@@ -226,7 +226,7 @@ export default async function GraphPage({
         ))}
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-3 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
         {nodes.length === 0 ? (
           <div className="flex min-h-56 flex-col items-center justify-center gap-2 py-12 text-center">
             <span className="text-3xl">{view.focusBadge}</span>
@@ -417,7 +417,7 @@ export default async function GraphPage({
         categoryLabels={[1, 2, 3].map((t) => ({ tier: t, label: view.tierMeta[t]?.label ?? `Tier ${t}` }))}
       />
 
-      <p className="mt-6 max-w-2xl text-sm text-zinc-500">
+      <p className="mt-4 max-w-2xl text-sm text-zinc-500">
         This is the same graph the AI reasons over: when the red spending edges thicken faster
         than their bucket&apos;s amber allocation, Honey can see — structurally — which green goal
         edge gets squeezed, and warns the household <em>before</em> it happens.
@@ -434,7 +434,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone: "inc
     save: "border-emerald-300 dark:border-emerald-900",
   };
   return (
-    <div className={`rounded-xl border bg-white p-3 dark:bg-zinc-900 ${ring[tone]}`}>
+    <div className={`rounded-xl border bg-white px-3 py-2 dark:bg-zinc-900 ${ring[tone]}`}>
       <div className="text-xs text-zinc-500">{label}</div>
       <div className="mt-0.5 text-lg font-semibold tracking-tight">{value}</div>
     </div>
