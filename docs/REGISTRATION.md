@@ -35,13 +35,22 @@
 
 ## 2. Registration steps
 
+> **Confirmed on the MAIC portal (checked 2026-07-10).** The online application has **6 steps**:
+> **01 Eligibility → 02 Team → 03 Industry → 04 Materials → 05 AI Disclosure → 06 Review.**
+> Key facts from the FAQ: team size **1–5** (solo allowed); **the team leader need NOT be
+> Malaysian** (only ≥1 team member must be a Malaysian MyKad holder); **pitch deck (PDF) +
+> written project summary + AI usage disclosure are mandatory**; demo video / repo / a
+> technical-architecture PDF (≤5 MB) / LinkedIn are **optional and updatable later**.
+> **No maximum slide count** is stated for the deck.
+
 1. Go to <https://maicnexus.com/en/register> → **create an account** (use a team email you'll monitor).
 2. Sign in → **Start Application** (<https://maicnexus.com/en/application>).
-3. Select track: **T3 — AI for Financial Services & Fintech**.
-4. Fill the team + project fields (content ready in §3–§5 below).
-5. Upload the **mandatory documents** (§6).
-6. Add **artifact links** (§7) and **member profiles** (§8).
-7. Review against the R&R checklist → **Submit**. Save the confirmation.
+3. **01 Eligibility** — tick the 3 yes/no gates (Malaysian member ✔, team of 1–5 ✔, accept T&Cs).
+4. **02 Team** — add both members (§8); flag Chua as the Malaysian (MyKad).
+5. **03 Industry** — select **T3 — AI for Financial Services & Fintech** (locks at submit).
+6. **04 Materials** — upload the mandatory PDFs (§6) + add artifact links (§7).
+7. **05 AI Disclosure** — upload / paste the AI usage disclosure.
+8. **06 Review** — check against the R&R → **Submit**, and save the confirmation.
 
 ---
 
