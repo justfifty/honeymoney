@@ -1,0 +1,210 @@
+# MAIC Nexus Challenge 2026 — Registration Pack (HoneyMoney)
+
+> Everything needed to register HoneyMoney for the MAIC Nexus Challenge, Track **T3
+> — AI for Financial Services & Fintech**. Hand this to whoever registers.
+> **Portal:** <https://maicnexus.com/en/application> · Register: <https://maicnexus.com/en/register> · Sign in: <https://maicnexus.com/en/login>
+> ⚠️ Field names/fees/exact eligibility can change — **verify against the portal + the
+> Rules & Regulations (R&R) at <https://maicnexus.com/en/tracks> before final submit.**
+
+---
+
+## 0. Do this FIRST — the eligibility gate (a fail here = instant out)
+
+- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← confirm before registering.**
+- [ ] **One person = one team** (no cross-team participation).
+- [ ] **Track locked = T3** (Financial Services & Fintech). Commit, no hedging.
+- [ ] **Genuine commit history** — HoneyMoney already has real, non-backdated commits; keep committing through submission (never backdate). Repo: `github.com/justfifty/honeymoney`.
+- [ ] Confirm **team size min/max** and any age/status limits in the R&R.
+
+---
+
+## 1. Timeline (register early — applications are open)
+
+| Stage | When | Gate |
+|---|---|---|
+| Launch | 11 Jun 2026 | applications open |
+| **Application window** | Jun–Aug 2026 | **register + submit materials** |
+| Preliminary judging | Sep 2026 | online review |
+| Preliminary results | end Sep 2026 | → semi-finalists |
+| Semi-Final | Oct 2026 (KL) | live demos |
+| Grand Final | Nov 2026 | forum + awards |
+
+**Action: register + submit the mandatory set as early as possible** (don't wait for the deadline). You can keep improving the product after registering.
+
+---
+
+## 2. Registration steps
+
+1. Go to <https://maicnexus.com/en/register> → **create an account** (use a team email you'll monitor).
+2. Sign in → **Start Application** (<https://maicnexus.com/en/application>).
+3. Select track: **T3 — AI for Financial Services & Fintech**.
+4. Fill the team + project fields (content ready in §3–§5 below).
+5. Upload the **mandatory documents** (§6).
+6. Add **artifact links** (§7) and **member profiles** (§8).
+7. Review against the R&R checklist → **Submit**. Save the confirmation.
+
+---
+
+## 3. Team information to have ready
+
+For **each** member (have IDs on hand):
+
+| Field | Notes |
+|---|---|
+| Full name | as per IC/passport |
+| Role | e.g. Founder/CEO, Tech Lead, Product, Business/GTM |
+| Nationality | **flag the Malaysian citizen(s) clearly** |
+| IC / MyKad no. | for the Malaysian member (eligibility proof) |
+| Email + phone | reachable through Nov 2026 |
+| LinkedIn / GitHub | optional but strengthens profiles |
+| Short bio | 2–3 sentences (template in §8) |
+
+**Team lead / primary contact:** __________ (name, email, phone)
+
+---
+
+## 4. Project fields (ready to paste)
+
+**Project name:** HoneyMoney
+
+**One-liner / tagline:**
+> A personal financial wellness app, AI-supported, with no tracking fatigue.
+
+**Elevator pitch (2–3 sentences):**
+> HoneyMoney turns a household's money into a living knowledge graph — an AI-supported
+> financial wellness app that gives couples **funding transparency and spending
+> autonomy without surveillance**. Forward an e-wallet screenshot and the AI reads it;
+> our companion "Honey" warns you *before* spending velocity threatens a shared goal.
+> The same graph engine scales from a household to a small business.
+
+**Track & why (T3 — Fintech):**
+> Inclusive personal finance for Malaysian households and micro-businesses: cross
+> e-wallet capture (Touch 'n Go, MAE, GrabPay, ShopeePay), an alternative
+> "graph-path-consistency" reliability signal as a foundation for inclusive credit,
+> PDPA-aligned local-first data, and alignment with BNM's financial-inclusion agenda.
+
+**Problem:**
+> Household financial stress drives marital friction and workplace presenteeism
+> (~9 lost productive days/employee/year). Existing budgeting apps fail Malaysians
+> three ways: they feel like surveillance, they demand manual data entry that people
+> abandon, and they store flat data that can't reason about goals.
+
+**Solution / what it does:**
+> A **3-Bucket model** — Fixed Non-Negotiables, a Future Shield auto-savings %, and
+> private personal wallets where tracking *stops* (autonomy over surveillance). Money
+> is modelled as a **knowledge graph** (income → buckets → spend → goals), so Honey can
+> warn a couple structurally when one bucket's spending threatens a shared goal.
+> **Zero-integration capture**: forward a screenshot to Telegram, or use on-device OCR
+> + voice that cost **no AI tokens** and keep data on the device. Marital-safe AI
+> (never exposes a partner's private wallet). Multi-currency, multi-language, mobile
+> PWA, **local-first (PDPA-friendly)**.
+
+**Commercial model:**
+> B2B2C **employee financial wellness** (employers sponsor seats) + free consumer tier
+> with a built-in **family-referral** growth loop. Near-100% gross margin on a
+> zero-cost infra stack. Non-dilutive funding path via Cradle CIP Spark.
+
+**Impact / ESG:**
+> Financial resilience for underbanked households, reduced money-stress and better
+> workplace wellbeing, mapped to **SDG 1 (No Poverty), 3 (Good Health), 8 (Decent
+> Work)** and Malaysia's **MADANI** agenda.
+
+**Tech stack (one line):**
+> Next.js 16 + PocketBase local-first knowledge graph + multi-provider AI (Google
+> Gemini Flash / Groq / Ollama) + Telegram bot. Live, self-hosted, over HTTPS.
+
+---
+
+## 5. Project summary (1–2 page attachment — ready to export as PDF)
+
+**HoneyMoney — funding transparency, spending autonomy.**
+
+*The problem.* In Malaysian households, money is the #1 source of conflict, and that
+stress follows people to work as lost productivity. Budgeting apps have failed to fix
+it: they surveil every ringgit, demand manual entry until users quit, and store data
+too flat to warn anyone before a goal slips.
+
+*Our solution.* HoneyMoney models a household's money as a **living knowledge graph**
+and applies a simple, brandable **3-Bucket method**: Fixed Non-Negotiables (rent,
+bills), a **Future Shield** auto-savings percentage, and **private personal wallets
+where tracking stops**. Because the graph knows how income flows into buckets and out
+to real spending, our AI companion **"Honey"** can see — structurally — when one
+bucket's spending velocity is about to push a shared goal weeks later, and nudge the
+couple *before* it happens. Capture is frictionless and privacy-first: forward an
+e-wallet or receipt screenshot to a Telegram bot, or use **on-device OCR and voice
+that consume no AI tokens** and never leave the device.
+
+*Why it's technically credible.* The same graph engine serves a **household, a family,
+and a small business** with zero schema changes (three live personas in the product).
+AI is **swappable and optional** across Gemini Flash, Groq, and local Ollama, with a
+per-call token ledger for cost transparency. The app is **local-first**: data stays on
+the user's own machine, which is both a privacy moat and a genuine PDPA story.
+
+*Market & model.* We lead with a free consumer/household tier (family-referral growth)
+and monetise via **B2B2C employee financial wellness**, where employers sponsor seats —
+a category with strong demand and no incumbent occupying the Malaysia + couples + cross
+e-wallet cell. Infra cost is effectively zero, so gross margin is high; Cradle CIP Spark
+is our realistic non-dilutive entry.
+
+*Impact.* Financial resilience for underbanked households, less money-driven conflict,
+healthier workplaces — mapped to SDG 1/3/8 and the MADANI agenda.
+
+*Status.* Working product live at **honeymoney.app** — dashboard, six-view knowledge-
+graph gallery, time-schedule spending audit, multi-currency/-language capture, admin
+analytics, and a cost/AI-token ledger — with a genuine, non-backdated commit history.
+
+*Team.* [Name] — [role]; [Name] — [role] (**Malaysian citizen**); … Ask: [funding /
+pilot / mentorship you want].
+
+---
+
+## 6. Mandatory documents to upload
+
+- [ ] **Pitch deck** (PDF) — slide-per-criterion (Technical / Commercial / Relevance / Scalability / ESG). *Status: draft in `docs/deck/`.*
+- [ ] **Project summary** (1–2 pages, PDF) — **§5 above is your draft**; export to PDF.
+- [ ] **AI disclosure statement** (PDF) — **ready at `docs/AI_DISCLOSURE.md`** (export to PDF). *Note: update the stack line to PocketBase/local-first + multi-provider AI to match the shipped build.*
+
+**Recommended (treat as required — top teams all submit):**
+- [ ] **Demo video (≤3 min)** — screenshot → parsed txn → Honey insight → dashboard. *Status: to record.*
+- [ ] **Artifact link** — live app + repo (see §7).
+- [ ] **Member profiles** (§8), Malaysian citizen flagged.
+
+---
+
+## 7. Artifact links (paste into the form)
+
+- **Live app (primary artifact):** https://honeymoney.app
+- **Source repo:** https://github.com/justfifty/honeymoney *(private — grant judges access at submission, or make public temporarily; you retain all IP either way).*
+- **Demo video:** _[add URL once recorded]_
+
+> Tip: the live URL is served from a team machine — **keep that PC on/awake during the
+> judging windows**, or move to a small always-on VPS before Preliminary (Sep).
+
+---
+
+## 8. Member profile template (repeat per member)
+
+```
+Name:            ____________________
+Role:            ____________________  (e.g. Tech Lead / Product / GTM)
+Nationality:     ____________________  (Malaysian citizen: YES / NO)
+IC/MyKad (MY):   ____________________  (for the Malaysian member)
+Email / phone:   ____________________
+LinkedIn/GitHub: ____________________
+Bio (2–3 lines): ____________________________________________________
+```
+
+---
+
+## 9. Final submit checklist
+
+- [ ] Account created, application started, **Track = T3** selected
+- [ ] Team fields complete; **Malaysian citizen flagged + IC provided**
+- [ ] Pitch deck, project summary, AI disclosure uploaded (PDF)
+- [ ] Demo video linked (or noted as coming)
+- [ ] Live URL + repo linked; repo access sorted for judges
+- [ ] Everything cross-checked against the **R&R** (<https://maicnexus.com/en/tracks>)
+- [ ] **Submitted** + confirmation saved
+- [ ] Keep committing real work through Nov 2026 (no backdating)
+
+_Last updated: 2026-07-10._
