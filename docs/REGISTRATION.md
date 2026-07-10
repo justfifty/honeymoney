@@ -10,7 +10,7 @@
 
 ## 0. Do this FIRST — the eligibility gate (a fail here = instant out)
 
-- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← confirm before registering.**
+- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Member 1 (PONG Woon Wei) is Singaporean, so this rests entirely on Member 2 (the friend): he must be a Malaysian MyKad holder and provide the number. Confirm before registering — no MyKad = ineligible.**
 - [ ] **One person = one team** (no cross-team participation).
 - [ ] **Track locked = T3** (Financial Services & Fintech). Commit, no hedging.
 - [ ] **Genuine commit history** — HoneyMoney already has real, non-backdated commits; keep committing through submission (never backdate). Repo: `github.com/justfifty/honeymoney`.
@@ -59,7 +59,7 @@ For **each** member (have IDs on hand):
 | LinkedIn / GitHub | optional but strengthens profiles |
 | Short bio | 2–3 sentences (template in §8) |
 
-**Team lead / primary contact:** __________ (name, email, phone)
+**Team lead / primary contact:** PONG Woon Wei — <justfifty1976@gmail.com> / +65 9067 4823
 
 ---
 
@@ -197,16 +197,41 @@ pilot / mentorship you want].
 
 ---
 
-## 8. Member profile template (repeat per member)
+## 8. Member profiles
+
+> ⚠️ **Eligibility:** Member 1 (PONG Woon Wei) is **Singaporean — not a Malaysian
+> citizen**, so he does **not** satisfy the T3 eligibility gate on his own. **Member 2
+> (the friend) MUST be a Malaysian citizen with a valid MyKad, and that MyKad number
+> must be provided.** If neither member holds a MyKad, the team is **ineligible** for T3
+> — resolve this before registering (see §0).
+
+### Member 1 — filled
+
+```
+Name:            PONG Woon Wei
+Role:            Tech Lead
+Nationality:     Singaporean   (Malaysian citizen: NO)
+IC/MyKad (MY):   n/a — not the Malaysian member
+Email / phone:   justfifty1976@gmail.com / +65 9067 4823
+LinkedIn/GitHub: https://github.com/justfifty/honeymoney
+Bio: Architect-trained and a buildingSMART Singapore–accredited Tier 2 Digital Tech
+     Lead. A self-taught developer with a strong enthusiasm for app building, he leads
+     HoneyMoney's product architecture and engineering — designing the local-first
+     knowledge-graph model and the multi-provider AI pipeline behind the app.
+```
+
+### Member 2 — the friend (REQUIRED Malaysian citizen — fill in)
 
 ```
 Name:            ____________________
-Role:            ____________________  (e.g. Tech Lead / Product / GTM)
-Nationality:     ____________________  (Malaysian citizen: YES / NO)
-IC/MyKad (MY):   ____________________  (for the Malaysian member)
+Role:            Engineering & Growth (community / content)
+Nationality:     Malaysian   (Malaysian citizen: YES)   ← required for T3
+IC/MyKad (MY):   ____________________   ← eligibility proof, must be provided
 Email / phone:   ____________________
 LinkedIn/GitHub: ____________________
-Bio (2–3 lines): ____________________________________________________
+Bio: An engineer and content creator who leads HoneyMoney's go-to-market and community
+     growth, pairing hands-on technical understanding with an audience-building instinct
+     to bring the app to Malaysian households. Malaysian citizen (MyKad holder).
 ```
 
 ---
