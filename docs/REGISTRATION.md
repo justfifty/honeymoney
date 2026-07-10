@@ -160,22 +160,37 @@ pilot / mentorship you want].
 
 ## 6. Mandatory documents to upload
 
-- [ ] **Pitch deck** (PDF) — slide-per-criterion (Technical / Commercial / Relevance / Scalability / ESG). *Status: draft in `docs/deck/`.*
-- [ ] **Project summary** (1–2 pages, PDF) — **§5 above is your draft**; export to PDF.
-- [ ] **AI disclosure statement** (PDF) — **ready at `docs/AI_DISCLOSURE.md`** (export to PDF). *Note: update the stack line to PocketBase/local-first + multi-provider AI to match the shipped build.*
+**All three required PDFs are generated and ready in `docs/deck/` — upload these files directly:**
+
+- [x] **Pitch deck** (PDF) — slide-per-criterion (Technical / Commercial / Relevance / Scalability / ESG), 12 slides. **→ `docs/deck/HoneyMoney_Pitch_Deck_MAIC2026.pdf`** (source: `PITCH_DECK.html`).
+- [x] **Project summary** (1 page, PDF) — problem / solution / credibility / market / impact / status / team. **→ `docs/deck/HoneyMoney_Project_Summary_MAIC2026.pdf`** (source: `PROJECT_SUMMARY.html`; text also in §5 above).
+- [x] **AI disclosure statement** (PDF) — stack matches the shipped build (PocketBase local-first + multi-provider AI). **→ `docs/deck/HoneyMoney_AI_Disclosure_MAIC2026.pdf`** (source: `AI_DISCLOSURE.html`; also `docs/AI_DISCLOSURE.md`).
+
+> Before upload, open each PDF once and confirm it renders. To regenerate after an edit, see `docs/deck/README.md` (headless Chrome/Edge one-liners).
 
 **Recommended (treat as required — top teams all submit):**
-- [ ] **Demo video (≤3 min)** — screenshot → parsed txn → Honey insight → dashboard. *Status: to record.*
+
+- [ ] **Demo video (≤3 min)** — screenshot → parsed txn → Honey insight → dashboard. *Status: to record; then replace the placeholder link in §7.*
 - [ ] **Artifact link** — live app + repo (see §7).
 - [ ] **Member profiles** (§8), Malaysian citizen flagged.
+
+**Still to fill in before submit (human input needed):**
+
+- [ ] Real team member names + roles (replace `[Name]`/`[Member N]` in the deck slide 11, the project summary PDF, and §3/§8).
+- [ ] **Malaysian citizen's MyKad number** — the eligibility proof (see §0). Do not submit without this confirmed.
 
 ---
 
 ## 7. Artifact links (paste into the form)
 
 - **Live app (primary artifact):** https://honeymoney.app
-- **Source repo:** https://github.com/justfifty/honeymoney *(private — grant judges access at submission, or make public temporarily; you retain all IP either way).*
-- **Demo video:** _[add URL once recorded]_
+- **Source repo:** https://github.com/justfifty/honeymoney *(currently **private** — a plain click gives a 404 until access is granted; you retain all IP either way).*
+- **Demo video:** https://example.com/honeymoney-demo-coming-soon *(placeholder, replace after upload)*
+
+**Granting repo access (the link is private):**
+
+- *Add a collaborator* (a teammate/judge with a GitHub username) — repo → **Settings → Collaborators → Add people**, or CLI: `gh repo add-collaborator justfifty/honeymoney <github-username>`.
+- *Or make public temporarily* — CLI: `gh repo edit justfifty/honeymoney --visibility public --accept-visibility-change-consequences` (revert with `--visibility private` after judging).
 
 > Tip: the live URL is served from a team machine — **keep that PC on/awake during the
 > judging windows**, or move to a small always-on VPS before Preliminary (Sep).

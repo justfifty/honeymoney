@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HoneyMoney Pitch Deck - MAIC Nexus 2026</title>
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+      background: #f3efe6;
+      color: #1d1d1d;
+    }
+    .slide {
+      width: 297mm;
+      height: 210mm;
+      padding: 18mm;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        radial-gradient(circle at 10% 15%, rgba(255, 193, 7, 0.28), transparent 35%),
+        radial-gradient(circle at 85% 80%, rgba(46, 204, 113, 0.20), transparent 40%),
+        linear-gradient(145deg, #fffdf7 0%, #f4f7f1 100%);
+    }
+    .slide:last-child { page-break-after: auto; }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12mm;
+    }
+    .badge {
+      font-size: 11pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #1f6f4a;
+      color: #ffffff;
+      display: inline-block;
+    }
+    h1 {
+      margin: 0;
+      font-size: 34pt;
+      line-height: 1.08;
+      color: #112317;
+      max-width: 70%;
+    }
+    h2 {
+      margin: 0;
+      font-size: 27pt;
+      line-height: 1.15;
+      color: #112317;
+    }
+    .subtitle {
+      margin-top: 8px;
+      font-size: 15pt;
+      color: #325844;
+      max-width: 80%;
+      line-height: 1.4;
+    }
+    .cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12mm;
+      margin-top: 8mm;
+      flex: 1;
+      align-content: start;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(30, 60, 44, 0.16);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+    .card h3 {
+      margin: 0 0 8px 0;
+      font-size: 15pt;
+      color: #123524;
+    }
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.42;
+      font-size: 13pt;
+    }
+    li { margin-bottom: 5px; }
+    .big-point {
+      font-size: 23pt;
+      line-height: 1.3;
+      font-weight: 700;
+      color: #153626;
+      max-width: 85%;
+    }
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8mm;
+      margin-top: 10mm;
+    }
+    .kpi .card { text-align: center; }
+    .kpi .num {
+      display: block;
+      font-size: 29pt;
+      font-weight: 800;
+      color: #1b6b45;
+      margin-bottom: 4px;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11pt;
+      color: #355948;
+      margin-top: 10mm;
+      border-top: 1px solid rgba(30, 60, 44, 0.2);
+      padding-top: 6mm;
+    }
+    .mono { font-family: Consolas, "Courier New", monospace; }
+    .criterion {
+      font-weight: 700;
+      color: #ffffff;
+      background: #2b8a57;
+      border-radius: 10px;
+      padding: 7px 10px;
+      font-size: 11pt;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <section class="slide">
+    <div class="top">
+      <div>
+        <div class="badge">MAIC Nexus 2026 | Track T3</div>
+        <h1>HoneyMoney</h1>
+        <p class="subtitle">A personal financial wellness app — AI-supported, no tracking fatigue. Funding transparency and spending autonomy for households and micro-businesses.</p>
+      </div>
+    </div>
+    <div class="big-point">We reduce financial stress by replacing surveillance budgeting with a graph-guided system couples can actually sustain.</div>
+    <div class="footer">
+      <span>Team HoneyMoney</span>
+      <span>Live: honeymoney.app</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Relevance</span>
+      <h2>The Problem We Solve</h2>
+      <p class="subtitle">Money is the #1 source of household conflict, and that stress follows people to work &mdash; an estimated ~9 lost productive days per employee per year.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>What fails today</h3>
+          <ul>
+            <li>Budget apps feel like partner surveillance.</li>
+            <li>Manual entry fatigue leads to abandonment.</li>
+            <li>Flat ledgers cannot forecast goal failure early.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Malaysia-specific gap</h3>
+          <ul>
+            <li>Multi e-wallet reality: TNG, MAE, GrabPay, ShopeePay.</li>
+            <li>Underbanked and mixed-income households need practical tools.</li>
+            <li>No incumbent owns the Malaysia + couples + cross e-wallet cell.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Category fit: AI for Financial Services & Fintech</span>
+      <span>Slide 2</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Technical</span>
+      <h2>Our Solution: The 3-Bucket Graph Method</h2>
+      <p class="subtitle">A living knowledge graph that converts scattered transactions into forward-looking household decisions.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>3 Buckets</h3>
+          <ul>
+            <li>Fixed Non-Negotiables (rent, bills, essentials)</li>
+            <li>Future Shield (automatic savings percentage)</li>
+            <li>Private wallets (autonomy zone, no surveillance)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Graph intelligence</h3>
+          <ul>
+            <li>Links income -> buckets -> spending -> goals.</li>
+            <li>Detects spending velocity risk before goal failure.</li>
+            <li>Delivers partner-safe nudges without exposing private wallet details.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Core user promise: transparency + autonomy</span>
+      <span>Slide 3</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Technical</span>
+      <h2>Product Experience</h2>
+      <p class="subtitle">Low-friction capture, explainable insights, and local-first privacy.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>Capture options</h3>
+          <ul>
+            <li>Forward e-wallet screenshots through Telegram bot.</li>
+            <li>On-device OCR and voice capture path.</li>
+            <li>No bank integration dependency to start.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>User-facing outputs</h3>
+          <ul>
+            <li>Dashboard + six-view graph gallery.</li>
+            <li>Time-schedule spending audit and projections.</li>
+            <li>Multi-language and multi-currency support.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>AI is assistive, optional, and cost-transparent</span>
+      <span>Slide 4</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Technical</span>
+      <h2>Architecture and AI Reliability</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Stack</h3>
+          <ul>
+            <li>Next.js 16 PWA frontend.</li>
+            <li>PocketBase local-first knowledge graph data layer.</li>
+            <li>Telegram bot ingestion + API services.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>AI strategy &amp; trust</h3>
+          <ul>
+            <li>Swappable providers: Gemini Flash, Groq, Ollama.</li>
+            <li>Per-call token and cost ledger for governance.</li>
+            <li>Local-first data stays on-device: a real PDPA privacy story.</li>
+            <li>Graph-path-consistency: an alternative reliability signal, a foundation for inclusive credit.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="card"><span class="num">3</span>Live personas on same engine</div>
+        <div class="card"><span class="num">0</span>Required core banking integrations</div>
+        <div class="card"><span class="num">1</span>Unified data model across household to SMB</div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Designed for resilient, low-cost operation</span>
+      <span>Slide 5</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Commercial</span>
+      <h2>Business Model</h2>
+      <p class="subtitle">Consumer growth loop + employer-sponsored monetization.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>Go-to-market</h3>
+          <ul>
+            <li>Free household tier with built-in family referral mechanics.</li>
+            <li>Community channels and advisor-led onboarding.</li>
+            <li>Positioning: less judgment, more financial calm.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Monetization</h3>
+          <ul>
+            <li>B2B2C employee financial wellness seats.</li>
+            <li>Employers sponsor access as wellbeing benefit.</li>
+            <li>Non-dilutive entry via Cradle CIP Spark.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="kpi">
+        <div class="card"><span class="num">~100%</span>Gross margin on a near-zero infra stack</div>
+        <div class="card"><span class="num">B2B2C</span>Employer-sponsored wellness seats</div>
+        <div class="card"><span class="num">Open</span>Malaysia + couples + cross e-wallet cell</div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Primary revenue lens: employer-sponsored wellness</span>
+      <span>Slide 6</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Scalability</span>
+      <h2>Why This Scales</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Product scalability</h3>
+          <ul>
+            <li>Single graph model powers household, family, and micro-business use cases.</li>
+            <li>Template-driven bucket setup reduces onboarding complexity.</li>
+            <li>PWA delivery lowers distribution and support friction.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Operational scalability</h3>
+          <ul>
+            <li>Local-first pattern limits centralized storage burden.</li>
+            <li>Multi-provider AI fallback avoids single-vendor lock-in.</li>
+            <li>Token ledger enables dynamic cost control per feature.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>From local pilot to regional replication</span>
+      <span>Slide 7</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">ESG</span>
+      <h2>Impact and Policy Alignment</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Direct impact</h3>
+          <ul>
+            <li>Improves household financial resilience and planning confidence.</li>
+            <li>Reduces money-driven conflict and stress spillover to work.</li>
+            <li>Supports underbanked users through non-bank-dependent capture.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Alignment</h3>
+          <ul>
+            <li>SDG 1: No Poverty.</li>
+            <li>SDG 3: Good Health and Wellbeing.</li>
+            <li>SDG 8: Decent Work and Economic Growth.</li>
+            <li>Supports BNM financial-inclusion agenda + Malaysia MADANI.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Impact is measurable at user, family, and employer levels</span>
+      <span>Slide 8</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <span class="criterion">Relevance + Traction</span>
+      <h2>Current Status</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>What is already live</h3>
+          <ul>
+            <li>Public app endpoint: honeymoney.app.</li>
+            <li>Dashboard, graph views, transaction flow, analytics surface.</li>
+            <li>Admin visibility for AI usage and costs.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Execution credibility</h3>
+          <ul>
+            <li>Genuine non-backdated commit history.</li>
+            <li>End-to-end working demo path from capture to insight.</li>
+            <li>Clear roadmap through semi-final and final windows.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Working product, not concept-only</span>
+      <span>Slide 9</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <h2>Demo Flow (for 3-minute video)</h2>
+      <p class="subtitle">This sequence matches judging priorities and can be recorded quickly.</p>
+      <div class="cols">
+        <div class="card">
+          <h3>Storyboard</h3>
+          <ul>
+            <li>Show e-wallet screenshot input.</li>
+            <li>Parse into transaction and bucket assignment.</li>
+            <li>Trigger Honey risk insight for shared goal.</li>
+            <li>Show dashboard and projection delta.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Upload metadata</h3>
+          <ul>
+            <li>Title: HoneyMoney MAIC Nexus T3 Demo.</li>
+            <li>Duration target: 2:15 to 2:50.</li>
+            <li>Include live URL and repo in video description.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Proposed placeholder link can be updated later</span>
+      <span>Slide 10</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <h2>Team and Ask</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Team</h3>
+          <ul>
+            <li>[Member 1], [Role]</li>
+            <li>[Member 2], [Role], Malaysian citizen (MyKad)</li>
+            <li>[Member 3], [Role]</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Ask from MAIC Nexus network</h3>
+          <ul>
+            <li>Pilot employers for employee wellness deployment.</li>
+            <li>Mentors in fintech partnerships and regulated go-to-market.</li>
+            <li>Visibility to impact-aligned ecosystem partners.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>Contact: team@honeymoney.app</span>
+      <span>Slide 11</span>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div>
+      <h2>Thank You</h2>
+      <p class="big-point">HoneyMoney helps families plan together without policing each other.</p>
+      <div class="kpi">
+        <div class="card"><span class="num">T3</span>AI for Fintech track fit</div>
+        <div class="card"><span class="num">Live</span>Working product online</div>
+        <div class="card"><span class="num">Ready</span>Submission materials packaged</div>
+      </div>
+    </div>
+    <div class="footer">
+      <span>honeymoney.app</span>
+      <span>Slide 12</span>
+    </div>
+  </section>
+
+</body>
+</html>

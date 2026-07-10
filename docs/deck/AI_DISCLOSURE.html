@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HoneyMoney — AI Disclosure Statement (MAIC Nexus 2026, Track T3)</title>
+  <style>
+    @page { size: A4 portrait; margin: 18mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+      color: #1d1d1d;
+      line-height: 1.5;
+      font-size: 10.5pt;
+    }
+    .head {
+      border-bottom: 3px solid #1f6f4a;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .badge {
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: #1f6f4a;
+      color: #fff;
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+    h1 { margin: 0; font-size: 19pt; color: #112317; }
+    .sub { margin: 4px 0 0; font-size: 10pt; color: #355948; }
+    h2 {
+      font-size: 12pt;
+      color: #123524;
+      margin: 15px 0 4px;
+      border-left: 4px solid #2b8a57;
+      padding-left: 8px;
+    }
+    p { margin: 4px 0 8px; }
+    ul { margin: 4px 0 8px; padding-left: 20px; }
+    li { margin-bottom: 4px; }
+    strong { color: #123524; }
+    .meta {
+      margin-top: 16px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(30,60,44,0.25);
+      font-size: 9.5pt;
+      color: #355948;
+    }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <span class="badge">MAIC Nexus 2026 &middot; Track T3</span>
+    <h1>AI Disclosure Statement &mdash; HoneyMoney</h1>
+    <p class="sub"><strong>Prepared by:</strong> Team HoneyMoney &middot; <strong>Last updated:</strong> 10 July 2026</p>
+  </div>
+
+  <p>HoneyMoney is an AI-native financial wellness platform for Malaysian households. We
+  believe transparency about <em>how</em> and <em>where</em> we use artificial intelligence is
+  a condition of trust &mdash; especially in a product that handles people's money. This
+  statement discloses, honestly and completely, the AI in our product, the AI we used to build
+  it, and the limitations and safeguards we have put in place. Where a claim is an estimate
+  rather than a measured fact, we say so.</p>
+
+  <h2>1. AI Inside the Product</h2>
+  <p><strong>What AI we use.</strong> HoneyMoney uses <strong>swappable AI providers</strong>
+  &mdash; Google <strong>Gemini Flash</strong>, <strong>Groq</strong>, and local
+  <strong>Ollama</strong> &mdash; selected per deployment, with a per-call token and cost
+  ledger for governance. A multimodal model performs two jobs:</p>
+  <ul>
+    <li><strong>OCR / data extraction.</strong> When a user forwards an e-wallet or receipt
+    screenshot (Touch 'n Go eWallet, Maybank MAE, GrabPay, ShopeePay, and paper receipts) to
+    our Telegram bot, the model reads the image and extracts structured fields: merchant,
+    amount, date, and a suggested category.</li>
+    <li><strong>Insight generation.</strong> Our AI persona, "Honey", turns a user's stored
+    transaction history into plain-language, proactive financial guidance.</li>
+  </ul>
+  <p><strong>What data the model processes.</strong> For extraction, the model receives the
+  forwarded image and returns structured text. For insights, it receives <em>derived,
+  minimized</em> financial data (aggregated figures and category summaries) needed to answer
+  the user's question &mdash; not a raw dump of a user's entire ledger. With the local Ollama
+  option, this processing can stay entirely on-device. We do not send images or data to the
+  model for advertising, model training, or any purpose beyond serving the user's request.</p>
+  <p><strong>Human-in-the-loop confirmation.</strong> HoneyMoney never silently records what
+  the AI reads. Every parsed transaction is shown back to the user for <strong>explicit
+  confirmation</strong> before it is written to their ledger. Users can correct the merchant,
+  amount, category, or bucket. The AI proposes; the human decides.</p>
+  <p><strong>The 3-Bucket model is rules-based, not AI-decided.</strong> Allocation of money
+  across Fixed Non-Negotiables, the Future Shield auto-savings bucket, and private personal
+  wallets follows user-configured rules. AI helps users <em>understand</em> their money; it
+  does not autonomously move or lock funds.</p>
+
+  <h2>2. Privacy and PDPA Handling</h2>
+  <ul>
+    <li><strong>Raw images are discarded.</strong> After extraction and user confirmation, the
+    original forwarded screenshot is not retained. We keep the structured transaction record,
+    not the picture of the receipt.</li>
+    <li><strong>Data minimization.</strong> We store the minimum needed to run the service
+    &mdash; nodes, edges, and transactions in our <strong>local-first PocketBase knowledge
+    graph</strong> &mdash; and send the model only what a given task requires.</li>
+    <li><strong>Local-first storage.</strong> Data lives on the user's/team's own machine
+    rather than a central cloud database, which is both a privacy safeguard and a genuine PDPA
+    story.</li>
+    <li><strong>Marital-safe by design.</strong> Private personal wallets are private. Honey is
+    explicitly constrained never to expose one partner's private-wallet detail to the other.</li>
+    <li><strong>PDPA alignment.</strong> We operate consistent with Malaysia's Personal Data
+    Protection Act 2010: users consent to processing, data is used only for the stated purpose,
+    and users can request correction or deletion of their records.</li>
+  </ul>
+
+  <h2>3. AI Used to Build HoneyMoney</h2>
+  <p>We used AI coding assistants (Anthropic's <strong>Claude</strong> and <strong>Claude
+  Code</strong>) during development for scaffolding, boilerplate, refactoring, and drafting
+  code across our stack. This accelerated delivery, but <strong>every AI-assisted contribution
+  was reviewed, tested, and accepted by a human engineer</strong> before it entered the product
+  (stack: Next.js 16 PWA, local-first PocketBase, Telegram Bot API, and multi-provider AI).
+  Architecture decisions, security-sensitive logic, and financial rules were designed and
+  verified by our team. AI was a tool in the workshop, not the author of record.</p>
+
+  <h2>4. Limitations and Safeguards</h2>
+  <p>We want judges and users to understand what our AI <em>cannot</em> guarantee:</p>
+  <ul>
+    <li><strong>OCR is not 100% accurate.</strong> Model extraction can misread amounts,
+    merchants, or dates &mdash; particularly on low-quality images or unfamiliar receipt
+    formats. This is precisely why mandatory human confirmation exists: no unverified figure
+    enters a user's ledger.</li>
+    <li><strong>No automated, binding financial advice.</strong> Honey offers general guidance
+    and behavioural nudges for financial wellness. It does <strong>not</strong> provide licensed
+    financial, investment, tax, or legal advice, and it does not execute transactions on a
+    user's behalf. Guidance is framed as suggestion, not instruction.</li>
+    <li><strong>AI can be wrong or incomplete.</strong> Generated insights may occasionally be
+    generic or mistaken. Users remain in control of all decisions about their money.</li>
+    <li><strong>Data minimization as a standing safeguard.</strong> Limiting what we collect and
+    what we send to the model reduces both privacy risk and the blast radius of any error.</li>
+  </ul>
+
+  <h2>5. Our Commitment</h2>
+  <p>If any statement here becomes inaccurate as the product evolves, we will update this
+  disclosure. We would rather understate our capabilities and be believed than overstate them
+  and mislead. Candor is not just a competition requirement for us &mdash; it is the only way to
+  earn the trust required to help families manage their money.</p>
+
+  <div class="meta">HoneyMoney &middot; MAIC Nexus Challenge 2026 (Track T3) &middot; honeymoney.app</div>
+</body>
+</html>
