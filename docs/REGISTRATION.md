@@ -242,12 +242,11 @@ Nationality:     Singaporean   (Malaysian citizen: NO)
 IC/MyKad (MY):   n/a — not the Malaysian member
 Email / phone:   justfifty1976@gmail.com / +65 9067 4823
 LinkedIn/GitHub: https://github.com/justfifty/honeymoney
-Bio: Architect-trained and a buildingSMART Singapore–accredited Tier 2 Digital Tech
-     Lead. A self-taught developer with a strong enthusiasm for app building, he leads
-     HoneyMoney's product architecture and engineering — designing the local-first
-     knowledge-graph model and the multi-provider AI pipeline behind the app. As a
-     Singaporean, he is also forging an internationalisation angle to explore
-     Singapore and other foreign markets.
+Bio: Architect-trained and buildingSMART Singapore–accredited Tier 2 Digital Tech
+     Lead, he is a self-taught developer passionate about app building. He leads
+     HoneyMoney's product architecture and engineering, designing its local-first
+     knowledge-graph model and multi-provider AI pipeline, while shaping its
+     internationalisation strategy across Singapore and other markets.
 ```
 
 ---
