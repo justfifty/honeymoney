@@ -222,7 +222,7 @@ pilot / mentorship you want].
 
 ```
 Name:            Chua Kia Wah
-Role:            Co-founder & Business Lead
+Role:            Business Lead
 Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
 IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
 Email / phone:   justfifty1976@gmail.com / +60 17-477 7266
@@ -237,7 +237,7 @@ Bio: Chua Kia Wah — HoneyMoney's business lead: an entrepreneur and business o
 
 ```
 Name:            PONG Woon Wei
-Role:            Co-founder & Tech Lead
+Role:            Tech Lead
 Nationality:     Singaporean   (Malaysian citizen: NO)
 IC/MyKad (MY):   n/a — not the Malaysian member
 Email / phone:   justfifty1976@gmail.com / +65 9067 4823
