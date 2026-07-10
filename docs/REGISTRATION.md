@@ -204,6 +204,10 @@ pilot / mentorship you want].
 > (the eligibility proof) — plus his email/phone — which must be filled in before final
 > submit. A LinkedIn profile is not proof on its own; the form needs the MyKad number.
 > Member 2 (PONG Woon Wei) is Singaporean and joins in a personal capacity.
+>
+> **Note — shared email:** both members currently use `justfifty1976@gmail.com`. If the
+> portal requires a **unique email per member** (many do), give Chua his own address
+> before submitting to avoid a validation error or an "account already exists" clash.
 
 ### Member 1 — Chua Kia Wah (Malaysian citizen — satisfies the T3 gate)
 
@@ -212,7 +216,7 @@ Name:            Chua Kia Wah
 Role:            Business Lead
 Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
 IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
-Email / phone:   ____________________   ← still needed
+Email / phone:   justfifty1976@gmail.com / +60 17-477 7266
 LinkedIn:        https://www.linkedin.com/in/kia-wah-chua-72946935/
 Bio: Chua Kia Wah — HoneyMoney's business lead: an entrepreneur and business owner who
      also builds an audience as a content creator/influencer. He drives go-to-market,
