@@ -10,7 +10,7 @@
 
 ## 0. Do this FIRST — the eligibility gate (a fail here = instant out)
 
-- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Member 1 (PONG Woon Wei) is Singaporean; the gate is satisfied by Member 2 (Chua Kia Wah, Malaysian). Still needed: his MyKad number as proof — provide it before final submit.**
+- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Satisfied by Member 1 (Chua Kia Wah, Malaysian, Business Lead). Member 2 (PONG Woon Wei) is Singaporean. Still needed: Chua's MyKad number as proof — provide it before final submit.**
 - [ ] **One person = one team** (no cross-team participation).
 - [ ] **Track locked = T3** (Financial Services & Fintech). Commit, no hedging.
 - [ ] **Genuine commit history** — HoneyMoney already has real, non-backdated commits; keep committing through submission (never backdate). Repo: `github.com/justfifty/honeymoney`.
@@ -199,13 +199,28 @@ pilot / mentorship you want].
 
 ## 8. Member profiles
 
-> ⚠️ **Eligibility:** Member 1 (PONG Woon Wei) is **Singaporean**, so the T3
-> Malaysian-citizen gate is met by **Member 2, Chua Kia Wah (Malaysian)**. The one
-> outstanding item is his **MyKad number** (the eligibility proof) — plus his email/phone
-> — which must be filled in before final submit. A LinkedIn profile is not proof on its
-> own; the form needs the MyKad number.
+> ⚠️ **Eligibility:** Member 1 (Chua Kia Wah) is **Malaysian**, so the T3
+> Malaysian-citizen gate is satisfied. The one outstanding item is his **MyKad number**
+> (the eligibility proof) — plus his email/phone — which must be filled in before final
+> submit. A LinkedIn profile is not proof on its own; the form needs the MyKad number.
+> Member 2 (PONG Woon Wei) is Singaporean and joins in a personal capacity.
 
-### Member 1 — filled
+### Member 1 — Chua Kia Wah (Malaysian citizen — satisfies the T3 gate)
+
+```
+Name:            Chua Kia Wah
+Role:            Business Lead
+Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
+IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
+Email / phone:   ____________________   ← still needed
+LinkedIn:        https://www.linkedin.com/in/kia-wah-chua-72946935/
+Bio: Chua Kia Wah — HoneyMoney's business lead, driving go-to-market, partnerships, and
+     community growth. An engineer by training with an audience-building instinct, he
+     brings the app to Malaysian households and shapes the employer-sponsored wellness
+     model. Malaysian citizen (MyKad holder).
+```
+
+### Member 2 — PONG Woon Wei (Tech Lead)
 
 ```
 Name:            PONG Woon Wei
@@ -218,21 +233,6 @@ Bio: Architect-trained and a buildingSMART Singapore–accredited Tier 2 Digital
      Lead. A self-taught developer with a strong enthusiasm for app building, he leads
      HoneyMoney's product architecture and engineering — designing the local-first
      knowledge-graph model and the multi-provider AI pipeline behind the app.
-```
-
-### Member 2 — Chua Kia Wah (the REQUIRED Malaysian citizen)
-
-```
-Name:            Chua Kia Wah
-Role:            Engineering & Growth (community / content)
-Nationality:     Malaysian   (Malaysian citizen: YES)   ← satisfies the T3 gate
-IC/MyKad (MY):   ____________________   ← STILL NEEDED: eligibility proof, must be provided
-Email / phone:   ____________________   ← still needed
-LinkedIn:        https://www.linkedin.com/in/kia-wah-chua-72946935/
-Bio: Chua Kia Wah — an engineer and content creator who leads HoneyMoney's go-to-market
-     and community growth, pairing hands-on technical understanding with an
-     audience-building instinct to bring the app to Malaysian households. Malaysian
-     citizen (MyKad holder).
 ```
 
 ---
