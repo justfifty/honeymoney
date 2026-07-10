@@ -246,8 +246,8 @@ Bio: Architect-trained and a buildingSMART Singapore–accredited Tier 2 Digital
      Lead. A self-taught developer with a strong enthusiasm for app building, he leads
      HoneyMoney's product architecture and engineering — designing the local-first
      knowledge-graph model and the multi-provider AI pipeline behind the app. As a
-     Singaporean, he also brings an internationalisation angle — a potential path to
-     expand HoneyMoney into Singapore and other foreign markets.
+     Singaporean, he is also forging an internationalisation angle to explore
+     Singapore and other foreign markets.
 ```
 
 ---
