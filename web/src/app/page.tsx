@@ -9,8 +9,8 @@ export default function Home() {
       <h1 className="max-w-2xl text-4xl font-bold tracking-tight sm:text-5xl">
         🍯 HoneyMoney
       </h1>
-      <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-        A personal financial wellness app, AI-supported, with no tracking fatigue.
+      <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400 sm:max-w-none sm:whitespace-nowrap">
+        A personal financial wellness app, AI-supported, no tracking fatigue.
       </p>
       <p className="mt-3 max-w-xl text-xl font-semibold text-amber-700 dark:text-amber-300">
         Happy Wife, Happy Life.

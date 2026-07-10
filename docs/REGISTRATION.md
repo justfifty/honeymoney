@@ -77,7 +77,7 @@ For **each** member (have IDs on hand):
 **Project name:** HoneyMoney
 
 **One-liner / tagline:**
-> A personal financial wellness app, AI-supported, with no tracking fatigue.
+> A personal financial wellness app, AI-supported, no tracking fatigue.
 
 **Elevator pitch (2–3 sentences):**
 > HoneyMoney turns a household's money into a living knowledge graph — an AI-supported
