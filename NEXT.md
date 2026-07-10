@@ -25,6 +25,23 @@ See `DEPLOY.md` + `deploy/` (start/stop scripts, logon auto-start task, `secrets
 
 ---
 
+## ✅ Shipped — 2026-07-10 (evening) — MAIC submission pack ready
+
+All three **mandatory** documents are generated as upload-ready PDFs in `docs/deck/`,
+plus recommended extras. Registration guide + team profiles filled — **one blank left:
+Chua's 12-digit MyKad number.**
+
+- [x] **Pitch deck** — `docs/deck/HoneyMoney_Pitch_Deck_MAIC2026.pdf` (12 slides, one per criterion; plain-English rewrite; source `PITCH_DECK.html`).
+- [x] **Project summary** — `docs/deck/HoneyMoney_Project_Summary_MAIC2026.pdf` (source `PROJECT_SUMMARY.html`).
+- [x] **AI disclosure** — `docs/deck/HoneyMoney_AI_Disclosure_MAIC2026.pdf` (stack corrected to PocketBase local-first + multi-provider AI).
+- [x] **Demo video** — `docs/deck/HoneyMoney_Demo_MAIC2026.mp4` (35s auto-generated explainer from real app screenshots) + `docs/deck/DEMO_SCRIPT.md` (full 3-min shot list).
+- [x] **Knowledge-graph gallery** — `docs/deck/graph_gallery/` (14 screenshots: 6 views · People/Vendor/Category lenses · 3 personas) + README mapping each to the rubric.
+- [x] **Registration guide** — `docs/REGISTRATION.md`, verified against the live MAIC portal (6-step flow; team 1–5; **team leader need not be Malaysian**; no slide cap; deck+summary+AI-disclosure mandatory).
+- [x] **Team profiles** — Chua Kia Wah (Team Leader / Business Lead, **Malaysian, MyKad**) + Pong Woon Wei (Tech Lead, SG). ⬜ Chua's MyKad number is the only outstanding field.
+- [x] **Shareable learn page** (Artifact) — 2-min walkthrough with the demo video embedded (for sending to teammates/judges).
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:
@@ -43,9 +60,9 @@ Every submission is scored 1–10 by three independent judges on five weighted c
 
 ## 1. Disqualifiers — check these FIRST (a fail here = instant out)
 
-- [ ] **Malaysian citizen on team.** ≥1 member must be a MyKad holder. PRs / international students do **not** count. **Confirm today.**
-- [~] **Real commit history.** Strong local history (15+ real commits over ≥2 days) — but it's **local only until pushed**. `git push` to `justfifty/honeymoney` to make it count. Never backdate.
-- [x] **AI disclosure.** Drafted — `docs/AI_DISCLOSURE.md`. Keep honest: Gemini is *optional*; on-device OCR (tesseract.js) + voice (browser) use no tokens; coding is AI-assisted.
+- [~] **Malaysian citizen on team.** Member = **Chua Kia Wah** (Malaysian, MyKad); satisfies the gate. ⬜ Only his **12-digit MyKad number** is still needed (enter on the portal). Pong is Singaporean — fine, team leader need not be Malaysian.
+- [x] **Real commit history.** Pushed to `justfifty/honeymoney` and committing daily (real, non-backdated). Never backdate.
+- [x] **AI disclosure.** Ready — `docs/AI_DISCLOSURE.md` + PDF. Honest: AI is *optional* & multi-provider; on-device OCR (tesseract.js) + voice (browser) use no tokens; coding is AI-assisted.
 - [ ] **Track locked at submission.** Commit to T3, no hedging.
 - [ ] **One person = one team.** No cross-team participation.
 
@@ -67,14 +84,14 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 ## 3. Deliverables checklist (mapped to rubric dimension)
 
 ### Mandatory submission set
-- [ ] **Pitch deck** (`docs/deck/`) — slide-by-slide mapped to the 5 criteria (outline in `PLAN.md §9`). `[1][2][3][4][5]`
-- [ ] **Project summary** (1–2 pages) — problem, solution, traction, ask. `[2][3]`
-- [ ] **AI disclosure statement** (`docs/AI_DISCLOSURE.md`). *mandatory*
+- [x] **Pitch deck** (PDF) — `docs/deck/HoneyMoney_Pitch_Deck_MAIC2026.pdf`, one slide per criterion, plain-English. `[1][2][3][4][5]`
+- [x] **Project summary** (PDF) — `docs/deck/HoneyMoney_Project_Summary_MAIC2026.pdf`. `[2][3]`
+- [x] **AI disclosure statement** (PDF) — `docs/deck/HoneyMoney_AI_Disclosure_MAIC2026.pdf` (+ `docs/AI_DISCLOSURE.md`). *mandatory*
 
 ### Recommended (treat as required — top 100 all submit these)
-- [ ] **Demo video** (≤3 min) — Telegram screenshot → parsed txn → Honey insight → dashboard. `[1]`
-- [ ] **Artifact link** — this GitHub repo, live Vercel URL. `[1][4]`
-- [ ] **Member profiles** — roles, the Malaysian citizen flagged. *eligibility*
+- [x] **Demo video** — `docs/deck/HoneyMoney_Demo_MAIC2026.mp4` (35s auto explainer; full 3-min shot list in `DEMO_SCRIPT.md`). `[1]`
+- [x] **Artifact link** — GitHub repo `justfifty/honeymoney` + live URL honeymoney.app. `[1][4]`
+- [~] **Member profiles** — filled in `docs/REGISTRATION.md §8`, Chua flagged Malaysian. ⬜ MyKad number pending. *eligibility*
 
 ### Traction (highest ROI for Commercial score)
 - [ ] **≥1 signed corporate LOI** — Malaysian SME/HR agrees to pilot as an employee wellness benefit. Template in `docs/LOI_TEMPLATE.md`. `[2]`
@@ -173,12 +190,13 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 ---
 
 ## 7. This week (do now)
-1. [ ] **`git push`** — 15+ commits are local only; push to `justfifty/honeymoney` (`gh auth login` as justfifty first). *This also makes the commit-history disqualifier count.* **← top blocker.**
-2. [ ] Confirm Malaysian-citizen team member. *(eligibility blocker)*
-3. [ ] **First cut deploy** — Fly PocketBase (via `pocketbase/Dockerfile`) + Vercel (root `web/`) → free `.vercel.app` URL. Build is already verified green. Buy a domain after.
-4. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot. *(App runs fine without it — on-device capture already works token-free.)*
-5. [ ] Draft the LOI + send to first 3 HR contacts.
-6. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
-7. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
+1. [x] **`git push`** — done; committing daily to `justfifty/honeymoney` (real, non-backdated history). ✅
+2. [~] Malaysian-citizen member = **Chua Kia Wah** (confirmed). ⬜ Still need his **MyKad number** on the portal. *(last eligibility field)*
+3. [ ] **Register on the MAIC portal** — the full submission pack (deck/summary/AI-disclosure PDFs + video + repo + profiles) is ready; see `docs/REGISTRATION.md`. Enter Chua's MyKad + IDs directly on the form.
+4. [ ] **First cut deploy** — Fly PocketBase (via `pocketbase/Dockerfile`) + Vercel (root `web/`) → free `.vercel.app` URL. Build is already verified green. Buy a domain after.
+5. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot. *(App runs fine without it — on-device capture already works token-free.)*
+6. [ ] Draft the LOI + send to first 3 HR contacts.
+7. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
+8. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
 
 _Last updated: 2026-07-10_

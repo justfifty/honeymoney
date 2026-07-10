@@ -394,6 +394,25 @@ Rubric weights: Technical Feasibility 25 · Commercial Viability 25 · Industry 
 11. National impact: financial inclusion, SDG 1/3/8, MADANI. `[ESG]`
 12. Team (Malaysian citizen flagged), roadmap, ask.
 
+### Submission pack — built 2026-07-10 (upload-ready in `docs/deck/`)
+
+The mandatory + recommended materials are generated and pushed. Registration is the
+next real-world action (see `NEXT.md`). Portal facts verified live: application is a
+6-step flow (Eligibility → Team → Industry → Materials → AI Disclosure → Review), team
+size 1–5, **team leader need not be Malaysian**, and **no maximum slide count**.
+
+| Item | File | Status |
+| --- | --- | --- |
+| Pitch deck (PDF, mandatory) | `docs/deck/HoneyMoney_Pitch_Deck_MAIC2026.pdf` | ✅ 12 slides, plain-English, 1/criterion |
+| Project summary (PDF, mandatory) | `docs/deck/HoneyMoney_Project_Summary_MAIC2026.pdf` | ✅ |
+| AI disclosure (PDF, mandatory) | `docs/deck/HoneyMoney_AI_Disclosure_MAIC2026.pdf` | ✅ stack = PocketBase + multi-provider AI |
+| Demo video | `docs/deck/HoneyMoney_Demo_MAIC2026.mp4` (+ `DEMO_SCRIPT.md`) | ✅ 35s explainer; 3-min shot list |
+| Graph gallery | `docs/deck/graph_gallery/` | ✅ 14 shots (6 views · lenses · 3 personas) + README |
+| Registration guide + profiles | `docs/REGISTRATION.md` | ✅ team filled — ⬜ **Chua's MyKad number** is the only blank |
+| Shareable learn page | Artifact (video embedded) | ✅ for teammates/judges |
+
+**Team:** Chua Kia Wah — Team Leader / Business Lead (Malaysian, MyKad) · Pong Woon Wei — Tech Lead (SG, internationalisation).
+
 ---
 
 ## 15. Live deployment, accounts, analytics & multi-provider AI (2026-07-10)
