@@ -10,7 +10,7 @@ export default function Home() {
         🍯 HoneyMoney
       </h1>
       <p className="mt-4 max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-        A live household financial wellness app, AI-supported, with no tracking fatigue.
+        A personal financial wellness app, AI-supported, with no tracking fatigue.
       </p>
       <p className="mt-3 max-w-xl text-xl font-semibold text-amber-700 dark:text-amber-300">
         Happy Wife, Happy Life.

@@ -1,8 +1,14 @@
 @import "tailwindcss";
 
+/* Force a light theme app-wide: white background, near-black text, amber accents.
+   Dark-mode utilities are switched to class-based (and the `.dark` class is never
+   added), so the visitor's OS dark setting can't flip the palette. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #111111;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -10,13 +16,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
