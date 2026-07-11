@@ -5,6 +5,7 @@ import { t } from "@/lib/i18n";
 import LanguageSwitcher from "./graph/LanguageSwitcher";
 import HeaderNav from "./HeaderNav";
 import LogoutButton from "./admin/LogoutButton";
+import Logo from "./Logo";
 
 const NAV = [
   { href: "/dashboard", key: "nav.dashboard" },
@@ -23,8 +24,9 @@ export default async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/80 backdrop-blur dark:border-zinc-800/70 dark:bg-black/60">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
-        <Link href="/" className="flex items-center gap-1.5 text-base font-semibold tracking-tight">
-          <span aria-hidden>🍯</span> HoneyMoney
+        <Link href="/" className="flex items-center gap-2 text-base font-bold tracking-tight">
+          <Logo size={26} />
+          <span className="font-display">Honey<span className="brand-gradient">Money</span></span>
         </Link>
 
         <HeaderNav items={navItems} />

@@ -6,6 +6,8 @@ import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
 import AddTransaction from "./AddTransaction";
+import PrivacyToggle from "./PrivacyToggle";
+import Logo from "../Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -60,15 +62,18 @@ export default async function Dashboard() {
       <main className="mx-auto min-h-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">🍯 {tr("dash.title")}</h1>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Logo size={24} /> {tr("dash.title")}</h1>
             <p className="text-sm text-zinc-500">{tr("dash.subtitle")}</p>
           </div>
-          <nav className="flex gap-4 text-sm">
-            <Link href="/records" className="text-amber-600 hover:underline">🧾 {tr("nav.records")}</Link>
-            <Link href="/graph" className="text-amber-600 hover:underline">🕸️ {tr("nav.graph")}</Link>
-            <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
-            <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
-          </nav>
+          <div className="flex flex-col items-end gap-2">
+            <PrivacyToggle hideLabel={tr("dash.privacy.hide")} showLabel={tr("dash.privacy.show")} />
+            <nav className="flex gap-4 text-sm">
+              <Link href="/records" className="text-amber-600 hover:underline">🧾 {tr("nav.records")}</Link>
+              <Link href="/graph" className="text-amber-600 hover:underline">🕸️ {tr("nav.graph")}</Link>
+              <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
+              <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
+            </nav>
+          </div>
         </header>
 
         {/* Honey insight */}
@@ -98,6 +103,15 @@ export default async function Dashboard() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
             {tr("dash.buckets")}
           </h2>
+          {projection.length === 0 && (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-6 text-center">
+              <p className="font-medium text-amber-900">{tr("dash.bucketsEmpty.title")}</p>
+              <p className="mx-auto mt-1 max-w-md text-sm text-amber-800/80">{tr("dash.bucketsEmpty.body")}</p>
+              <Link href="/graph" className="mt-4 inline-block rounded-full bg-amber-500 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-600">
+                🕸️ {tr("dash.bucketsEmpty.cta")}
+              </Link>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             {projection.map((b) => {
               const style = STATUS_STYLE[b.status] ?? STATUS_STYLE.unfunded;
@@ -123,8 +137,8 @@ export default async function Dashboard() {
                     />
                   </div>
                   <div className="mt-2 flex justify-between text-xs text-zinc-500">
-                    <span>{tr("dash.proj")} {rm(b.projected_spend)}</span>
-                    <span>{tr("dash.of")} {rm(b.allocated)}</span>
+                    <span>{tr("dash.proj")} <span className="hm-money">{rm(b.projected_spend)}</span></span>
+                    <span>{tr("dash.of")} <span className="hm-money">{rm(b.allocated)}</span></span>
                   </div>
                 </div>
               );
@@ -170,7 +184,7 @@ export default async function Dashboard() {
                       {t.source}
                     </span>
                   )}
-                  <span className="font-medium">{rm(t.amount)}</span>
+                  <span className="hm-money font-medium">{rm(t.amount)}</span>
                 </div>
               </div>
             ))}
@@ -193,7 +207,7 @@ function Stat({ label, value, good }: { label: string; value: string; good?: boo
     <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="text-xs text-zinc-500">{label}</div>
       <div
-        className={`mt-1 text-lg font-semibold ${good === false ? "text-rose-600 dark:text-rose-400" : ""}`}
+        className={`hm-money mt-1 text-lg font-semibold ${good === false ? "text-rose-600 dark:text-rose-400" : ""}`}
       >
         {value}
       </div>

@@ -7,8 +7,18 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #111111;
+  --foreground: #14231a;
   color-scheme: light;
+
+  /* HoneyMoney corporate palette — single source of truth.
+     Honey = warmth/brand, Green = financial trust, Ink = text. */
+  --brand-honey: #e8a012;
+  --brand-honey-light: #f5b733;
+  --brand-honey-dark: #b4740a;
+  --brand-green: #1f6f4a;
+  --brand-green-deep: #123524;
+  --brand-ink: #14231a;
+  --brand-surface: #fbf9f4;
 }
 
 @theme inline {
@@ -18,8 +28,84 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Corporate colour, applied app-wide: remap Tailwind's `amber` ramp to the
+   HoneyMoney honey gold and `emerald` to the brand trust-green. Every existing
+   amber-*/emerald-* utility now renders on-brand with no per-component edits.
+   Light shades stay light (backgrounds), dark shades stay dark (text) so status
+   badges (text-*-800 on bg-*-100) keep their contrast. */
+@theme {
+  --color-amber-50: #fdf6e9;
+  --color-amber-100: #fbe9c2;
+  --color-amber-200: #f6d488;
+  --color-amber-300: #f0bd4e;
+  --color-amber-400: #eaa826;
+  --color-amber-500: #e8a012;
+  --color-amber-600: #c8850e;
+  --color-amber-700: #a06a0c;
+  --color-amber-800: #7f540e;
+  --color-amber-900: #6a460f;
+  --color-amber-950: #3d2708;
+
+  --color-emerald-50: #eef7f1;
+  --color-emerald-100: #d3ebdc;
+  --color-emerald-200: #a7d6ba;
+  --color-emerald-300: #6fbb91;
+  --color-emerald-400: #3f9d6c;
+  --color-emerald-500: #248a54;
+  --color-emerald-600: #1f6f4a;
+  --color-emerald-700: #1a5a3d;
+  --color-emerald-800: #164733;
+  --color-emerald-900: #123524;
+  --color-emerald-950: #0a1f15;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* Headings + wordmark use the display font for a designed, on-brand feel. */
+h1, h2, h3, .font-display {
+  font-family: var(--font-display), var(--font-geist-sans), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Brand honey gradient text — for the wordmark accent. */
+.brand-gradient {
+  background: linear-gradient(120deg, var(--brand-honey-light) 0%, var(--brand-honey-dark) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Subtle, tasteful entrance motion (respects reduced-motion). */
+@keyframes hm-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+.hm-animate { animation: hm-fade-up 0.7s cubic-bezier(0.22, 0.7, 0.2, 1) both; }
+.hm-delay-1 { animation-delay: 0.08s; }
+.hm-delay-2 { animation-delay: 0.16s; }
+.hm-delay-3 { animation-delay: 0.24s; }
+.hm-delay-4 { animation-delay: 0.32s; }
+
+/* Card hover lift for interactive surfaces. */
+.hm-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.hm-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -12px rgba(20, 35, 26, 0.25); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-animate { animation: none; }
+  .hm-lift:hover { transform: none; }
+}
+
+/* Privacy: one-tap "hide balances" for use in public. When the root carries
+   data-hide-balances="true", every money value (.hm-money) is blurred until
+   toggled back. Respects prefers-reduced-motion by keeping the transition short. */
+.hm-money {
+  transition: filter 0.15s ease;
+}
+:root[data-hide-balances="true"] .hm-money {
+  filter: blur(7px);
+  user-select: none;
 }

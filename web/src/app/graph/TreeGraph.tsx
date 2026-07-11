@@ -36,8 +36,8 @@ interface TNode {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  on_track: "#3E9C5C",
-  at_risk: "#E0A312",
+  on_track: "#248A54",
+  at_risk: "#E8A012",
   over_budget: "#C94F4F",
   unfunded: "#9AA0A6",
 };

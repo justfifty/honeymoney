@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
+import Logo from "../Logo";
 
 export const metadata = {
   title: "HoneyMoney — Guide, Disclaimer & Privacy",
@@ -16,7 +17,7 @@ export default async function GuidePage() {
   return (
     <main className="mx-auto min-h-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">🍯 {tr("guide.title")}</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Logo size={24} /> {tr("guide.title")}</h1>
         <nav className="flex gap-4 text-sm">
           <Link href="/graph" className="text-amber-600 hover:underline">🕸️ {tr("nav.graph")}</Link>
           <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")}</Link>

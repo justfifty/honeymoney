@@ -26,11 +26,11 @@ const ROW_GAP = 66;
 const TOP = 70;
 
 const REL_STYLE: Record<string, { stroke: string; dash?: string }> = {
-  ALLOCATES_FIXED: { stroke: "#E09112" },
-  ALLOCATES_PCT: { stroke: "#E09112", dash: "6 3" },
-  FUNDS: { stroke: "#E09112" },
+  ALLOCATES_FIXED: { stroke: "#E8A012" },
+  ALLOCATES_PCT: { stroke: "#E8A012", dash: "6 3" },
+  FUNDS: { stroke: "#E8A012" },
   SPENT_AT: { stroke: "#C94F4F" },
-  CONTRIBUTES_TO: { stroke: "#3E9C5C", dash: "4 4" },
+  CONTRIBUTES_TO: { stroke: "#248A54", dash: "4 4" },
   OWES: { stroke: "#8A7A5E", dash: "2 4" },
 };
 
@@ -391,17 +391,17 @@ export default async function GraphPage({
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
         {(mode === "treemap" || mode === "tree" || mode === "bars") && (
           <>
-            <LegendDot color="#3E9C5C" label={tr("status.on_track")} />
-            <LegendDot color="#E0A312" label={tr("status.at_risk")} />
+            <LegendDot color="#248A54" label={tr("status.on_track")} />
+            <LegendDot color="#E8A012" label={tr("status.at_risk")} />
             <LegendDot color="#C94F4F" label={tr("status.over_budget")} />
             <LegendDot color="#9AA0A6" label={tr("status.unfunded")} />
           </>
         )}
         {(mode === "sankey" || mode === "flow" || mode === "organic") && (
           <>
-            <LegendDot color="#E09112" label={tr("g.legend.allocation")} />
+            <LegendDot color="#E8A012" label={tr("g.legend.allocation")} />
             <LegendDot color="#C94F4F" label={tr("g.legend.spending")} />
-            <LegendDot color="#3E9C5C" label={tr("g.legend.savedGoal")} />
+            <LegendDot color="#248A54" label={tr("g.legend.savedGoal")} />
           </>
         )}
         {mode === "organic" && <LegendDot color="#5B7DB1" label={tr("g.legend.bucket")} />}

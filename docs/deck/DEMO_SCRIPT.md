@@ -13,10 +13,14 @@ insight → dashboard — while touching each judging criterion.
 
 ## Shot list
 
+> **Hook rule (see the `/demo-video` skill):** land the pain in the first sentence,
+> show a concrete visual within 5s, no logo animation up front. Word budget ≈ 150 wpm
+> → keep total narration under ~430 words.
+
 | Time | On screen | Voiceover | Caption |
 | --- | --- | --- | --- |
-| **0:00–0:12** | Cold open: a couple looking stressed at a phone / a messy bank-app screen (stock or simple title card). Fade to HoneyMoney logo. | "In Malaysian households, money is the number-one source of conflict — and that stress follows people to work. Budgeting apps make it worse: they feel like surveillance, and people quit." | *Money = #1 household conflict* |
-| **0:12–0:25** | HoneyMoney home at **honeymoney.app**. | "HoneyMoney is a personal financial-wellness app that gives couples funding transparency and spending autonomy — without tracking fatigue. Here's the whole loop, live." | *honeymoney.app — live product* |
+| **0:00–0:08** | Cold open **straight into** a messy pile of e-wallet screenshots / a couple tense over a phone (no title card yet). | "In Malaysian homes, money is the #1 thing couples fight about — and that stress follows them to work." | *Money = #1 household conflict* |
+| **0:08–0:22** | Cut to HoneyMoney at **honeymoney.app** (logo appears here, in motion). | "HoneyMoney gives couples funding transparency and spending autonomy — no tracking fatigue. Here's the whole loop, live." | *honeymoney.app — live product* |
 | **0:25–0:38** | The **3-Bucket** view: Fixed Non-Negotiables, Future Shield, Private wallets. | "Money sits in three buckets: Fixed Non-Negotiables like rent and bills, a Future Shield that auto-saves a percentage, and private personal wallets — where tracking simply stops." | *3 buckets: Fixed · Future Shield · Private* |
 | **0:38–1:05** | On the **graph page**, use **SpendCapture**: tap 📷 *Scan receipt* and pick a receipt image — the on-device OCR reads vendor + amount and prefills the form. (Optionally tap 🎤 *Speak* and say "25 ringgit at Speedmart".) | "Capture is frictionless and private. Scan a receipt or just speak the spend — this runs on-device, costs zero AI tokens, and nothing leaves the browser. It reads the vendor and amount and prefills the entry." | *Scan or speak — on-device, zero tokens* |
 | **1:05–1:22** | Go to the **dashboard → Add spend** form: confirm vendor/amount, pick the **bucket**, hit *Add spend*. Buckets update instantly. | "Nothing is recorded silently — you confirm the amount and choose the bucket, then it saves and the buckets recalculate live. The human always decides." | *You confirm the bucket before it saves* |

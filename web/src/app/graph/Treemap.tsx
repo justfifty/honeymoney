@@ -17,8 +17,8 @@ export interface TreemapCell {
 }
 
 const STATUS: Record<string, { solid: string; label: string }> = {
-  on_track: { solid: "#3E9C5C", label: "On track" },
-  at_risk: { solid: "#E0A312", label: "At risk" },
+  on_track: { solid: "#248A54", label: "On track" },
+  at_risk: { solid: "#E8A012", label: "At risk" },
   over_budget: { solid: "#C94F4F", label: "Over budget" },
   unfunded: { solid: "#9AA0A6", label: "Unfunded" },
 };

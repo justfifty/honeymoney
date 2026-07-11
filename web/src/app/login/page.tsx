@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Logo from "../Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function LoginPage() {
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <Link href="/" className="text-sm text-zinc-500 hover:underline">← Home</Link>
-        <h1 className="mt-4 text-2xl font-semibold tracking-tight">🍯 Welcome back</h1>
+        <h1 className="mt-4 flex items-center gap-2 text-2xl font-semibold tracking-tight"><Logo size={24} /> Welcome back</h1>
         <p className="mt-1 text-sm text-zinc-500">Log in to your HoneyMoney account.</p>
 
         <form onSubmit={submit} className="mt-6 space-y-3">

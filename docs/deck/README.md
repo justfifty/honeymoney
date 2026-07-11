@@ -8,7 +8,7 @@ This folder holds all **three mandatory MAIC upload PDFs** and their HTML source
 
 | Upload PDF | HTML source | What it is |
 | --- | --- | --- |
-| `HoneyMoney_Pitch_Deck_MAIC2026.pdf` | `PITCH_DECK.html` | 12-slide deck, one slide per judging criterion |
+| `HoneyMoney_Pitch_Deck_MAIC2026.pdf` | `PITCH_DECK.html` | 15-slide deck, every slide mapped to a judging criterion (see the `/pitch-deck` skill) |
 | `HoneyMoney_Project_Summary_MAIC2026.pdf` | `PROJECT_SUMMARY.html` | 1-page project summary |
 | `HoneyMoney_AI_Disclosure_MAIC2026.pdf` | `AI_DISCLOSURE.html` | AI disclosure statement |
 
