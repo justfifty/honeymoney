@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import Logo from "./Logo";
+import HoneyField from "./HoneyField";
 
 export default async function Home() {
   const locale = await getLocale();
@@ -19,12 +20,11 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       {/* ---------- HERO ---------- */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-amber-50 via-white to-white px-6 pt-16 pb-14 text-center sm:pt-24">
-        {/* soft honeycomb glows */}
-        <div aria-hidden className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-amber-200/40 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -right-20 top-24 h-72 w-72 rounded-full bg-emerald-200/40 blur-3xl" />
+      <section className="relative overflow-hidden bg-white px-6 pt-16 pb-16 text-center sm:pt-24">
+        {/* generative Bunga Raya (hibiscus) honey field */}
+        <HoneyField />
 
-        <div className="relative mx-auto max-w-3xl">
+        <div className="relative z-10 mx-auto max-w-3xl">
           <span className="hm-animate mb-5 inline-block rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">
             {tr("home.badge")}
           </span>
