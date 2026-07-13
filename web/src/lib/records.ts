@@ -11,6 +11,15 @@ export interface SpendRecord {
   occurred_at: string; // ISO
   vendor: string | null;
   source: string | null;
+  note: string;
+  /** Voided records are never deleted — they stay, struck through, and their
+   *  removal is itself in the audit ledger. */
+  voided: boolean;
+  bucketId: string | null;
+  bucketLabel: string | null;
+  memberId: string | null;
+  /** What the user originally typed, if they entered a foreign currency. */
+  entered: { amount: number; currency: string; perMYR: number; rateSource: string } | null;
 }
 
 export type Period = "day" | "week" | "month";
@@ -30,7 +39,12 @@ interface PBTxn {
   currency: string;
   occurred_at: string;
   source: string;
-  expand?: { vendor_node?: { label: string } };
+  note?: string;
+  voided?: boolean;
+  member?: string;
+  wallet_node?: string;
+  raw?: { entered?: { amount: number; currency: string; perMYR: number; rateSource: string } } | null;
+  expand?: { vendor_node?: { label: string }; wallet_node?: { id: string; label: string } };
 }
 
 // PocketBase stores datetimes as "YYYY-MM-DD HH:MM:SS.sssZ" — match projection.ts.
@@ -63,16 +77,23 @@ export async function getSpendRecords(
   tenantId: string,
   from: Date,
   to: Date,
+  opts: { includeVoided?: boolean } = {},
 ): Promise<SpendRecord[]> {
   const filter =
     `tenant = ${pbStr(tenantId)} && ` +
-    `occurred_at >= ${pbStr(pbTime(from))} && occurred_at <= ${pbStr(pbTime(to))}`;
+    `occurred_at >= ${pbStr(pbTime(from))} && occurred_at <= ${pbStr(pbTime(to))}` +
+    // A voided record still exists — it is simply not counted. Showing it is an
+    // explicit choice ("show removed"), because a deleted spend that silently
+    // vanishes is exactly the behaviour an audit trail is meant to prevent.
+    (opts.includeVoided ? "" : " && voided != true");
+
   const txns = await pbList<PBTxn>("transactions", {
     filter,
     sort: "-occurred_at",
-    expand: "vendor_node",
+    expand: "vendor_node,wallet_node",
     perPage: 500,
   });
+
   return txns.map((t) => ({
     id: t.id,
     amount: Number(t.amount),
@@ -80,6 +101,12 @@ export async function getSpendRecords(
     occurred_at: t.occurred_at,
     vendor: t.expand?.vendor_node?.label ?? null,
     source: t.source || null,
+    note: t.note ?? "",
+    voided: Boolean(t.voided),
+    bucketId: t.wallet_node ?? null,
+    bucketLabel: t.expand?.wallet_node?.label ?? null,
+    memberId: t.member ?? null,
+    entered: t.raw?.entered ?? null,
   }));
 }
 
@@ -124,8 +151,11 @@ export function groupByPeriod(records: SpendRecord[], period: Period): PeriodGro
       g = { key, label: periodLabel(start, period), sortTs: start.getTime(), total: 0, count: 0, records: [] };
       groups.set(key, g);
     }
-    g.total += r.amount;
-    g.count += 1;
+    // A voided record is shown but never counted — it's evidence, not spending.
+    if (!r.voided) {
+      g.total += r.amount;
+      g.count += 1;
+    }
     g.records.push(r);
   }
   const out = [...groups.values()];

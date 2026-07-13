@@ -10,9 +10,11 @@ import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
 import FlexibleInput from "./FlexibleInput";
 import CurrencySwitcher from "./CurrencySwitcher";
+import RatesNote from "../RatesNote";
 import { t as translate } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { normalizeCurrency, fmtMoney } from "@/lib/format";
+import { can, resolveViewTenant } from "@/lib/household";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +87,13 @@ export default async function GraphPage({
   }
 
   const params = await searchParams;
-  const tenantId = params.tenantId || config.demoTenantId;
+  // Signed in, you see YOUR household — the ?tenantId= switcher is a showcase
+  // affordance for anonymous visitors browsing the demo personas, and must not
+  // be able to point a logged-in user at somebody else's books.
+  const { ctx, isDemo } = await resolveViewTenant();
+  const tenantId = ctx ? ctx.tenant.id : params.tenantId || config.demoTenantId;
+  const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
+  const canManageGraph = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
   const mode: Mode = MODES.some((m) => m.key === params.mode) ? (params.mode as Mode) : "sankey";
   const focus = parseFocus(params.focus);
   const focusParam = focusToParam(focus);
@@ -140,23 +148,40 @@ export default async function GraphPage({
         </nav>
       </header>
 
-      {/* persona switcher — personal · family · business on one engine */}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{tr("persona.label")}</span>
-        {view.personas.map((p) => (
-          <Link
-            key={p.id}
-            href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all&lang=${lang}&ccy=${ccy}`}
-            className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
-              p.id === tenantId
-                ? "border-amber-500 bg-amber-500 text-white"
-                : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
-            }`}
-          >
-            {personaIcon(p.kind, p.name)} {p.name}
+      {/* persona switcher — personal · family · business on one engine.
+          Only for anonymous visitors touring the demo; a signed-in user is
+          always looking at their own household. */}
+      {isDemo ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-zinc-400">{tr("persona.label")}</span>
+          {view.personas.map((p) => (
+            <Link
+              key={p.id}
+              href={`/graph?tenantId=${p.id}&mode=${mode}&focus=all&lang=${lang}&ccy=${ccy}`}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium ${
+                p.id === tenantId
+                  ? "border-amber-500 bg-amber-500 text-white"
+                  : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {personaIcon(p.kind, p.name)} {p.name}
+            </Link>
+          ))}
+          <Link href="/login" className="ml-auto text-xs text-amber-600 hover:underline">
+            {tr("demo.signInToAdd")}
           </Link>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+          <span className="rounded-lg bg-amber-100 px-2 py-1 font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            🏠 {ctx!.tenant.name}
+          </span>
+          <span className="text-zinc-400">{ctx!.accessRole}</span>
+          <Link href="/household" className="text-zinc-500 hover:underline">
+            👥 {tr("nav.household")}
+          </Link>
+        </div>
+      )}
 
       <FocusBar
         tenantId={tenantId}
@@ -407,15 +432,33 @@ export default async function GraphPage({
         {mode === "organic" && <LegendDot color="#5B7DB1" label={tr("g.legend.bucket")} />}
       </div>
 
-      <FlexibleInput
-        tenantId={tenantId}
-        lang={lang}
-        ccy={ccy}
-        buckets={money.buckets.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
-        incomes={money.incomes.map((i) => ({ id: i.id, label: i.label }))}
-        members={view.groups.member.map((m) => ({ id: m.value.split(":")[1], label: m.label }))}
-        categoryLabels={[1, 2, 3].map((t) => ({ tier: t, label: view.tierMeta[t]?.label ?? `Tier ${t}` }))}
-      />
+      <RatesNote ccy={ccy} />
+
+      {canWrite ? (
+        <FlexibleInput
+          lang={lang}
+          ccy={ccy}
+          canManageGraph={canManageGraph}
+          knownVendors={view.groups.vendor.map((v) => v.label)}
+          buckets={money.buckets.map((b) => ({ id: b.bucket_id, label: b.bucket_label }))}
+          incomes={money.incomes.map((i) => ({ id: i.id, label: i.label }))}
+          members={view.groups.member.map((m) => ({ id: m.value.split(":")[1], label: m.label }))}
+          categoryLabels={[1, 2, 3].map((t) => ({ tier: t, label: view.tierMeta[t]?.label ?? `Tier ${t}` }))}
+        />
+      ) : (
+        <p className="mt-8 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          {isDemo ? (
+            <>
+              {tr("demo.readOnly")}{" "}
+              <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+                {tr("demo.createHousehold")}
+              </Link>
+            </>
+          ) : (
+            tr("role.readOnly")
+          )}
+        </p>
+      )}
 
       <p className="mt-4 max-w-2xl text-sm text-zinc-500">
         {tr("g.closing")}

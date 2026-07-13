@@ -68,3 +68,6 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/settings.json
+
+# ─── Captured receipts (personal financial data — never publish) ─────────────
+receipts/

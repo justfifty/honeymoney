@@ -1,8 +1,18 @@
 // Graph write path: turn a parsed receipt into graph state
 // (vendor node + SPENT_AT edge + transaction event). PocketBase edition.
+//
+// Every mutation here also appends to the hash-chained ledger (lib/ledger.ts),
+// so a transaction can be corrected or voided but its history can never be
+// quietly rewritten.
 
-import { pbList, pbFirst, pbCreate, pbStr } from "./pocketbase";
+import { pbList, pbFirst, pbCreate, pbUpdate, pbStr } from "./pocketbase";
+import { append } from "./ledger";
 import type { ParsedReceipt } from "./types";
+
+export interface Actor {
+  id: string;
+  email: string;
+}
 
 interface PBNode {
   id: string;
@@ -89,7 +99,7 @@ export async function ingestReceipt(
   const wallet = await resolveWalletNode(tenantId);
   const edgeId = await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId);
 
-  const tx = await pbCreate<{ id: string }>("transactions", {
+  const body: Record<string, unknown> = {
     tenant: tenantId,
     edge: edgeId,
     wallet_node: wallet.id,
@@ -98,8 +108,19 @@ export async function ingestReceipt(
     currency: parsed.currency,
     occurred_at: parsed.occurredAt,
     source,
+    voided: false,
     parse_confidence: parsed.confidence,
     raw: parsed as unknown as Record<string, unknown>,
+  };
+  const tx = await pbCreate<{ id: string }>("transactions", body);
+
+  await append({
+    tenantId,
+    op: "create",
+    collection: "transactions",
+    recordId: tx.id,
+    after: body,
+    actorEmail: source, // e.g. "telegram" — no logged-in actor on that path
   });
 
   return {
@@ -112,6 +133,12 @@ export async function ingestReceipt(
 
 // Manual entry from the dashboard form: explicit bucket, typed vendor/amount.
 // Optionally attributed to a member (the person lens) and given a subject tag.
+//
+// `amount` is always in the tenant's base currency (MYR) — the caller converts.
+// When the user typed a foreign amount we keep what they actually entered, and
+// the rate + source we converted at, in `raw.entered`. Without that, a figure
+// reviewed months later is unauditable: you'd see RM 42.10 with no way to know
+// it began life as S$ 12.00 at a Bank Negara rate on a particular day.
 export async function addManualTransaction(
   tenantId: string,
   input: {
@@ -121,7 +148,11 @@ export async function addManualTransaction(
     occurredAt?: string;
     memberId?: string;
     source?: string;
+    note?: string;
+    confidence?: number;
+    entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
   },
+  actor?: Actor,
 ): Promise<IngestResult> {
   const vendorNodeId = await ensureVendorNode(tenantId, input.vendorLabel);
   const wallet = await pbFirst<PBNode>(
@@ -131,7 +162,7 @@ export async function addManualTransaction(
   if (!wallet) throw new Error("Unknown bucket for this household.");
   const edgeId = await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId);
 
-  const tx = await pbCreate<{ id: string }>("transactions", {
+  const body: Record<string, unknown> = {
     tenant: tenantId,
     edge: edgeId,
     wallet_node: wallet.id,
@@ -141,7 +172,22 @@ export async function addManualTransaction(
     currency: "MYR",
     occurred_at: input.occurredAt ?? new Date().toISOString().replace("T", " "),
     source: input.source ?? "manual",
-    parse_confidence: 1,
+    note: input.note ?? "",
+    voided: false,
+    parse_confidence: input.confidence ?? 1,
+    ...(input.entered && input.entered.currency !== "MYR" ? { raw: { entered: input.entered } } : {}),
+  };
+
+  const tx = await pbCreate<{ id: string }>("transactions", body);
+
+  await append({
+    tenantId,
+    op: "create",
+    collection: "transactions",
+    recordId: tx.id,
+    after: { ...body, vendor_label: wallet.label && input.vendorLabel },
+    actorId: actor?.id,
+    actorEmail: actor?.email,
   });
 
   return {
@@ -150,6 +196,133 @@ export async function addManualTransaction(
     vendorNodeId,
     walletLabel: wallet.label,
   };
+}
+
+// ── Correcting and voiding ──────────────────────────────────────────────────
+
+export interface TxnRecord {
+  id: string;
+  tenant: string;
+  amount: number;
+  currency: string;
+  occurred_at: string;
+  source: string;
+  note: string;
+  voided: boolean;
+  member: string;
+  wallet_node: string;
+  vendor_node: string;
+  parse_confidence: number;
+  expand?: { vendor_node?: { label: string }; wallet_node?: { label: string } };
+}
+
+export async function getTransaction(tenantId: string, id: string): Promise<TxnRecord | null> {
+  return pbFirst<TxnRecord>("transactions", `id = ${pbStr(id)} && tenant = ${pbStr(tenantId)}`);
+}
+
+// The fields a user is allowed to correct. Everything else (tenant, hashes,
+// created) is structural and off-limits.
+export interface TxnPatch {
+  vendorLabel?: string;
+  amount?: number;
+  walletNodeId?: string;
+  occurredAt?: string;
+  memberId?: string | null;
+  note?: string;
+  entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
+}
+
+export async function updateTransaction(
+  tenantId: string,
+  id: string,
+  patch: TxnPatch,
+  actor?: Actor,
+): Promise<TxnRecord> {
+  const before = await getTransaction(tenantId, id);
+  if (!before) throw new Error("No such record in this household.");
+
+  const body: Record<string, unknown> = {};
+
+  if (patch.vendorLabel?.trim()) {
+    const vendorNodeId = await ensureVendorNode(tenantId, patch.vendorLabel);
+    body.vendor_node = vendorNodeId;
+  }
+  if (patch.walletNodeId) {
+    const wallet = await pbFirst<PBNode>(
+      "nodes",
+      `id = ${pbStr(patch.walletNodeId)} && tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+    );
+    if (!wallet) throw new Error("Unknown bucket for this household.");
+    body.wallet_node = wallet.id;
+  }
+  // Moving a spend to a different bucket or vendor changes which SPENT_AT edge
+  // it realizes, so re-point it rather than leaving it attached to the old one.
+  const nextWallet = (body.wallet_node as string) ?? before.wallet_node;
+  const nextVendor = (body.vendor_node as string) ?? before.vendor_node;
+  if (nextWallet !== before.wallet_node || nextVendor !== before.vendor_node) {
+    body.edge = await ensureSpentAtEdge(tenantId, nextWallet, nextVendor);
+  }
+
+  if (patch.amount !== undefined) {
+    if (!Number.isFinite(patch.amount) || patch.amount <= 0) {
+      throw new Error("Amount must be a positive number.");
+    }
+    body.amount = patch.amount;
+  }
+  if (patch.occurredAt) body.occurred_at = patch.occurredAt;
+  if (patch.memberId !== undefined) body.member = patch.memberId ?? "";
+  if (patch.note !== undefined) body.note = patch.note;
+  if (patch.entered) body.raw = { entered: patch.entered };
+
+  if (Object.keys(body).length === 0) return before;
+
+  const after = await pbUpdate<TxnRecord>("transactions", id, body);
+
+  await append({
+    tenantId,
+    op: "update",
+    collection: "transactions",
+    recordId: id,
+    before: before as unknown as Record<string, unknown>,
+    after: after as unknown as Record<string, unknown>,
+    actorId: actor?.id,
+    actorEmail: actor?.email,
+  });
+
+  return after;
+}
+
+// A "delete" that keeps the evidence. The row stays, flagged void, and the act
+// of voiding is itself recorded — so a deleted spend is still visible in the
+// audit trail, with who removed it and when.
+export async function setTransactionVoided(
+  tenantId: string,
+  id: string,
+  voided: boolean,
+  actor?: Actor,
+  reason?: string,
+): Promise<TxnRecord> {
+  const before = await getTransaction(tenantId, id);
+  if (!before) throw new Error("No such record in this household.");
+  if (before.voided === voided) return before;
+
+  const after = await pbUpdate<TxnRecord>("transactions", id, {
+    voided,
+    ...(reason ? { note: reason } : {}),
+  });
+
+  await append({
+    tenantId,
+    op: voided ? "void" : "restore",
+    collection: "transactions",
+    recordId: id,
+    before: before as unknown as Record<string, unknown>,
+    after: after as unknown as Record<string, unknown>,
+    actorId: actor?.id,
+    actorEmail: actor?.email,
+  });
+
+  return after;
 }
 
 // Create a graph node (income source / bucket / goal / obligation …) with a

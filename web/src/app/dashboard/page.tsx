@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { isDatabaseConfigured, config } from "@/lib/config";
+import { isDatabaseConfigured } from "@/lib/config";
 import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/projection";
+import { can, resolveViewTenant } from "@/lib/household";
+import { pbList, pbStr } from "@/lib/pocketbase";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
@@ -39,7 +41,11 @@ export default async function Dashboard() {
       </main>
     );
   }
-  if (!config.demoTenantId) {
+  // Signed in → your own household. Signed out → the public demo, read-only.
+  const { tenantId, ctx, isDemo } = await resolveViewTenant();
+  const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
+
+  if (!tenantId) {
     return (
       <main className="min-h-full px-6 py-16">
         <SetupNotice reason={tr("dash.setup.reasonNoTenant")} lang={locale} />
@@ -48,10 +54,14 @@ export default async function Dashboard() {
   }
 
   try {
-    const tenantId = config.demoTenantId;
-    const [projection, recent] = await Promise.all([
+    const [projection, recent, vendorNodes] = await Promise.all([
       getBucketProjection(tenantId),
       getRecentSpend(tenantId, 8),
+      pbList<{ label: string }>("nodes", {
+        filter: `tenant = ${pbStr(tenantId)} && kind = 'vendor'`,
+        sort: "-created",
+        perPage: 80,
+      }),
     ]);
     const insight = await getHoneyInsight(projection, locale);
 
@@ -151,11 +161,26 @@ export default async function Dashboard() {
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
             {tr("dash.addSpend")}
           </h2>
-          <AddTransaction
-            lang={locale}
-            tenantId={tenantId}
-            buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
-          />
+          {canWrite ? (
+            <AddTransaction
+              lang={locale}
+              knownVendors={vendorNodes.map((v) => v.label)}
+              buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
+            />
+          ) : (
+            <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+              {isDemo ? (
+                <>
+                  {tr("demo.readOnly")}{" "}
+                  <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+                    {tr("demo.createHousehold")}
+                  </Link>
+                </>
+              ) : (
+                tr("role.readOnly")
+              )}
+            </p>
+          )}
         </section>
 
         {/* Recent spend */}

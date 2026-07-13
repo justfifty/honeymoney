@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { isDatabaseConfigured, config } from "@/lib/config";
+import { isDatabaseConfigured } from "@/lib/config";
 import { normalizeCurrency, fmtMoney } from "@/lib/format";
 import {
   getSpendRecords,
@@ -8,9 +8,13 @@ import {
   rangeBounds,
   type Period,
 } from "@/lib/records";
+import { can, resolveViewTenant } from "@/lib/household";
+import { pbList, pbStr } from "@/lib/pocketbase";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import CurrencySwitcher from "../graph/CurrencySwitcher";
+import RecordRow from "./RecordRow";
+import RatesNote from "../RatesNote";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +50,7 @@ function Notice({ tr, reason }: { tr: Tr; reason: string }) {
 export default async function RecordsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tenantId?: string; period?: string; range?: string; ccy?: string }>;
+  searchParams: Promise<{ period?: string; range?: string; ccy?: string; voided?: string }>;
 }) {
   const locale = await getLocale();
   const tr: Tr = (k, vars) => t(locale, k, vars);
@@ -56,26 +60,37 @@ export default async function RecordsPage({
   }
 
   const params = await searchParams;
-  const tenantId = params.tenantId || config.demoTenantId;
+  // Signed in → your household. Signed out → the public demo, read-only.
+  const { tenantId, ctx } = await resolveViewTenant();
   if (!tenantId) {
     return <Notice tr={tr} reason={tr("rec.notice.noTenant")} />;
   }
+  const canEdit = Boolean(ctx) && can(ctx!.accessRole, "edit_any_record");
+  const canVoid = Boolean(ctx) && can(ctx!.accessRole, "void_record");
 
   const period: Period = PERIODS.some((p) => p.key === params.period)
     ? (params.period as Period)
     : "day";
   const range = RANGES.some((r) => r.key === params.range) ? params.range! : "90d";
   const ccy = normalizeCurrency(params.ccy);
+  const showVoided = params.voided === "1";
   const money = (n: number) => fmtMoney(n, ccy);
 
-  const q = (over: Partial<{ period: string; range: string }>) => {
-    const sp = new URLSearchParams({ tenantId, period, range, ccy, ...over });
+  const q = (over: Partial<{ period: string; range: string; voided: string }>) => {
+    const sp = new URLSearchParams({ period, range, ccy, ...(showVoided ? { voided: "1" } : {}), ...over });
     return `/records?${sp.toString()}`;
   };
 
   try {
     const { from, to } = rangeBounds(range);
-    const records = await getSpendRecords(tenantId, from, to);
+    const [records, bucketNodes] = await Promise.all([
+      getSpendRecords(tenantId, from, to, { includeVoided: showVoided }),
+      pbList<{ id: string; label: string }>("nodes", {
+        filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+        sort: "created",
+      }),
+    ]);
+    const buckets = bucketNodes.map((b) => ({ id: b.id, label: b.label }));
     const groups = groupByPeriod(records, period);
     const s = summarize(groups);
     const maxTotal = Math.max(1, ...groups.map((g) => g.total));
@@ -131,6 +146,25 @@ export default async function RecordsPage({
               </Link>
             ))}
           </div>
+
+          {/* Removed records are never gone — this just brings them back into
+              view, struck through, so you can see (and undo) what was deleted. */}
+          <Link
+            href={q({ voided: showVoided ? "" : "1" })}
+            className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+              showVoided
+                ? "border-rose-400 bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-300"
+                : "border-zinc-300 text-zinc-500 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            }`}
+          >
+            🗑️ {tr("rec.void.show")}
+          </Link>
+
+          {ctx && (
+            <Link href="/ledger" className="text-xs text-zinc-500 hover:underline">
+              🔗 {tr("nav.ledger")}
+            </Link>
+          )}
         </div>
 
         {/* summary */}
@@ -187,24 +221,16 @@ export default async function RecordsPage({
                       </div>
                     </summary>
                     <div className="border-t border-zinc-100 dark:border-zinc-800">
-                      {g.records.map((t) => (
-                        <div
-                          key={t.id}
-                          className="flex items-center justify-between border-b border-zinc-50 px-4 py-2.5 text-sm last:border-0 dark:border-zinc-800/60"
-                        >
-                          <div className="min-w-0">
-                            <span className="font-medium">{t.vendor ?? tr("rec.unknownVendor")}</span>
-                            <span className="ml-2 text-xs text-zinc-400">{stamp(t.occurred_at)}</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {t.source && (
-                              <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
-                                {t.source}
-                              </span>
-                            )}
-                            <span className="font-medium">{money(t.amount)}</span>
-                          </div>
-                        </div>
+                      {g.records.map((rec) => (
+                        <RecordRow
+                          key={rec.id}
+                          record={rec}
+                          buckets={buckets}
+                          canEdit={canEdit}
+                          canVoid={canVoid}
+                          ccy={ccy}
+                          lang={locale}
+                        />
                       ))}
                     </div>
                   </details>
@@ -213,6 +239,8 @@ export default async function RecordsPage({
             </div>
           )}
         </section>
+
+        <RatesNote ccy={ccy} />
 
         <p className="mt-8 max-w-2xl text-xs text-zinc-500">
           {tr("rec.footer")}
@@ -223,17 +251,6 @@ export default async function RecordsPage({
     const message = err instanceof Error ? err.message : "Unknown error";
     return <Notice tr={tr} reason={tr("rec.notice.loadError", { message })} />;
   }
-}
-
-function stamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-MY", {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function Stat({

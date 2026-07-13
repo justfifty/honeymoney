@@ -5,6 +5,9 @@ import Track from "./Track";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 import InstallPrompt from "./InstallPrompt";
+import FxRates from "./FxRates";
+import { getRates } from "@/lib/fx";
+import { applyRates, type RateTable } from "@/lib/format";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,17 +72,32 @@ export const viewport: Viewport = {
   themeColor: "#E8A012",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch live FX once per render and apply it on BOTH sides: applyRates() here
+  // updates the server bundle's table, and <FxRates> ships the same table into
+  // the browser's copy. Without that second half, a client component would keep
+  // converting at the stale hard-coded rates and quietly disagree with the
+  // server-rendered figure right next to it. Never let a rate lookup break the
+  // page — worst case we fall back to the indicative table, clearly labelled.
+  let table: RateTable = {};
+  try {
+    table = (await getRates()).table;
+    applyRates(table);
+  } catch {
+    /* offline or the central banks are down — the indicative fallback stands */
+  }
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <FxRates table={table} />
         <SiteHeader />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />

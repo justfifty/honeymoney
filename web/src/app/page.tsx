@@ -68,7 +68,7 @@ export default async function Home() {
         <ul className="relative mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-zinc-600">
           {trust.map((item) => (
             <li key={item} className="flex items-center gap-1.5">
-              <span aria-hidden className="text-emerald-500">✓</span>
+              <span aria-hidden className="text-amber-500">✓</span>
               {item}
             </li>
           ))}

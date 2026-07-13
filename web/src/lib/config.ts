@@ -22,6 +22,13 @@ export const config = {
   ollamaUrl: (process.env.OLLAMA_URL ?? "").replace(/\/$/, ""),
   ollamaModel: process.env.OLLAMA_MODEL ?? "llama3.2",
 
+  // Vision models — reading a receipt/e-wallet screenshot needs a multimodal
+  // model, which is a different model id from the text one on every provider.
+  // Gemini Flash is multimodal as-is; Groq needs a Llama-4 vision model; Ollama
+  // needs a vision-capable local model (llava, llama3.2-vision).
+  groqVisionModel: process.env.GROQ_VISION_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct",
+  ollamaVisionModel: process.env.OLLAMA_VISION_MODEL ?? "llama3.2-vision",
+
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
 

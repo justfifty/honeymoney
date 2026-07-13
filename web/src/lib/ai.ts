@@ -150,6 +150,128 @@ async function ollamaGen(prompt: string, opts: GenOpts, fn: string): Promise<str
   return text;
 }
 
+// ── Vision ──────────────────────────────────────────────────────────────────
+// Reading a receipt or a Touch 'n Go screenshot needs a multimodal model. All
+// three providers can do it, but each wants the image in a different envelope
+// and under a different model id — hence one entrypoint over three shapes.
+
+export interface VisionOpts extends GenOpts {
+  mimeType: string;
+}
+
+export function visionModelOf(p: AiProvider): string {
+  if (p === "groq") return config.groqVisionModel;
+  if (p === "ollama") return config.ollamaVisionModel;
+  return config.geminiModel;
+}
+
+// `imageBase64` is raw base64 — no data: prefix.
+export async function aiVision(
+  prompt: string,
+  imageBase64: string,
+  opts: VisionOpts,
+): Promise<string> {
+  const provider = opts.provider ?? activeAiProvider();
+  const fn = opts.fn ?? "aiVision";
+  if (provider === "groq") return groqVision(prompt, imageBase64, opts, fn);
+  if (provider === "ollama") return ollamaVision(prompt, imageBase64, opts, fn);
+  return geminiVision(prompt, imageBase64, opts, fn);
+}
+
+async function geminiVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
+  if (!config.geminiApiKey) throw new Error("Gemini not configured (set GEMINI_API_KEY).");
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
+  const parts: unknown[] = [];
+  if (opts.system) parts.push({ text: opts.system });
+  parts.push({ text: prompt });
+  parts.push({ inlineData: { mimeType: opts.mimeType, data: image } });
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts }],
+      generationConfig: opts.json
+        ? { temperature: 0.1, responseMimeType: "application/json" }
+        : { temperature: 0.4 },
+    }),
+  });
+  if (!res.ok) throw new Error(`Gemini vision ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  const text: string = (data?.candidates?.[0]?.content?.parts ?? [])
+    .map((p: { text?: string }) => p.text ?? "")
+    .join("")
+    .trim();
+  if (!text) throw new Error("Gemini returned an empty response.");
+  const um = data?.usageMetadata ?? {};
+  await logUsage(
+    fn,
+    "gemini",
+    config.geminiModel,
+    { prompt: um.promptTokenCount || 0, output: um.candidatesTokenCount || 0, total: um.totalTokenCount || 0 },
+    opts.meta,
+  );
+  return text;
+}
+
+async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
+  if (!config.groqApiKey) throw new Error("Groq not configured (set GROQ_API_KEY).");
+  // Groq speaks the OpenAI vision shape: an image_url whose url is a data: URI.
+  const content = [
+    { type: "text", text: opts.system ? `${opts.system}\n\n${prompt}` : prompt },
+    { type: "image_url", image_url: { url: `data:${opts.mimeType};base64,${image}` } },
+  ];
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.groqApiKey}` },
+    body: JSON.stringify({
+      model: config.groqVisionModel,
+      messages: [{ role: "user", content }],
+      temperature: opts.json ? 0.1 : 0.4,
+      ...(opts.json ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+  if (!res.ok) throw new Error(`Groq vision ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  const text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
+  if (!text) throw new Error("Groq returned an empty response.");
+  const u = data?.usage ?? {};
+  await logUsage(
+    fn,
+    "groq",
+    config.groqVisionModel,
+    { prompt: u.prompt_tokens || 0, output: u.completion_tokens || 0, total: u.total_tokens || 0 },
+    opts.meta,
+  );
+  return text;
+}
+
+async function ollamaVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
+  if (!config.ollamaUrl) throw new Error("Ollama not configured (set OLLAMA_URL).");
+  const messages: unknown[] = [];
+  if (opts.system) messages.push({ role: "system", content: opts.system });
+  messages.push({ role: "user", content: prompt, images: [image] });
+
+  const res = await fetch(`${config.ollamaUrl}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: config.ollamaVisionModel,
+      messages,
+      stream: false,
+      ...(opts.json ? { format: "json" } : {}),
+    }),
+  });
+  if (!res.ok) throw new Error(`Ollama vision ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  const text: string = (data?.message?.content ?? "").trim();
+  if (!text) throw new Error("Ollama returned an empty response.");
+  const pin = data.prompt_eval_count || 0;
+  const pout = data.eval_count || 0;
+  await logUsage(fn, "ollama", config.ollamaVisionModel, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
+  return text;
+}
+
 export interface ProviderHealth {
   provider: AiProvider;
   configured: boolean;

@@ -42,6 +42,107 @@ Chua's 12-digit MyKad number.**
 
 ---
 
+## ✅ Shipped — 2026-07-14 (real households · audit ledger · capture overhaul · live FX)
+
+The app was a **single-household demo wearing a login**. It now has real multi-user
+households, a tamper-evident ledger, and capture that works in every language we ship.
+
+### 🔐 Security — an open API is now closed `[Technical]`
+- [x] **Fixed: four write routes had no auth check at all.** `/api/transactions`,
+      `/api/graph`, `/api/members`, `/api/insight` took `tenantId` from the request
+      body and trusted it — anyone could write into, or read, any household by
+      guessing its id. The tenant now comes from the **session**, never the payload.
+- [x] **`proxy.ts`** (Next 16 renamed Middleware → Proxy) gates `/household`,
+      `/ledger`, `/admin`. Optimistic only — the real check is per-route.
+
+### 👨‍👩‍👧 Family login — the missing relation `[Relevance][Scalability]`
+- [x] **Fixed: `app_users` had no link to `tenants`.** Every logged-in user saw the
+      same `DEMO_TENANT_ID` household. The Supabase twin always had `members.user_id`;
+      the PocketBase port had dropped it. Restored (`members.user`).
+- [x] **Invite codes** (`invites`) — owner mints a code, optionally locked to one
+      email; partner signs up (or joins at `/join`) and lands in the **same tenant**.
+      Both keep their own login. `/household` explains it and manages it.
+- [x] **Roles** (`members.access_role`): owner · adult · child · viewer. A child logs
+      only their own spending; the last owner can't demote themselves.
+- [x] **Signup now creates a household** + seeds the 3-bucket model (it previously
+      created an account attached to nothing).
+- ✅ *Verified end-to-end: two accounts, one shared household, correct role denials.*
+
+### ⛓️ Immutable records — "can be changed, but every change is recorded" `[Technical][ESG]`
+- [x] **Hash-chained `ledger`** — every create/edit/void appends an entry whose SHA-256
+      covers the previous entry's hash. `/ledger` re-verifies from genesis on every load.
+- [x] **Nothing is ever destroyed.** Delete = **void** (reversible, still visible,
+      struck through under "Show removed"). Voided rows never count toward totals.
+- [x] **Public anchoring** — head hash submitted to **OpenTimestamps → Bitcoin**. Only a
+      32-byte hash leaves the device; the financial data never does. Downloadable `.ots`
+      proof verifies **without us** (`ots verify`).
+- ✅ *Verified: a direct superuser DB edit of a past amount was caught, and located to
+      the exact entry. Anchoring refuses to run on a broken chain. Real OTS proof file
+      validated (magic header, SHA-256 tag, committed digest).*
+
+### ✏️ Edit & delete — previously impossible `[Technical]`
+- [x] `PATCH` / `DELETE /api/transactions/:id` + inline edit, remove/restore, and a
+      per-record **history** view on `/records`. A mis-parsed capture used to be
+      permanent unless you opened the PocketBase admin UI.
+
+### 🎤 Voice — the "only recognises numbers" bug, root-caused `[ESG][Relevance]`
+- [x] **The cause was one character class.** `[a-z]` / `[^a-z'&\-\s]` cannot match
+      星巴克, ஸ்டார்பக்ஸ் or स्टारबक्स, so for zh/ta/hi **every letter was stripped** and only the
+      ASCII digits survived. Rewritten Unicode-first (`\p{L}\p{M}` — the combining
+      marks matter, or Tamil/Devanagari shatter into fragments).
+- [x] `zh-Hant` was missing from the speech map → Traditional-Chinese users were being
+      routed into an **English** recogniser. Added.
+- [x] The alternative-picker **preferred whichever ASR guess contained a number** — it
+      actively selected for number-only readings. Now scores merchant + amount + currency.
+- [x] Amount parsing fixed: `42.50` was being eaten as a clock time; `Math.max()` made
+      "spent 12 at 99 Speedmart" return **99**. Spoken numbers (EN/MS/中文), CJK numerals,
+      relative dates, 9 currencies.
+- [x] Merchant biasing (Malaysian vendor list + your own past vendors), live transcript.
+- [x] **AI-assisted parse** (`/api/voice`) when a provider is set — grounded in your real
+      buckets/vendors; degrades to on-device, never errors.
+- ✅ *Verified: 11/11 cases across en · ms · zh · zh-Hant · ta · hi.*
+
+### 📷 Screenshots & receipts — Touch 'n Go, finally `[Relevance]`
+- [x] **Paste (Ctrl+V), drag-and-drop, and `capture="environment"`** (rear camera).
+      Previously: one hidden file input — you had to save the screenshot to disk first.
+- [x] **Agentic receipt analytics** (`/api/receipt` → `lib/receipt.ts`): perceive (vision)
+      → **ground in the household's real graph** → decide → explain. Returns vendor,
+      amount, **currency, date, confidence**, a suggested bucket, and flags **duplicates**,
+      **subscriptions** and **anomalies vs this household's own history**. Every id it
+      returns is re-validated against the graph (a hallucinated bucket id would otherwise
+      file a spend into a bucket that doesn't exist).
+- [x] Gemini **and** Groq **and** Ollama vision (`aiVision`) — was Gemini-only, and the web
+      UI never called it at all; only Telegram did.
+- [x] tesseract.js now uses the **right language pack** (was hardcoded `"eng"`).
+- [x] Nothing is auto-saved: the agent proposes, the human confirms, corrections are ledgered.
+
+### 💱 Live FX with named sources `[Technical][Commercial]`
+- [x] **Rates are no longer indicative.** Live from **Bank Negara Malaysia** (the central
+      bank's own Open API — the right thing to cite in Malaysia), falling back to the
+      **ECB**, then the last cached rate, then the labelled indicative table.
+- [x] **Every converted figure names its source and date** (`RatesNote`, `/api/fx`).
+      Each transaction also stores what the user actually typed + the rate and source it
+      was converted at, so a figure stays auditable months later.
+- [x] The old hardcoded table was **~14% off on JPY** and ~11% on USD.
+- *(OANDA needs a paid account; BNM/ECB are free, official and citable. Swappable via
+  one provider function in `lib/fx.ts` if you ever buy OANDA.)*
+
+### 🔑 Auth UI
+- [x] Signup had **no show/hide toggle** (login did), no confirm field, no strength meter,
+      and the 8-char rule was server-only. Shared `AuthFields`: toggle, strength meter,
+      confirm-match, Caps-Lock warning, `?next=` return-to.
+
+### ⚠️ To go live with this
+- [ ] **Restart the stack** — the migration `1751900010_household_ledger_fx.js` applies on
+      PocketBase start, and the app needs a rebuild. `deploy/stop-honeymoney.ps1` then
+      `deploy/start-honeymoney.ps1`. (Verified against an isolated copy of `pb_data`; the
+      live DB has NOT been migrated yet.)
+- [ ] Add a **`GEMINI_API_KEY`** (2 min, free) to switch capture from on-device to agentic.
+- [ ] Existing seeded members have no `user` relation — they're roster names, not logins.
+      Invite real accounts to attach them.
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:
@@ -199,4 +300,4 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 7. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
 8. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
 
-_Last updated: 2026-07-10_
+_Last updated: 2026-07-14_
