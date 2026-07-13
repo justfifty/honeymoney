@@ -22,7 +22,7 @@ export interface NetEdge {
 }
 
 const KIND_FILL: Record<string, string> = {
-  income_source: "#E8A012",
+  income_source: "#FF7518",
   bucket: "#5B7DB1",
   wallet: "#5B7DB1",
   vendor: "#C94F4F",
@@ -32,9 +32,9 @@ const KIND_FILL: Record<string, string> = {
 };
 
 const REL_STROKE: Record<string, { stroke: string; dash?: string }> = {
-  ALLOCATES_FIXED: { stroke: "#E8A012" },
-  ALLOCATES_PCT: { stroke: "#E8A012", dash: "6 3" },
-  FUNDS: { stroke: "#E8A012" },
+  ALLOCATES_FIXED: { stroke: "#FF7518" },
+  ALLOCATES_PCT: { stroke: "#FF7518", dash: "6 3" },
+  FUNDS: { stroke: "#FF7518" },
   SPENT_AT: { stroke: "#C94F4F" },
   CONTRIBUTES_TO: { stroke: "#248A54", dash: "4 4" },
   OWES: { stroke: "#8A7A5E", dash: "2 4" },

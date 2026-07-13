@@ -65,11 +65,11 @@ export const metadata: Metadata = {
   },
 };
 
-// Mobile-first: fit the viewport, allow zoom (accessibility), amber theme.
+// Mobile-first: fit the viewport, allow zoom (accessibility), brand-orange theme.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#E8A012",
+  themeColor: "#FF7518",
 };
 
 export default async function RootLayout({

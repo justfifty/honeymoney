@@ -27,7 +27,7 @@ function lerp(a: number, b: number, t: number) {
   return Math.round(a + (b - a) * t);
 }
 // one-orange tonal ramp: light heart → brand orange → deep burnt orange at tips
-const STOPS = ["#F6C86A", "#E8A012", "#B85E0C"].map(hexToRgb);
+const STOPS = ["#FFB27A", "#FF7518", "#B54804"].map(hexToRgb);
 function colorAt(t: number) {
   const c = Math.min(0.999, Math.max(0, t));
   const seg = Math.min(STOPS.length - 2, Math.floor(c * (STOPS.length - 1)));

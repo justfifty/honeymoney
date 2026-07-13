@@ -31,7 +31,7 @@ const BOT = 24;
 const SAVED_ID = "__saved__";
 
 const ALLOC = new Set(["ALLOCATES_FIXED", "ALLOCATES_PCT", "FUNDS"]);
-const AMBER = "#E8A012";
+const AMBER = "#FF7518";
 const RED = "#C94F4F";
 const GREEN = "#248A54";
 

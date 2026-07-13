@@ -28,9 +28,9 @@ const ROW_GAP = 66;
 const TOP = 70;
 
 const REL_STYLE: Record<string, { stroke: string; dash?: string }> = {
-  ALLOCATES_FIXED: { stroke: "#E8A012" },
-  ALLOCATES_PCT: { stroke: "#E8A012", dash: "6 3" },
-  FUNDS: { stroke: "#E8A012" },
+  ALLOCATES_FIXED: { stroke: "#FF7518" },
+  ALLOCATES_PCT: { stroke: "#FF7518", dash: "6 3" },
+  FUNDS: { stroke: "#FF7518" },
   SPENT_AT: { stroke: "#C94F4F" },
   CONTRIBUTES_TO: { stroke: "#248A54", dash: "4 4" },
   OWES: { stroke: "#8A7A5E", dash: "2 4" },
@@ -424,7 +424,7 @@ export default async function GraphPage({
         )}
         {(mode === "sankey" || mode === "flow" || mode === "organic") && (
           <>
-            <LegendDot color="#E8A012" label={tr("g.legend.allocation")} />
+            <LegendDot color="#FF7518" label={tr("g.legend.allocation")} />
             <LegendDot color="#C94F4F" label={tr("g.legend.spending")} />
             <LegendDot color="#248A54" label={tr("g.legend.savedGoal")} />
           </>

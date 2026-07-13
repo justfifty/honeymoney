@@ -12,9 +12,9 @@
 
   /* HoneyMoney corporate palette — single source of truth.
      Honey = warmth/brand, Green = financial trust, Ink = text. */
-  --brand-honey: #e8a012;
-  --brand-honey-light: #f5b733;
-  --brand-honey-dark: #b4740a;
+  --brand-honey: #ff7518;
+  --brand-honey-light: #ff9a4d;
+  --brand-honey-dark: #b54804;
   --brand-green: #1f6f4a;
   --brand-green-deep: #123524;
   --brand-ink: #14231a;
@@ -29,22 +29,27 @@
 }
 
 /* Corporate colour, applied app-wide: remap Tailwind's `amber` ramp to the
-   HoneyMoney honey gold and `emerald` to the brand trust-green. Every existing
+   HoneyMoney brand orange and `emerald` to the brand trust-green. Every existing
    amber-*/emerald-* utility now renders on-brand with no per-component edits.
    Light shades stay light (backgrounds), dark shades stay dark (text) so status
-   badges (text-*-800 on bg-*-100) keep their contrast. */
+   badges (text-*-800 on bg-*-100) keep their contrast.
+
+   The ramp is built around --brand-honey (#ff7518), the orange of the sunburst
+   mark. Note 600/700 are pulled well down in luminance on purpose: white text on
+   the 500 is only ~2.7:1, so anything that puts white ON the brand colour should
+   reach for 600 (large text) or 700 (5.4:1 — passes AA at any size). */
 @theme {
-  --color-amber-50: #fdf6e9;
-  --color-amber-100: #fbe9c2;
-  --color-amber-200: #f6d488;
-  --color-amber-300: #f0bd4e;
-  --color-amber-400: #eaa826;
-  --color-amber-500: #e8a012;
-  --color-amber-600: #c8850e;
-  --color-amber-700: #a06a0c;
-  --color-amber-800: #7f540e;
-  --color-amber-900: #6a460f;
-  --color-amber-950: #3d2708;
+  --color-amber-50: #fff4ec;
+  --color-amber-100: #ffe3d0;
+  --color-amber-200: #ffc4a0;
+  --color-amber-300: #ffa570;
+  --color-amber-400: #ff8c42;
+  --color-amber-500: #ff7518;
+  --color-amber-600: #e05c05;
+  --color-amber-700: #b54804;
+  --color-amber-800: #8c3906;
+  --color-amber-900: #722f0a;
+  --color-amber-950: #3f1804;
 
   --color-emerald-50: #eef7f1;
   --color-emerald-100: #d3ebdc;
