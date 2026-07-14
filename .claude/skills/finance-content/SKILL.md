@@ -33,7 +33,7 @@ and a stressed couple reading it at 11pm.
    and trade-offs grounded in *their* numbers. No guarantees, no returns promised. Keep the
    disclaimer link intact (`docs/DISCLAIMER.md`, mirrored at `/guide`).
 2. **Marital-safe & non-surveillance.** Forward-looking and blame-free. Never itemise or moralise
-   Bucket 3 (personal wallet) spend — autonomy over surveillance is the product thesis. Prefer
+   Bucket 3 (Spendings) — autonomy over surveillance is the product thesis. Prefer
    "want to rebalance RM120?" over "you overspent on food again."
 3. **PDPA-aware.** Don't invent data retention/sharing claims. Financial data is sensitive; only state
    what the app actually does (parse then discard raw images; tenant isolation; k-anonymity for
@@ -46,10 +46,10 @@ and a stressed couple reading it at 11pm.
    `web/src/lib/i18n.ts` (graceful English fallback for zh/ta/hi).
 
 ## The domain you are writing about (keep content consistent with this)
-- **3-Bucket model — "funding transparency, spending autonomy":** Bucket 1 Fixed Non-Negotiables →
-  Bucket 2 Future Shield (10–20%, auto-routed *before* spending) → Bucket 3 Operational Independence
-  wallets (capped, **not tracked**). Persona labels live in `moneyView.ts::CATEGORY_META`
-  (household: Needs & Fixed / Savings & Goals / Personal · business: Operating Costs / Reserves &
+- **3-Bucket model — "funding transparency, spending autonomy":** Bucket 1 Must-paid →
+  Bucket 2 Savings (10–20%, auto-routed *before* spending) → Bucket 3 Spendings
+  (capped, **not tracked**). Persona labels live in `moneyView.ts::CATEGORY_META`
+  (household: Must-paid / Savings / Spendings · business: Operating Costs / Reserves &
   Growth / Owner & Distributions).
 - **Financial knowledge graph:** money = nodes (`income_source · bucket · wallet · vendor ·
   obligation · goal · asset · member`) + typed temporal edges (`FUNDS · ALLOCATES_PCT ·
@@ -57,7 +57,7 @@ and a stressed couple reading it at 11pm.
   **structure**, not rows — that's the differentiator. Say "graph model," not "graph database."
 - **Projection = the insight engine:** `web/src/lib/projection.ts` walks allocations and extrapolates
   spend velocity to month-end → per bucket `on_track | at_risk | over_budget | unfunded`. Good copy
-  turns "you spent more on food" into "at this velocity your Future Shield goal slips ~6 weeks."
+  turns "you spent more on food" into "at this velocity your Savings goal slips ~6 weeks."
 - **Three personas, one engine:** personal (Aisha, solo) · family (Rahman household) · business
   (café). Content should switch framing by `tenant.kind`, never by a schema change.
 - See `references/finance-frameworks.md` for how the 3-bucket model maps to 50/30/20,

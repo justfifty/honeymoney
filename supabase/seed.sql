@@ -21,12 +21,12 @@ insert into nodes (id, tenant_id, kind, label, props) values
    'income_source', 'Salary', '{"monthly_amount": 6000, "cadence": "monthly"}')
 on conflict (id) do nothing;
 
--- Buckets (Bucket 1 fixed / Bucket 2 shield / Bucket 3 personal) ------------
+-- Buckets (Bucket 1 must-paid / Bucket 2 savings / Bucket 3 spendings) ------
 insert into nodes (id, tenant_id, kind, label, props) values
   ('b0000000-0000-0000-0000-0000000000b1', '11111111-1111-1111-1111-111111111111', 'bucket', 'Rent',              '{"bucket": 1}'),
   ('b0000000-0000-0000-0000-0000000000b2', '11111111-1111-1111-1111-111111111111', 'bucket', 'Utilities',         '{"bucket": 1}'),
   ('b0000000-0000-0000-0000-0000000000b3', '11111111-1111-1111-1111-111111111111', 'bucket', 'Education',         '{"bucket": 1}'),
-  ('b0000000-0000-0000-0000-0000000000b4', '11111111-1111-1111-1111-111111111111', 'bucket', 'Future Shield',     '{"bucket": 2}'),
+  ('b0000000-0000-0000-0000-0000000000b4', '11111111-1111-1111-1111-111111111111', 'bucket', 'Savings',           '{"bucket": 2}'),
   ('b0000000-0000-0000-0000-0000000000b5', '11111111-1111-1111-1111-111111111111', 'bucket', 'Groceries',         '{"bucket": 3, "default_spend": true}'),
   ('b0000000-0000-0000-0000-0000000000b6', '11111111-1111-1111-1111-111111111111', 'bucket', 'Personal — Aiman',  '{"bucket": 3, "private": true}'),
   ('b0000000-0000-0000-0000-0000000000b7', '11111111-1111-1111-1111-111111111111', 'bucket', 'Personal — Siti',   '{"bucket": 3, "private": true}')

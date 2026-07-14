@@ -16,7 +16,7 @@ _The in-app version lives at `/guide`. This file is the canonical text; keep the
 - **Local-first by default.** The reference deployment runs a local database (PocketBase) on the operator's machine; household data does not need to leave it. The Next.js server is the only thing that talks to the database — the browser never does.
 - **Data minimization.** Forwarded/scanned receipts are parsed into structured fields (vendor, amount, date); the **raw image is not stored**.
 - **On-device capture.** Voice entry and receipt scanning run in the browser (Web Speech API + tesseract.js). That audio/image **never leaves the device** and uses **no AI tokens**.
-- **Private wallets.** Bucket-3 (personal) spending is **not itemized** — autonomy over surveillance.
+- **Private wallets.** Spending in the **Spendings** bucket (Bucket 3) is **not itemized** — autonomy over surveillance.
 - **User control.** Members/roster can be added or removed at any time; removing a person **keeps their past transactions but un-attributes them** (nothing is lost, nothing stays tied to them).
 - **Minimal AI exposure.** If the optional AI insight (Gemini) is enabled, it receives a **short budget-status summary** — not raw transactions, not identities. Note that any cloud AI call sends that summary outside Malaysia; the local-first path avoids this entirely.
 - **No ads, no data sale.** HoneyMoney does not sell or share personal data.

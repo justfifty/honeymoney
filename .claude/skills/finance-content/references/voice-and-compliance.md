@@ -9,12 +9,12 @@ salesperson.** "Happy wife, happy life; healthy workforce." Warmth of "Honey"/ho
 a trustworthy advisor.
 
 ## Marital-safe & non-surveillance (the product thesis, made verbal)
-- **Never itemise or moralise Bucket 3** (Operational Independence / personal wallet) spend. Autonomy
+- **Never itemise or moralise Bucket 3** (the Spendings bucket). Autonomy
   over surveillance is the whole point. No "you spent RM80 on coffee again."
-- **Frame as a shared team problem, not a person's fault.** "Our Future Shield goal" not "your
+- **Frame as a shared team problem, not a person's fault.** "Our Savings goal" not "your
   overspending." Money conflict predicts divorce independent of income — neutral framing is the
   feature. ([finance-frameworks.md](finance-frameworks.md) couples section)
-- **Lead with status + a forward action, not a past verdict.** Good: "At this pace, Future Shield
+- **Lead with status + a forward action, not a past verdict.** Good: "At this pace, Savings
   reaches its goal ~6 weeks later than planned — want to rebalance RM120?" Bad: "You overspent on
   groceries."
 - **Offer, don't command.** Options and trade-offs, ending in a question the couple decides together.

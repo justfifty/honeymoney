@@ -99,8 +99,8 @@ For **each** member (have IDs on hand):
 > abandon, and they store flat data that can't reason about goals.
 
 **Solution / what it does:**
-> A **3-Bucket model** — Fixed Non-Negotiables, a Future Shield auto-savings %, and
-> private personal wallets where tracking *stops* (autonomy over surveillance). Money
+> A **3-Bucket model** — Must-paid commitments, a Savings auto-allocation %, and
+> a private Spendings bucket where tracking *stops* (autonomy over surveillance). Money
 > is modelled as a **knowledge graph** (income → buckets → spend → goals), so Honey can
 > warn a couple structurally when one bucket's spending threatens a shared goal.
 > **Zero-integration capture**: forward a screenshot to Telegram, or use on-device OCR
@@ -134,8 +134,8 @@ it: they surveil every ringgit, demand manual entry until users quit, and store 
 too flat to warn anyone before a goal slips.
 
 *Our solution.* HoneyMoney models a household's money as a **living knowledge graph**
-and applies a simple, brandable **3-Bucket method**: Fixed Non-Negotiables (rent,
-bills), a **Future Shield** auto-savings percentage, and **private personal wallets
+and applies a simple, brandable **3-Bucket method**: **Must-paid** (rent,
+bills), a **Savings** auto-allocation percentage, and a **private Spendings bucket
 where tracking stops**. Because the graph knows how income flows into buckets and out
 to real spending, our AI companion **"Honey"** can see — structurally — when one
 bucket's spending velocity is about to push a shared goal weeks later, and nudge the

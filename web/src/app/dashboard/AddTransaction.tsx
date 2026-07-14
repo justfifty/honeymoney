@@ -131,9 +131,9 @@ export default function AddTransaction({
         {analysis?.duplicateOf && (
           <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
             🔁{" "}
-            {tr("cap.duplicate", {
+            {tr(analysis.duplicateOf.certainty === "exact" ? "cap.duplicateExact" : "cap.duplicate", {
               vendor: analysis.duplicateOf.vendor,
-              amount: analysis.duplicateOf.amount,
+              amount: analysis.duplicateOf.amount.toFixed(2),
               when: new Date(analysis.duplicateOf.occurredAt).toLocaleDateString("en-MY", {
                 day: "numeric",
                 month: "short",

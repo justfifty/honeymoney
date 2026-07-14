@@ -214,7 +214,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [x] Test parse route + insight route + health — `web/src/app/api/{parse,insight,health}/route.ts`
 - [x] Dashboard (buckets, recent spend, Honey card) — `web/src/app/dashboard/page.tsx`
 - [x] **End-to-end verified locally**: PB migrations → projection → dashboard → Honey insight (both tenants)
-- [ ] Add a `GEMINI_API_KEY` + test `/api/parse` with a real TNG/MAE screenshot
+- [ ] Add a `GEMINI_API_KEY` + test `/api/receipt` with a real TNG/MAE screenshot
 - [ ] Register Telegram bot (@BotFather) + expose webhook via tunnel (`cloudflared`/`ngrok`) for the demo
 - [ ] Curate 20 real TNG/MAE/GrabPay screenshots → measure OCR accuracy vs a golden set
 
@@ -256,7 +256,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [ ] **Graph-management CRUD** — add income/bucket/department, set allocations, edit goals/obligations from the UI.
 - [ ] Corporate anonymized-aggregate roll-up (k-anonymity, P4).
 
-> **Scope discipline:** the household demo is the pitch centrepiece — one killer graph insight ("your food velocity moves your Future Shield goal 6 weeks later"). The business tier is **now demonstrable** (persona-aware graph, staff roster, business seeds) but the P3 items above (cashflow, reporting, CRUD) stay a **narrated + partially-built roadmap** until after semi-finals. Don't let business scope dilute the household story judges score first.
+> **Scope discipline:** the household demo is the pitch centrepiece — one killer graph insight ("your food velocity moves your Savings goal 6 weeks later"). The business tier is **now demonstrable** (persona-aware graph, staff roster, business seeds) but the P3 items above (cashflow, reporting, CRUD) stay a **narrated + partially-built roadmap** until after semi-finals. Don't let business scope dilute the household story judges score first.
 
 ---
 
@@ -283,7 +283,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 From `docs/MARKET_STRATEGY.md` — most are **native to the graph**, so cheaper for us than for incumbents. **Recommended top 3 to build next** (highest differentiation × lowest effort):
 
 1. [ ] **Couples hide/share toggles** (Honeydue) — flag any wallet/vendor node shared-vs-private between partners; + **"mine/theirs/ours"** views (Monarch). *The wedge nobody owns.*
-2. [ ] **Round-ups → Future Shield** (Raiz) — round each captured spend up, sweep the difference to savings.
+2. [ ] **Round-ups → Savings** (Raiz) — round each captured spend up, sweep the difference to savings.
 3. [ ] **Goal countdown / ETA** (StashAway) — "House Deposit in ~14 months at this pace" from existing goal target/current.
 
 Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-spend-today (EWA anxiety, no lending) · net-worth via the unused `asset` node kind (Maybe) · auto-categorization rules (Firefly/Actual) · invite-a-partner referral loop · **name & brand the 3-bucket method** (à la YNAB's "Four Rules") · daily-yield nudge that refers to Versa/KDI (don't hold funds).
@@ -295,7 +295,7 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 2. [~] Malaysian-citizen member = **Chua Kia Wah** (confirmed). ⬜ Still need his **MyKad number** on the portal. *(last eligibility field)*
 3. [ ] **Register on the MAIC portal** — the full submission pack (deck/summary/AI-disclosure PDFs + video + repo + profiles) is ready; see `docs/REGISTRATION.md`. Enter Chua's MyKad + IDs directly on the form.
 4. [ ] **First cut deploy** — Fly PocketBase (via `pocketbase/Dockerfile`) + Vercel (root `web/`) → free `.vercel.app` URL. Build is already verified green. Buy a domain after.
-5. [ ] Get a Gemini API key (AI Studio free tier); test `/api/parse` with a real screenshot. *(App runs fine without it — on-device capture already works token-free.)*
+5. [ ] Get a Gemini API key (AI Studio free tier); test `/api/receipt` with a real screenshot. *(App runs fine without it — on-device capture already works token-free.)*
 6. [ ] Draft the LOI + send to first 3 HR contacts.
 7. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
 8. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).

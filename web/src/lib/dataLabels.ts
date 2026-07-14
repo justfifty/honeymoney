@@ -27,7 +27,10 @@ export const DATA_LABELS: Record<string, LabelTr> = {
   "Rental (studio unit)": { ms: "Sewa (unit studio)", zh: "租金 (单间单位)", "zh-Hant": "租金 (單間單位)", hi: "किराया (स्टूडियो यूनिट)", ta: "வாடகை (ஸ்டூடியோ யூனிட்)" },
   "Dividends (ASB/stocks)": { ms: "Dividen (ASB/saham)", zh: "股息 (ASB/股票)", "zh-Hant": "股息 (ASB/股票)", hi: "लाभांश (ASB/स्टॉक)", ta: "பங்குலாபம் (ASB/பங்குகள்)" },
   "Content (YouTube/TikTok)": { ms: "Kandungan (YouTube/TikTok)", zh: "内容创作 (YouTube/TikTok)", "zh-Hant": "內容創作 (YouTube/TikTok)", hi: "कंटेंट (YouTube/TikTok)", ta: "உள்ளடக்கம் (YouTube/TikTok)" },
-  // buckets
+  // buckets — the three starter buckets every new household gets (lib/household.ts)
+  "Must-paid": { ms: "Wajib Bayar", zh: "必付", "zh-Hant": "必付", hi: "अनिवार्य भुगतान", ta: "கட்டாயச் செலவு" },
+  "Savings": { ms: "Simpanan", zh: "储蓄", "zh-Hant": "儲蓄", hi: "बचत", ta: "சேமிப்பு" },
+  "Spendings": { ms: "Perbelanjaan", zh: "日常开销", "zh-Hant": "日常開銷", hi: "खर्च", ta: "செலவுகள்" },
   "Rent": { ms: "Sewa", zh: "房租", "zh-Hant": "房租", hi: "किराया", ta: "வாடகை" },
   "Utilities": { ms: "Utiliti", zh: "水电费", "zh-Hant": "水電費", hi: "उपयोगिताएँ", ta: "பயன்பாட்டு கட்டணங்கள்" },
   "Education": { ms: "Pendidikan", zh: "教育", "zh-Hant": "教育", hi: "शिक्षा", ta: "கல்வி" },

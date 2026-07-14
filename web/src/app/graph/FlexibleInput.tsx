@@ -434,16 +434,17 @@ function AnalysisPanel({ analysis, lang }: { analysis: CaptureAnalysis; lang: Lo
   const rows: { icon: string; cls: string; text: string }[] = [];
 
   if (analysis.duplicateOf) {
+    // "exact" is arithmetic — same shop, same money, same day. It gets stated as
+    // fact. "likely" is a day or two out, which a daily kopi habit also looks
+    // like, so it stays a question rather than an accusation.
+    const d = analysis.duplicateOf;
     rows.push({
       icon: "🔁",
-      cls: "text-rose-600",
-      text: tr("cap.duplicate", {
-        vendor: analysis.duplicateOf.vendor,
-        amount: analysis.duplicateOf.amount,
-        when: new Date(analysis.duplicateOf.occurredAt).toLocaleDateString("en-MY", {
-          day: "numeric",
-          month: "short",
-        }),
+      cls: d.certainty === "exact" ? "font-medium text-rose-600" : "text-amber-600",
+      text: tr(d.certainty === "exact" ? "cap.duplicateExact" : "cap.duplicate", {
+        vendor: d.vendor,
+        amount: d.amount.toFixed(2),
+        when: new Date(d.occurredAt).toLocaleDateString("en-MY", { day: "numeric", month: "short" }),
       }),
     });
   }

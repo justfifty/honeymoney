@@ -19,6 +19,9 @@ export default async function SiteHeader() {
   const [user, locale] = await Promise.all([getSessionUser().catch(() => null), getLocale()]);
   const tr = (k: string) => t(locale, k);
   const navItems = NAV.map((n) => ({ href: n.href, label: tr(n.key) }));
+  // Importing writes to the books, so it only exists for someone signed in —
+  // there is no demo version of it to show a visitor.
+  if (user) navItems.push({ href: "/import", label: tr("nav.import") });
   if (user?.role === "admin") navItems.push({ href: "/admin", label: tr("auth.admin") });
 
   return (

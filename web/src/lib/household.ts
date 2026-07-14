@@ -156,9 +156,9 @@ export async function resolveViewTenant(): Promise<{ tenantId: string; ctx: Ctx 
 // A brand-new household with no buckets would break every view (the graph write
 // path throws "No bucket exists for this tenant"), so seed the 3-bucket model.
 const STARTER_BUCKETS: { label: string; props: Record<string, unknown> }[] = [
-  { label: "Commitments", props: { bucket: 1 } },
-  { label: "Future Shield", props: { bucket: 2 } },
-  { label: "Daily Spend", props: { bucket: 3, default_spend: true } },
+  { label: "Must-paid", props: { bucket: 1 } },
+  { label: "Savings", props: { bucket: 2 } },
+  { label: "Spendings", props: { bucket: 3, default_spend: true } },
 ];
 
 export async function createHouseholdFor(

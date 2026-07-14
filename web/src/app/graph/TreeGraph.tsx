@@ -41,10 +41,12 @@ const STATUS_COLOR: Record<string, string> = {
   over_budget: "#C94F4F",
   unfunded: "#9AA0A6",
 };
+// Fallback only — the server passes real labels from moneyView.CATEGORY_META.
+// Keep these two in step.
 const DEFAULT_TIER_META: Record<number, { label: string; badge: string }> = {
-  1: { label: "Needs & Fixed", badge: "🏠" },
-  2: { label: "Savings & Goals", badge: "🎯" },
-  3: { label: "Personal & Lifestyle", badge: "🛍️" },
+  1: { label: "Must-paid", badge: "🏠" },
+  2: { label: "Savings", badge: "🎯" },
+  3: { label: "Spendings", badge: "🛍️" },
 };
 
 const ROW = 30;

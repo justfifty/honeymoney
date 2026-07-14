@@ -83,7 +83,7 @@ Bukku (RM0–135/mo), Financio (RM50–135/mo), AutoCount (RM70–180/mo cloud),
 - **SME tier**: a low RM/month band comparable to Bukku/Financio (RM35–135/mo), positioned as *cashflow wellness + e-Invoice-adjacent*, not accounting.
 
 **Growth mechanics that fit this category:**
-- **Family/couples referral is a built-in K-factor** — inviting a spouse *is* the core feature. Milestone shares ("we funded our Future Shield"). Employer-seeded distribution (a whole company onboards at once) is the B2B2C multiplier.
+- **Family/couples referral is a built-in K-factor** — inviting a spouse *is* the core feature. Milestone shares ("we funded our Savings bucket"). Employer-seeded distribution (a whole company onboards at once) is the B2B2C multiplier.
 - **⚠️ MLM / network-marketing distribution: DO NOT.** For a product handling salary/financial data sold to HR, an MLM model is a **credibility killer** — HR procurement, grant panels, and MAIC judges read it as a trust/compliance risk, and it clashes with the "we *reduce* financial harm" mission. Use enterprise B2B sales + in-product family referral instead.
 - **Crowdfunding / ECF** (pitchIN): realistic **after** traction, not day one.
 
@@ -101,7 +101,7 @@ Bukku (RM0–135/mo), Financio (RM50–135/mo), AutoCount (RM70–180/mo cloud),
 The competition validates that **"AI" is mostly a categorization/branding layer** — real agentic AI is rare and a differentiator. To maximize ROI per token:
 - **Tier the AI.** Cheap/free path first, premium AI only where it changes a decision.
 - **No-token capture fallback (open-source, MIT/Apache):** **tesseract.js** (in-browser receipt OCR — no Python sidecar) and **whisper.cpp** (on-device voice → spend entry; covers Malay/Chinese/Tamil/Hindi). This proves "runs at RM 0/month," removes the Gemini-cost dependency, and the **on-device angle directly answers the PDPA/data-residency objection HR will raise** (Gemini = data leaving Malaysia). Gemini stays the *premium* path.
-- **Spend tokens on the moat, not the plumbing:** the forward-looking "Honey" insight ("your food velocity pushes Future Shield 6 weeks later"), the marital-safe framing, and cross-wallet reconciliation — not on OCR that a free library does.
+- **Spend tokens on the moat, not the plumbing:** the forward-looking "Honey" insight ("your food velocity pushes your Savings goal 6 weeks later"), the marital-safe framing, and cross-wallet reconciliation — not on OCR that a free library does.
 - **Agentic angle for the award:** a Honey agent that reads the graph, proposes a rebalance, and (with confirmation) applies it — genuinely agentic, and no local incumbent has it (Ryt AI executes payments but doesn't coach a budget).
 
 ---
@@ -112,7 +112,7 @@ The competition validates that **"AI" is mostly a categorization/branding layer*
 2. **Own the marital-harmony brand** — position around *fewer money fights* + a **no-questions-asked Personal-autonomy wallet**; no competitor claims this.
 3. **Ship the RM-0 capture fallback** (tesseract.js + whisper.cpp) — cost story + PDPA story + accessibility.
 4. **Name & brand the 3-bucket method** (à la YNAB's Four Rules) — the method is the retention moat.
-5. **Stay a PFM tool, not a lender/fund-holder/e-invoice-issuer** — integrate MyInvois/AutoCount for SME; refer (don't replicate) Versa/KDI/StashAway for the Future Shield bucket. Keeps us out of BNM/SC licensing and CCA scope.
+5. **Stay a PFM tool, not a lender/fund-holder/e-invoice-issuer** — integrate MyInvois/AutoCount for SME; refer (don't replicate) Versa/KDI/StashAway for the Savings bucket. Keeps us out of BNM/SC licensing and CCA scope.
 6. **GTM realism:** lead free/consumer + sponsor-subsidized; prove ROI; don't assume Malaysian employers pay PEPM like the UK.
 
 ---

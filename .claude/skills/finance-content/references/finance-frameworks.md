@@ -18,10 +18,10 @@ Sources: [Penn SRFS](https://srfs.upenn.edu/financial-wellness/browse-topics/bud
 
 ## How HoneyMoney's 3-bucket model maps (the credible framing to use)
 HoneyMoney is a **hybrid** — say this explicitly, it's defensible:
-- **Bucket 1 — Fixed Non-Negotiables** ≈ 50/30/20's "50% needs" + the fixed-bill envelopes.
-- **Bucket 2 — Future Shield** ≈ the "20% savings" **and** the pay-yourself-first automation principle
+- **Bucket 1 — Must-paid** ≈ 50/30/20's "50% needs" + the fixed-bill envelopes.
+- **Bucket 2 — Savings** ≈ the "20% savings" **and** the pay-yourself-first automation principle
   (funded *first*, before any spending is tracked).
-- **Bucket 3 — Operational Independence wallets** ≈ the "30% wants" + envelope-style **hard caps** per
+- **Bucket 3 — Spendings** ≈ the "30% wants" + envelope-style **hard caps** per
   wallet — but deliberately **not itemised** (autonomy over surveillance).
 - Net: **pay-yourself-first sequencing + envelope hard caps + zero-based intent** (every ringgit lands
   in a named bucket). This hybrid is HoneyMoney's answer to "why not just 50/30/20?"
@@ -39,7 +39,7 @@ HoneyMoney is a **hybrid** — say this explicitly, it's defensible:
 - **Decision rule for copy:** "Consistent either way → avalanche (saves the most). Need visible wins
   to keep going → snowball." [Monarch](https://www.monarch.com/blog/debt/snowball-vs-avalanche-method)
 - **Goal-based saving:** each goal = amount + deadline + its own bucket/wallet. This is exactly what
-  "Future Shield" operationalises.
+  the **Savings** bucket operationalises.
 
 ## Couples & money — the evidence behind "marital-safe" (use for tone, not preaching)
 - **Money is the #1 predictor of divorce** (Britt, Kansas State, 4,500+ couples). [src](https://stangelawfirm.com/articles/divorce-study-arguing-about-money-is-the-top-predictor-of-divorce/)

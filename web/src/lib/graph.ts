@@ -52,9 +52,21 @@ async function ensureVendorNode(tenantId: string, vendor: string): Promise<strin
   return created.id;
 }
 
+export async function listBuckets(tenantId: string): Promise<{ id: string; label: string; tier: number }[]> {
+  const buckets = await pbList<PBNode>("nodes", {
+    filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+    sort: "created",
+  });
+  return buckets.map((b) => ({
+    id: b.id,
+    label: b.label,
+    tier: Number((b.props as { bucket?: number } | null)?.bucket ?? 3),
+  }));
+}
+
 // Resolve which bucket/wallet a forwarded receipt should be attributed to.
 // Preference: a bucket flagged props.default_spend = true; else the first bucket.
-async function resolveWalletNode(
+export async function resolveWalletNode(
   tenantId: string,
 ): Promise<{ id: string; label: string }> {
   const buckets = await pbList<PBNode>("nodes", {

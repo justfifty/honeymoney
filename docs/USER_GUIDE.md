@@ -36,13 +36,13 @@ Two ready-made examples ship in `supabase/`. Load them and the dashboard is imme
 
 | Bucket | Type | Allocated / mo |
 |--------|------|---------:|
-| Rent | Fixed (Bucket 1) | RM 1,200 |
-| Utilities | Fixed (Bucket 1) | RM 300 |
-| Education | Fixed (Bucket 1) | RM 500 |
-| Future Shield | 15% auto-save (Bucket 2) | RM 900 |
-| Groceries | Personal, tracked (Bucket 3) | RM 800 |
-| Personal — Aiman | Private wallet (Bucket 3) | RM 700 |
-| Personal — Siti | Private wallet (Bucket 3) | RM 700 |
+| Rent | Must-paid (Bucket 1) | RM 1,200 |
+| Utilities | Must-paid (Bucket 1) | RM 300 |
+| Education | Must-paid (Bucket 1) | RM 500 |
+| Savings | 15% auto-save (Bucket 2) | RM 900 |
+| Groceries | Spendings, tracked (Bucket 3) | RM 800 |
+| Spendings — Aiman | Private wallet (Bucket 3) | RM 700 |
+| Spendings — Siti | Private wallet (Bucket 3) | RM 700 |
 
 Seeded spend puts **Groceries running hot early in the month**, so it surfaces as **Over budget** and Honey nudges a gentle rebalance — *without* itemizing either spouse's private wallet. That's the "funding transparency, spending autonomy" story in one screen.
 
@@ -57,11 +57,11 @@ To view Example B on the dashboard, set `DEMO_TENANT_ID` to the business id, or 
 
 ## 3. How to use it (as a family)
 
-1. **Set up buckets once** — your fixed bills, a Future Shield %, and personal wallet caps. (The seed does this for you as a demo.)
+1. **Set up buckets once** — your Must-paid bills, a Savings %, and Spendings caps. (The seed does this for you as a demo.)
 2. **Link Telegram** — open the bot, send `/start`. Your chat is linked to your household.
 3. **Forward receipts** — whenever you pay with TNG / MAE / GrabPay / ShopeePay, forward the screenshot to the bot. No typing.
 4. **Confirm** — Honey replies with what it read; reply "no" if it's off (human-in-the-loop).
-5. **Check in weekly** — open `/dashboard`, read Honey's one insight. Personal-wallet spending stays private.
+5. **Check in weekly** — open `/dashboard`, read Honey's one insight. Spendings-bucket spending stays private.
 
 ## 4. How to apply it (as an employer / where to apply)
 
@@ -87,7 +87,7 @@ npm run dev                                  # terminal 2: app → http://localh
 
 - The database is **PocketBase** — a single free binary; your data lives in `pocketbase/pb_data/` on your own machine and the demo households load automatically. Browse it at `http://127.0.0.1:8090/_/`.
 - Demo tenants: household `hhrahman1111111` (default) · business `bizsedap2222222` (set as `DEMO_TENANT_ID`, or call `/api/insight?tenantId=bizsedap2222222`).
-- **Test the AI parse:** add a free `GEMINI_API_KEY`, then `POST /api/parse` with `{ "imageBase64": "...", "mimeType": "image/jpeg", "tenantId": "hhrahman1111111" }`.
+- **Test the AI parse:** add a free `GEMINI_API_KEY`, then `POST /api/receipt` with `{ "imageBase64": "...", "mimeType": "image/jpeg" }` from a logged-in session (the household comes from your session — no `tenantId` in the body).
 - **Check wiring:** `GET /api/health` shows which integrations are configured.
 
 Full setup + deploy walkthrough: `PLAN.md §9–11`.

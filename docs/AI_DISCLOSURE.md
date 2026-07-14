@@ -37,8 +37,8 @@ confirmation** before it is written to their ledger. Users can correct the merch
 amount, category, or bucket. The AI proposes; the human decides.
 
 **The 3-Bucket model is rules-based, not AI-decided.** Allocation of money across
-Fixed Non-Negotiables, the Future Shield auto-savings bucket, and private personal
-wallets follows user-configured rules. AI helps users *understand* their money; it
+Must-paid, the Savings auto-allocation bucket, and the private Spendings
+bucket follows user-configured rules. AI helps users *understand* their money; it
 does not autonomously move or lock funds.
 
 ## 2. Privacy and PDPA Handling

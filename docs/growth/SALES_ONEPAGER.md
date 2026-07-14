@@ -24,8 +24,8 @@ money.
 
 - **Effortless tracking.** Forward a screenshot; AI (Google Gemini) extracts the
   transaction; the employee confirms it in one tap. No spreadsheets, no manual entry.
-- **A calmer money system.** The 3-Bucket model separates Fixed Non-Negotiables,
-  automatic "Future Shield" savings, and private personal wallets — reducing money
+- **A calmer money system.** The 3-Bucket model separates Must-paid commitments,
+  automatic "Savings", and a private Spendings bucket — reducing money
   friction, including between partners.
 - **Proactive, judgment-free guidance.** Honey nudges toward better habits and answers
   money questions in plain language — private, always-on, and marital-safe.
@@ -38,7 +38,7 @@ money.
 |---|---|
 | A private AI money coach on Telegram | An **anonymized, aggregate** workforce financial-health dashboard |
 | Effortless expense capture & 3-Bucket budgeting | Insight into wellness trends (e.g. share of staff building an emergency buffer) |
-| Automatic savings ("Future Shield") | A differentiated, modern benefit for hiring & retention |
+| Automatic savings (the "Savings" bucket) | A differentiated, modern benefit for hiring & retention |
 | Judgment-free, marital-safe guidance | A measurable wellness initiative that targets a *root cause* of stress |
 
 **Privacy note:** Employers **never** see an individual employee's transactions,

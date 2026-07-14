@@ -36,9 +36,9 @@ See [`PLAN.md §4–6`](PLAN.md) for the data model and hosting details.
 
 ## The 3-Bucket model
 
-1. **Fixed Non-Negotiables** — rent, utilities, education (transparent fixed amounts).
-2. **Future Shield** — a 10–20% auto-allocation to savings *before* tracking begins.
-3. **Operational Independence Wallets** — capped personal pools where tracking stops.
+1. **Must-paid** — rent, utilities, education (transparent fixed amounts).
+2. **Savings** — a 10–20% auto-allocation to savings *before* tracking begins.
+3. **Spendings** — capped personal pools where tracking stops.
 
 ---
 

@@ -106,9 +106,9 @@ HoneyMoney is an employee financial wellness benefit built for how Malaysian hou
 
 **The 3-Bucket model** is what makes it stick where other tools cause fights:
 
-- **Bucket 1 — Fixed non-negotiables:** rent, car, utilities, loans. Named and protected.
-- **Bucket 2 — Future Shield:** 10–20% auto-savings, so the emergency buffer builds *before* it can be spent.
-- **Bucket 3 — Personal wallets:** where tracking deliberately *stops*. Each partner gets guilt-free autonomy and privacy. This is the release valve — no spousal surveillance, no friction.
+- **Bucket 1 — Must-paid:** rent, car, utilities, loans. Named and protected.
+- **Bucket 2 — Savings:** 10–20% auto-allocated, so the emergency buffer builds *before* it can be spent.
+- **Bucket 3 — Spendings:** where tracking deliberately *stops*. Each partner gets guilt-free autonomy and privacy. This is the release valve — no spousal surveillance, no friction.
 
 That third bucket is the counterintuitive part, and it's the reason couples keep using it. Financial wellness fails when it feels like control. HoneyMoney gives structure where it matters and freedom where it doesn't.
 
@@ -120,7 +120,7 @@ For HR, it's a benefit you switch on — not a program you have to run.
 
 You get **aggregate, anonymized workforce insights** — the kind that make you look sharp in a leadership review:
 
-- Share of workforce with a healthy emergency buffer (e.g., "38% now hold 1+ month of expenses in Future Shield").
+- Share of workforce with a healthy emergency buffer (e.g., "38% now hold 1+ month of expenses in their Savings bucket").
 - Trend lines in financial-stress indicators, quarter over quarter.
 - Uptake and engagement of the benefit.
 - Themes to inform *when* you time bonuses, EWA, or education pushes.
@@ -143,7 +143,7 @@ Here's what a HoneyMoney pilot looks like:
 
 - **One department or 50–100 employees**, opt-in.
 - **90 days**, with a short baseline pulse survey at the start and end.
-- **A simple readout**: engagement, Future Shield adoption, and the movement in your financial-stress prevalence number — the same number you'll plug back into the ROI framework above.
+- **A simple readout**: engagement, Savings-bucket adoption, and the movement in your financial-stress prevalence number — the same number you'll plug back into the ROI framework above.
 - **No heavy lift for HR.** Setup is a Telegram link and a launch email.
 
 If the pilot moves your prevalence number even a few points, you'll have a real, defensible business case — built on your own workforce's data, not our assumptions.

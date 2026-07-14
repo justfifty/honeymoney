@@ -37,11 +37,11 @@ migrate(
       props: { monthly_amount: 6000, cadence: "monthly" },
     });
 
-    // buckets (1 fixed / 2 shield / 3 personal)
+    // buckets (1 must-paid / 2 savings / 3 spendings)
     save("nodes", "ndrent111111111", { tenant: HH, kind: "bucket", label: "Rent", props: { bucket: 1 } });
     save("nodes", "ndutil111111111", { tenant: HH, kind: "bucket", label: "Utilities", props: { bucket: 1 } });
     save("nodes", "ndeduc111111111", { tenant: HH, kind: "bucket", label: "Education", props: { bucket: 1 } });
-    save("nodes", "ndshield1111111", { tenant: HH, kind: "bucket", label: "Future Shield", props: { bucket: 2 } });
+    save("nodes", "ndshield1111111", { tenant: HH, kind: "bucket", label: "Savings", props: { bucket: 2 } });
     save("nodes", "ndgroc111111111", { tenant: HH, kind: "bucket", label: "Groceries", props: { bucket: 3, default_spend: true } });
     save("nodes", "ndaiman11111111", { tenant: HH, kind: "bucket", label: "Personal — Aiman", props: { bucket: 3, private: true } });
     save("nodes", "ndsiti111111111", { tenant: HH, kind: "bucket", label: "Personal — Siti", props: { bucket: 3, private: true } });

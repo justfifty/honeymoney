@@ -22,6 +22,7 @@
 13. [Scalability: household → business](#13-scalability-household--business)
 14. [Security, privacy & compliance](#14-security-privacy--compliance)
 15. [Deliverables & competition mapping](#15-deliverables--competition-mapping)
+16. [AI development effort & cost](#16-ai-development-effort--cost-as-of-2026-07-14)
 
 ---
 
@@ -32,9 +33,9 @@ Households in financial distress suffer marital friction and lost workplace prod
 HoneyMoney does three things differently:
 
 1. **3-Bucket "Funding Transparency, Spending Autonomy" model** — on payday, income splits top-down into:
-   - **Bucket 1 — Fixed Non-Negotiables** (rent, utilities, education): hardcoded amounts, fully transparent.
-   - **Bucket 2 — Future Shield** (10–20%): auto-routed to savings/wealth *before* any spending is tracked.
-   - **Bucket 3 — Operational Independence Wallets** (TNG/MAE): capped personal pools where **tracking stops** — restoring autonomy and killing spousal friction.
+   - **Bucket 1 — Must-paid** (rent, utilities, education): hardcoded amounts, fully transparent.
+   - **Bucket 2 — Savings** (10–20%): auto-routed to savings/wealth *before* any spending is tracked.
+   - **Bucket 3 — Spendings** (TNG/MAE): capped personal pools where **tracking stops** — restoring autonomy and killing spousal friction.
 2. **Zero-Integration data capture** — no fragile bank APIs. Users forward e-wallet/receipt **screenshots** to a Telegram bot; Gemini vision extracts vendor, amount, timestamp.
 3. **Financial Knowledge Graph** — money is modelled as **nodes + edges** in Postgres, so the AI ("Honey") reasons over *structure* (how spending velocity threatens a future goal), not isolated rows.
 
@@ -47,7 +48,7 @@ HoneyMoney is deliberately built so **the same knowledge-graph engine scales up 
 | | **Personal** (1 person) | **Family** (a household) | **Business** (an SME) |
 |---|---|---|---|
 | Income | one salary/gig | multiple earners | revenue streams / departments |
-| The 3 tiers | Needs · Save · Play | Needs & Fixed · Savings & Goals · Personal | Operating Costs · Reserves & Growth · Owner & Distributions |
+| The 3 tiers | Must-paid · Savings · Spendings | Must-paid · Savings · Spendings | Operating Costs · Reserves & Growth · Owner & Distributions |
 | Roster (`members`) | you | spouses + children | staff, managers, contractors |
 | Subject matters | tags on spend | shared vs private wallets | **departments / cost-centres / projects** |
 | Goal / obligation | a holiday fund | house deposit, car loan | runway, tax reserve, supplier terms |
@@ -167,7 +168,7 @@ Three concerns are kept separate: **the model (graph)**, **the events (transacti
 `bucket_projection(p_tenant uuid, p_as_of date)` runs a **recursive CTE** from `income_source` nodes, walks `ALLOCATES_*` edges (depth-guarded against cycles), sums allocation per bucket, computes month-to-date spend, extrapolates a **spend velocity** to month-end, and returns per bucket:
 `allocated, mtd_spend, projected_spend, projected_balance, status ∈ {on_track, at_risk, over_budget, unfunded}`.
 
-This single query is the demo's centerpiece: it turns "you spent more on food" into "at this velocity, your Future Shield goal slips 6 weeks."
+This single query is the demo's centerpiece: it turns "you spent more on food" into "at this velocity, your Savings goal slips 6 weeks."
 
 ### Why a graph (and why *not* a graph database)
 At household scale (tens–hundreds of nodes/tenant) Postgres + recursive CTEs is more than enough. A dedicated graph DB (Neo4j) would break the RM 0 cost and add ops burden. We keep the graph as a **model + query layer inside Postgres**. Say "graph model," not "graph database."
@@ -262,7 +263,7 @@ npm run pb:start       # terminal 1: creates superuser + applies schema + demo s
 npm run dev            # terminal 2: http://localhost:3000  (landing)  /dashboard (app)
 
 # 5. test the parse pipeline without Telegram
-#    POST an image to /api/parse (base64) — see §12.2 for the payload shape.
+#    POST an image to /api/receipt (base64) — see §12.2 for the payload shape.
 
 # 6. typecheck / build
 npm run build
@@ -276,14 +277,14 @@ npm run build
 
 ## 10. Step-by-step: how to use the app
 
-1. **Set up your household** (seed provides a demo one): income source (salary), Bucket 1 fixed items, Bucket 2 Future Shield %, Bucket 3 wallets.
+1. **Set up your household** (seed provides a demo one): income source (salary), Bucket 1 Must-paid items, Bucket 2 Savings %, Bucket 3 Spendings wallets.
 2. **Link Telegram**: start the bot, which records your chat id → `channel_links` (maps you to your tenant).
 3. **Forward a receipt**: screenshot a TNG/MAE/GrabPay payment and forward it to the bot.
 4. **Auto-capture**: Gemini reads vendor + amount + time; a transaction is written and attached to the right wallet/bucket. The bot replies with a one-tap confirm.
 5. **See the picture**: open `/dashboard` — buckets show `allocated → projected balance` with `on_track / at_risk / over_budget`.
-6. **Ask Honey**: get a marital-safe, forward-looking insight ("Bucket 3 is fine; but grocery velocity is nudging your Future Shield goal later — want to rebalance RM120?").
+6. **Ask Honey**: get a marital-safe, forward-looking insight ("Spendings is fine; but grocery velocity is nudging your Savings goal later — want to rebalance RM120?").
 
-Bucket 3 spending is **not itemized** by design — autonomy over surveillance.
+Spendings (Bucket 3) is **not itemized** by design — autonomy over surveillance.
 
 ---
 
@@ -312,7 +313,7 @@ The webhook validates `X-Telegram-Bot-Api-Secret-Token` before processing.
 ### 12.2 OCR parsing (Gemini, REST)
 `web/src/lib/gemini.ts::parseReceipt(base64, mimeType)` posts to `…/v1beta/models/<model>:generateContent` with the image as `inlineData` and a strict-JSON prompt. Output is validated into `{vendor, amount, currency, occurredAt, confidence}`. A cheap template/regex first-pass (Phase 2) can short-circuit known layouts before spending a vision call.
 
-Manual test: `POST /api/parse` with `{ "imageBase64": "...", "mimeType": "image/jpeg", "tenantId": "<uuid>" }`.
+Manual test: `POST /api/receipt` with `{ "imageBase64": "...", "mimeType": "image/jpeg" }` from a signed-in session. The tenant comes from the session, never the body — and the route only *proposes*: it returns the parsed receipt, a suggested bucket and any duplicate it found, and writes nothing until the user confirms.
 
 ### 12.3 Graph write
 `web/src/lib/graph.ts::ingestReceipt()` finds-or-creates the vendor node, resolves the spending wallet/bucket, ensures a `SPENT_AT` edge, and inserts a `transactions` row (with `parse_confidence`, `source`, `raw`) attached to that edge.
@@ -346,7 +347,7 @@ The **same node/edge engine** serves both — this is the core scalability argum
 | Concept | Household | Business |
 |---------|-----------|----------|
 | `income_source` | Salary, side gig | Revenue streams (Dine-in, Catering, Delivery) |
-| `bucket` (the 3 tiers) | Needs & Fixed · Savings & Goals · Personal | Operating Costs · Reserves & Growth · Owner & Distributions |
+| `bucket` (the 3 tiers) | Must-paid · Savings · Spendings | Operating Costs · Reserves & Growth · Owner & Distributions |
 | **subject matter** (`props`) | shared vs private wallet | **department / cost-centre / project** |
 | `obligation` (`OWES`) | Loans | Suppliers, payroll, tax |
 | `goal` | House deposit, Umrah | Runway, tax reserve, expansion |
@@ -370,7 +371,7 @@ The graph already supports this; P3 surfaces it:
 - **Data minimization**: parse screenshots, store structured fields, **discard raw images** (or short-TTL object storage). `receipt_ref` holds a pointer, not the image.
 - **PDPA-aware**: sensitive financial data — clear consent, minimal retention, tenant isolation.
 - **Secrets** never committed (`.gitignore`); service role key server-only.
-- **Bucket 3 privacy by design**: personal wallet spending not itemized.
+- **Bucket 3 privacy by design**: Spendings-bucket spending not itemized.
 
 ---
 
@@ -446,6 +447,70 @@ totalled in `/admin`. Token ledger also at `/api/usage`. Feeds the MAIC AI discl
 Flash** (also does receipt OCR), **Ollama** (local, zero-cost). Agentic health probe
 at `/api/ai/check`; per-call tokens logged to `ai_usage`. Setup + login links:
 `docs/AI_SETUP.md`.
+
+---
+
+## 16. AI development effort & cost (as of 2026-07-14)
+
+HoneyMoney was built with **Claude Code (Opus 4.8)** as the pair-programmer. This section
+records what that actually cost and how long it took — measured, not estimated, so the MAIC
+**AI disclosure** and the deck's cost story rest on real numbers. (Runtime AI spend — the
+Groq/Gemini/Ollama calls the *app* makes — is tracked separately in the `ai_usage` ledger and
+surfaced at `/admin`; see §15. This section is about the **development** tokens.)
+
+**Method.** Figures are derived from the Claude Code session transcripts
+(`~/.claude/projects/c--2026-honeymoney/*.jsonl`), which record a `usage` block per API call.
+*Active time* counts the gaps between transcript entries, treating any gap over 10 minutes as
+the developer having stepped away — a proxy for time at the keyboard, not a stopwatch.
+
+### 16.1 Sessions
+
+| # | Date | Elapsed | Active | Prompts | Tokens | API-equiv | Focus |
+| --- | ---- | ------: | -----: | ------: | -----: | --------: | ----- |
+| 1 | Jul 8 | 10.5h | 1.9h | 23 | 63M | $96 | Kickoff — proposal, deliverables, NEXT.md, first build |
+| 2 | Jul 9 | 15.8h | 3.4h | 17 | 272M | $232 | Core development; focus lens; skills scaffolding |
+| 3 | Jul 10 | 2.9h | 2.0h | 20 | 123M | $103 | Domain + Cloudflare Tunnel; zero-cost hosting |
+| 4 | Jul 10 | 4.1h | 3.6h | 35 | 263M | $193 | Registration flow, `docs/REGISTRATION.md`, submission pack |
+| 5 | Jul 11 | 3.8h | 2.6h | 8 | 137M | $98 | Skills build; web-app review & improvement pass |
+| 6 | Jul 13 | 3.3h | 1.4h | 3 | 104M | $77 | Auth/login UI polish |
+| 7 | Jul 14 | 2.7h | 1.8h | 32 | 41M | $33 | Tunnel troubleshooting; `hello@honeymoney.app` |
+| 8 | Jul 14 | 1.0h | 0.8h | 11 | 17M | $20 | Brand: sunburst particle field, wordmark lockup |
+| | **Total** | **44.1h** | **17.4h** | **149** | **1,019M** | **$852** | |
+
+### 16.2 Tokens and what they cost
+
+| Class | Tokens | Share | Note |
+| --- | ---: | ---: | --- |
+| Cache reads | 985.2M | 97% | Re-reading conversation context; bills at 0.1× the input rate |
+| Cache writes | 21.6M | 2% | 1.25×–2× the input rate depending on TTL |
+| **Output** | **5.55M** | **<1%** | The code, edits, and analysis actually generated |
+| Fresh input | 0.8M | <1% | Genuinely new input text |
+
+The billion-token headline is misleading: **97% of it is cache reads**, the cheapest token class.
+By model, ~95% ran on Opus 4.8 ($5/$25 per Mtok), with 42.9M on Fable 5 and small amounts on
+Sonnet 4.6 and Haiku 4.5.
+
+### 16.3 Actual spend
+
+Development ran on a **Claude Max subscription at SGD 150/month**, which is capacity-based,
+not metered per token.
+
+| | |
+| --- | --- |
+| API-equivalent cost (pay-as-you-go list prices) | **~USD 852** |
+| Actual cost — 7 days of a 31-day subscription | **~SGD 34** (≈ USD 25) |
+| Effective leverage | **~25×** |
+| Effective rate | ~SGD 2/active-hour vs ~USD 49/active-hour metered |
+
+**Honest caveat:** the SGD 34 is an *allocation*, not a measured charge — a subscription buys a
+monthly capacity, not a per-project meter. The USD 852 is a counterfactual (what the same tokens
+would have cost on the metered API), not a bill avoided line-for-line. Both are stated as such
+wherever they appear in the deck.
+
+**Why this matters for the rubric.** The whole product — engine, six-lens gallery, three personas,
+deployment, brand, and submission pack — was built in **17.4 active hours across 7 days for under
+SGD 40 of AI spend**, on a stack that runs at **RM 0/month**. That is the *Technical Feasibility*
+and *Commercial Viability* argument made concrete: a two-person team can ship and operate this.
 
 ---
 

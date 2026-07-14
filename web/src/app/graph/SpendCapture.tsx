@@ -52,7 +52,14 @@ export interface Captured {
 
 export interface CaptureAnalysis {
   bucket?: { nodeId: string; label: string; reason: string } | null;
-  duplicateOf?: { id: string; vendor: string; amount: number; occurredAt: string; why: string } | null;
+  duplicateOf?: {
+    id: string;
+    vendor: string;
+    amount: number;
+    occurredAt: string;
+    why: string;
+    certainty: "exact" | "likely";
+  } | null;
   subscription?: { likely: boolean; cadence: string; note: string } | null;
   anomaly?: { flagged: boolean; note: string } | null;
   insight?: string;
@@ -238,6 +245,13 @@ export default function SpendCapture({
 
   const handleImage = useCallback(
     async (file: File) => {
+      // A card or bank statement is a different job — many rows, not one payment
+      // — and it has its own importer. Silently failing here is what people used
+      // to get; point them at the thing that actually does it.
+      if (file.type === "application/pdf") {
+        setStatus(tr("cap.pdfToImport"));
+        return;
+      }
       if (!file.type.startsWith("image/")) {
         setStatus(tr("cap.notAnImage"));
         return;
@@ -251,11 +265,11 @@ export default function SpendCapture({
       if (aiEnabled) {
         setStatus(tr("cap.reading"));
         try {
-          const b64 = await toBase64(file);
+          const { base64, mimeType } = await prepareImage(file);
           const res = await fetch("/api/receipt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64: b64, mimeType: file.type }),
+            body: JSON.stringify({ imageBase64: base64, mimeType }),
           });
           const data = await res.json();
 
@@ -455,7 +469,49 @@ export default function SpendCapture({
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-function toBase64(file: File): Promise<string> {
+// A modern phone camera shoots 12 MP. Base64 inflates that by a third, and the
+// API caps an upload at ~6 MB — so photographing a receipt with a recent phone
+// could fail outright with a 413, and the ones that squeaked under the limit
+// spent seconds uploading megapixels the vision model never looks at. Receipt
+// text is legible well below 1600px on the long edge; anything more is upload
+// time and tokens spent on nothing.
+const MAX_EDGE = 1600;
+const JPEG_QUALITY = 0.85;
+const SKIP_RESIZE_BELOW = 1_500_000; // already small — don't re-encode and lose detail
+
+async function prepareImage(file: File): Promise<{ base64: string; mimeType: string }> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const longest = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(1, MAX_EDGE / longest);
+
+    if (scale === 1 && file.size <= SKIP_RESIZE_BELOW) {
+      bitmap.close();
+      return { base64: await toBase64(file), mimeType: file.type };
+    }
+
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no 2d context");
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", JPEG_QUALITY));
+    if (!blob) throw new Error("encode failed");
+    return { base64: await toBase64(blob), mimeType: "image/jpeg" };
+  } catch {
+    // HEIC on a browser that can't decode it, a blocked canvas, an exotic codec.
+    // The original bytes are still worth a try — the server will tell us if
+    // they're too big.
+    return { base64: await toBase64(file), mimeType: file.type };
+  }
+}
+
+function toBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).replace(/^data:[^;]+;base64,/, ""));
