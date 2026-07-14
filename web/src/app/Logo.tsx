@@ -1,7 +1,8 @@
 // HoneyMoney brand mark — a radiant orange sunburst: 20 tapered rays around a
 // solid hub, one flat brand orange (#FF7518), no gradients, so it stays legible
-// from a 16px favicon up to a hero. Geometry matches public/icon.svg exactly.
-// Inline SVG so it stays crisp and needs no network request.
+// from a small mark up to a hero. Inline SVG so it stays crisp and needs no
+// network request. The same construction generates the app icons — see
+// scripts/generate-icons.mjs; keep the two in step.
 
 const ORANGE = "#FF7518";
 

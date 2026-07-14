@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FocusOption } from "@/lib/focusView";
 import { t as translate, type Locale } from "@/lib/i18n";
+import AutoCloseDetails from "./AutoCloseDetails";
 
 // People lens + roster management. A household is 4 today, 5 after a new baby;
 // a café is 3 staff today, 8 in December — so the roster is editable inline and
@@ -61,7 +62,7 @@ export default function PeopleMenu({
   }
 
   return (
-    <details className="group relative">
+    <AutoCloseDetails className="group relative">
       <summary
         className={`flex cursor-pointer list-none items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium ${
           activeHere
@@ -182,6 +183,6 @@ export default function PeopleMenu({
           <p className="mt-1 text-[10px] text-zinc-400">{tr("g.people.help")}</p>
         </form>
       </div>
-    </details>
+    </AutoCloseDetails>
   );
 }

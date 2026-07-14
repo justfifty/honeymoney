@@ -1,12 +1,15 @@
 import Link from "next/link";
 import type { FocusGroups, FocusOption } from "@/lib/focusView";
 import { t as translate, type Locale } from "@/lib/i18n";
+import AutoCloseDetails from "./AutoCloseDetails";
 import PeopleMenu from "./PeopleMenu";
 
 // The focus selector: pick a lens from any dimension — income stream, bucket,
 // vendor, category, or person — and the whole page re-renders through it.
-// Structural dimensions are plain <details> + <Link> (server nav, no JS needed);
-// the People dimension is a client menu so the roster can grow or shrink.
+// Structural dimensions stay <details> + <Link> (server nav, links work before
+// hydration); AutoCloseDetails only adds menu manners on top — one open at a
+// time, and it closes when the pointer leaves. The People dimension is a client
+// menu so the roster can grow or shrink.
 
 function href(tenantId: string, mode: string, focus: string, lang: string) {
   return `/graph?tenantId=${tenantId}&mode=${mode}&focus=${focus}&lang=${lang}`;
@@ -31,7 +34,7 @@ function Dropdown({
 }) {
   const activeHere = options.some((o) => o.value === active);
   return (
-    <details className="group relative">
+    <AutoCloseDetails className="group relative">
       <summary
         className={`flex cursor-pointer list-none items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium ${
           activeHere
@@ -57,7 +60,7 @@ function Dropdown({
           </Link>
         ))}
       </div>
-    </details>
+    </AutoCloseDetails>
   );
 }
 

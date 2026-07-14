@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "icons": "node scripts/generate-icons.mjs",
     "pb:download": "node ../scripts/download-pocketbase.mjs",
     "pb:start": "node ../scripts/start-pocketbase.mjs"
   },
