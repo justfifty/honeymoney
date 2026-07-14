@@ -4,6 +4,7 @@ import "./globals.css";
 import Track from "./Track";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
+import HoneyField from "./HoneyField";
 import InstallPrompt from "./InstallPrompt";
 import FxRates from "./FxRates";
 import { getRates } from "@/lib/fx";
@@ -45,7 +46,9 @@ export const metadata: Metadata = {
     "financial inclusion", "e-wallet", "household budget", "SME cashflow",
   ],
   authors: [{ name: "Team HoneyMoney" }],
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  // Icons come from the app/ file convention (favicon.ico, icon.svg,
+  // apple-icon.png) — Next emits the <link> tags itself, so declaring them here
+  // too would only risk the two drifting apart.
   appleWebApp: { capable: true, title: "HoneyMoney", statusBarStyle: "default" },
   alternates: { canonical: SITE_URL },
   openGraph: {
@@ -98,6 +101,8 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <FxRates table={table} />
+        {/* dotted sunburst that trails the cursor behind every page */}
+        <HoneyField />
         <SiteHeader />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />

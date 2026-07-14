@@ -30,9 +30,9 @@
 
 /* Corporate colour, applied app-wide: remap Tailwind's `amber` ramp to the
    HoneyMoney brand orange and `emerald` to the brand trust-green. Every existing
-   amber-*/emerald-* utility now renders on-brand with no per-component edits.
+   amber and emerald utility now renders on-brand with no per-component edits.
    Light shades stay light (backgrounds), dark shades stay dark (text) so status
-   badges (text-*-800 on bg-*-100) keep their contrast.
+   badges (dark text on a light tint) keep their contrast.
 
    The ramp is built around --brand-honey (#ff7518), the orange of the sunburst
    mark. Note 600/700 are pulled well down in luminance on purpose: white text on

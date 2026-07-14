@@ -3,7 +3,6 @@ import Image from "next/image";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import Logo from "./Logo";
-import HoneyField from "./HoneyField";
 
 export default async function Home() {
   const locale = await getLocale();
@@ -20,19 +19,18 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col">
       {/* ---------- HERO ---------- */}
-      <section className="relative overflow-hidden bg-white px-6 pt-16 pb-16 text-center sm:pt-24">
-        {/* generative Bunga Raya (hibiscus) honey field */}
-        <HoneyField />
-
+      {/* no background: the site-wide sunburst field (see layout) shows through */}
+      <section className="relative overflow-hidden px-6 pt-16 pb-16 text-center sm:pt-24">
         <div className="relative z-10 mx-auto max-w-3xl">
           <span className="hm-animate mb-5 inline-block rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">
             {tr("home.badge")}
           </span>
-          <div className="hm-animate hm-delay-1 mb-4 flex justify-center">
-            <Logo size={76} className="drop-shadow-[0_6px_16px_rgba(232,160,18,0.35)]" />
-          </div>
-          <h1 className="hm-animate hm-delay-1 text-5xl font-extrabold tracking-tight text-zinc-900 sm:text-7xl">
-            Honey<span className="brand-gradient">Money</span>
+          <h1 className="hm-animate hm-delay-1 mt-2 flex items-center justify-center gap-0 text-5xl font-extrabold tracking-tight text-amber-500 sm:text-7xl">
+            {/* The mark only fills ~45% of its own viewBox, so a ~1.9em box lands
+                its rays at roughly the wordmark's cap height and the leftover
+                padding becomes the lockup's optical gap. */}
+            <Logo size={72} className="h-[1.9em] w-[1.9em] shrink-0" />
+            HoneyMoney
           </h1>
           <p className="hm-animate hm-delay-2 mx-auto mt-5 max-w-2xl text-lg text-zinc-600 sm:text-xl">
             {tr("home.tagline")}
