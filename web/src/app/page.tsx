@@ -25,12 +25,12 @@ export default async function Home() {
           <span className="hm-animate mb-5 inline-block rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">
             {tr("home.badge")}
           </span>
-          <h1 className="hm-animate hm-delay-1 mt-2 flex items-center justify-center gap-0 text-5xl font-extrabold tracking-tight text-amber-500 sm:text-7xl">
+          <h1 className="hm-animate hm-delay-1 mt-2 flex items-center justify-center gap-0 text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-6xl md:text-7xl">
             {/* The mark only fills ~45% of its own viewBox, so a ~1.9em box lands
                 its rays at roughly the wordmark's cap height and the leftover
                 padding becomes the lockup's optical gap. */}
             <Logo size={72} className="h-[1.9em] w-[1.9em] shrink-0" />
-            HoneyMoney
+            <span>Honey<span className="brand-gradient">Money</span></span>
           </h1>
           <p className="hm-animate hm-delay-2 mx-auto mt-5 max-w-2xl text-lg text-zinc-600 sm:text-xl">
             {tr("home.tagline")}
