@@ -30,7 +30,7 @@ export default async function Home() {
                 its rays at roughly the wordmark's cap height and the leftover
                 padding becomes the lockup's optical gap. */}
             <Logo size={72} className="h-[1.9em] w-[1.9em] shrink-0" />
-            <span>Honey<span className="brand-gradient">Money</span></span>
+            <span>Honey<span className="text-amber-500">Money</span></span>
           </h1>
           <p className="hm-animate hm-delay-2 mx-auto mt-5 max-w-2xl text-lg text-zinc-600 sm:text-xl">
             {tr("home.tagline")}

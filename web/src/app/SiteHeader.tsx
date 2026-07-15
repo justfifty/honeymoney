@@ -27,9 +27,9 @@ export default async function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/80 backdrop-blur dark:border-zinc-800/70 dark:bg-black/60">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
-        <Link href="/" className="flex items-center gap-1.5 text-base font-bold tracking-tight">
+        <Link href="/" className="flex items-center gap-0.5 text-base font-bold tracking-tight">
           <Logo size={26} />
-          <span className="font-display">Honey<span className="brand-gradient">Money</span></span>
+          <span className="font-display">Honey<span className="text-amber-500">Money</span></span>
         </Link>
 
         <HeaderNav items={navItems} />
@@ -46,8 +46,13 @@ export default async function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login" className="whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40">
-                {tr("auth.login")}
+              {/* Icon-only on phones to keep the top bar compact; full label from sm up. */}
+              <Link href="/login" aria-label={tr("auth.login")} className="flex items-center whitespace-nowrap rounded-lg px-2 py-1.5 font-medium text-amber-600 hover:bg-amber-50 sm:px-2.5 dark:text-amber-400 dark:hover:bg-amber-950/40">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 sm:hidden" aria-hidden="true">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span className="hidden sm:inline">{tr("auth.login")}</span>
               </Link>
               <Link href="/signup" className="whitespace-nowrap rounded-lg bg-amber-500 px-2.5 py-1.5 font-medium text-white hover:bg-amber-600">
                 {tr("auth.signup")}
