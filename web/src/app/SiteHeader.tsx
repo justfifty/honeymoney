@@ -26,15 +26,15 @@ export default async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/80 backdrop-blur dark:border-zinc-800/70 dark:bg-black/60">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5">
-        <Link href="/" className="flex items-center gap-2 text-base font-bold tracking-tight">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-4">
+        <Link href="/" className="flex items-center gap-1.5 text-base font-bold tracking-tight">
           <Logo size={26} />
           <span className="font-display">Honey<span className="brand-gradient">Money</span></span>
         </Link>
 
         <HeaderNav items={navItems} />
 
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-1.5 text-sm sm:gap-2">
           <LanguageSwitcher current={locale} label={tr("common.language")} />
           {user ? (
             <>
@@ -46,10 +46,10 @@ export default async function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login" className="rounded-lg px-3 py-1.5 font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40">
+              <Link href="/login" className="whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40">
                 {tr("auth.login")}
               </Link>
-              <Link href="/signup" className="rounded-lg bg-amber-500 px-3 py-1.5 font-medium text-white hover:bg-amber-600">
+              <Link href="/signup" className="whitespace-nowrap rounded-lg bg-amber-500 px-2.5 py-1.5 font-medium text-white hover:bg-amber-600">
                 {tr("auth.signup")}
               </Link>
             </>
