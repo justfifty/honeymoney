@@ -10,7 +10,7 @@ export const DEFAULT_LOCALE: Locale = "en";
 
 export const LOCALE_LABEL: Record<Locale, string> = {
   en: "English",
-  ms: "Bahasa Melayu",
+  ms: "Malay",
   zh: "中文（简体）",
   "zh-Hant": "繁體中文",
   ta: "தமிழ்",
