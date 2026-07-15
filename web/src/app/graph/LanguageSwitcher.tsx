@@ -21,7 +21,7 @@ export default function LanguageSwitcher({ current, label = "Language" }: { curr
         value={current}
         onChange={(e) => set(e.target.value)}
         aria-label={label}
-        className="max-w-[6.5rem] truncate rounded-md border border-zinc-300 bg-transparent px-1.5 py-1 text-xs text-inherit outline-none focus:border-amber-500 sm:max-w-none dark:border-zinc-700 dark:bg-zinc-900"
+        className="max-w-[6.5rem] truncate rounded-md border border-zinc-300 bg-transparent px-1 py-0.5 text-xs text-inherit outline-none focus:border-amber-500 sm:max-w-none dark:border-zinc-700 dark:bg-zinc-900"
       >
         {LOCALES.map((l) => (
           <option key={l} value={l}>{LOCALE_LABEL[l]}</option>
