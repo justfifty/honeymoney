@@ -17,6 +17,19 @@ export const LOCALE_LABEL: Record<Locale, string> = {
   hi: "हिन्दी",
 };
 
+// Compact codes for the mobile header picker. Country-style codes (MY/CN/TW)
+// read more clearly than the raw language codes in a tiny control; HI/TA are
+// the standard ISO 639-1 codes for Hindi and Tamil. The full name in
+// LOCALE_LABEL stays available for tooltips / accessibility.
+export const LOCALE_SHORT: Record<Locale, string> = {
+  en: "EN",
+  ms: "MY",
+  zh: "CN",
+  "zh-Hant": "TW",
+  ta: "TA",
+  hi: "HI",
+};
+
 type Dict = Record<string, string>;
 
 const en: Dict = {
