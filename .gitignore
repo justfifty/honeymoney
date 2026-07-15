@@ -71,3 +71,6 @@ desktop.ini
 
 # ─── Captured receipts (personal financial data — never publish) ─────────────
 receipts/
+
+# ─── Competition deck PDF exports (local/submission only — not in git) ────────
+docs/deck/*.pdf
