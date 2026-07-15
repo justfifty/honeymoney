@@ -76,14 +76,6 @@ h1, h2, h3, .font-display {
   letter-spacing: -0.02em;
 }
 
-/* Brand honey gradient text — for the wordmark accent. */
-.brand-gradient {
-  background: linear-gradient(120deg, var(--brand-honey-light) 0%, var(--brand-honey-dark) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 /* Subtle, tasteful entrance motion (respects reduced-motion). */
 @keyframes hm-fade-up {
   from { opacity: 0; transform: translateY(14px); }
