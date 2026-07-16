@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
 import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/projection";
+import { detectRecurring } from "@/lib/radar";
 import { can, resolveViewTenant } from "@/lib/household";
 import { pbList, pbStr } from "@/lib/pocketbase";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
@@ -9,6 +10,7 @@ import { t, type Locale } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
 import AddTransaction from "./AddTransaction";
 import PrivacyToggle from "./PrivacyToggle";
+import HoneyAsk from "./HoneyAsk";
 import Logo from "../Logo";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +56,7 @@ export default async function Dashboard() {
   }
 
   try {
-    const [projection, recent, vendorNodes] = await Promise.all([
+    const [projection, recent, vendorNodes, radar] = await Promise.all([
       getBucketProjection(tenantId),
       getRecentSpend(tenantId, 8),
       pbList<{ label: string }>("nodes", {
@@ -62,6 +64,7 @@ export default async function Dashboard() {
         sort: "-created",
         perPage: 80,
       }),
+      detectRecurring(tenantId),
     ]);
     const insight = await getHoneyInsight(projection, locale);
 
@@ -96,6 +99,20 @@ export default async function Dashboard() {
           </div>
           <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
         </section>
+
+        {/* What-if co-pilot */}
+        <HoneyAsk
+          labels={{
+            title: tr("dash.ask.title"),
+            placeholder: tr("dash.ask.placeholder"),
+            button: tr("dash.ask.button"),
+            thinking: tr("dash.ask.thinking"),
+            aiBadge: tr("dash.badge.ai"),
+            ruleBadge: tr("dash.badge.insight"),
+            disclaimer: tr("dash.ask.disclaimer"),
+            suggestions: [tr("dash.ask.s1"), tr("dash.ask.s2"), tr("dash.ask.s3"), tr("dash.ask.s4")],
+          }}
+        />
 
         {/* Summary */}
         <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -182,6 +199,34 @@ export default async function Dashboard() {
             </p>
           )}
         </section>
+
+        {/* Subscription & bill radar */}
+        {radar.items.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 flex flex-wrap items-center gap-x-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              🔁 {tr("dash.radar.title")}
+              <span className="normal-case text-zinc-400">
+                · <span className="hm-money">{rm(radar.monthlyTotal)}</span>/{tr("dash.radar.mo")}
+              </span>
+            </h2>
+            <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+              {radar.items.slice(0, 8).map((r) => (
+                <div
+                  key={r.vendor}
+                  className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 text-sm last:border-0 dark:border-zinc-800"
+                >
+                  <div>
+                    <span className="font-medium">{r.vendor}</span>
+                    <span className="ml-2 text-xs text-zinc-400">
+                      {tr("dash.radar.every", { n: r.cadenceDays })} · {tr("dash.radar.next")} {shortDate(r.nextLikely)}
+                    </span>
+                  </div>
+                  <span className="hm-money font-medium">{rm(r.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Recent spend */}
         <section className="mt-8">
