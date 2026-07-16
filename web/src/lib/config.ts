@@ -36,6 +36,14 @@ export const config = {
   telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME ?? "").replace(/^@/, ""),
 
   demoTenantId: process.env.DEMO_TENANT_ID ?? "",
+  // The ONLY tenants an anonymous visitor may view/switch between — the seed
+  // demo personas. Real households (every consumer who signs up creates one) are
+  // private and must never appear in the public persona switcher. Override with
+  // DEMO_PERSONA_IDS (comma-separated) if the seed ids differ.
+  demoPersonaIds: (process.env.DEMO_PERSONA_IDS ?? "hhrahman1111111,bizsedap2222222,psaisha33333333")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 
   // Shared secret that guards the scheduled account-purge endpoint
   // (/api/account/purge-expired), so only your cron/task can trigger erasure.

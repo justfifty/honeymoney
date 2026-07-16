@@ -173,7 +173,16 @@ function flowSlice(focusId: string, edges: GraphEdge[]): Set<string> {
   return keep;
 }
 
-export async function getFocusedView(tenantId: string, focus: Focus, locale: Locale = "en"): Promise<FocusedView> {
+// `allowedPersonaIds` limits which tenants may appear in the persona switcher —
+// the demo personas for anonymous visitors, or the viewer's OWN households when
+// signed in. Without it, only the current tenant is offered. Real users' private
+// households must never leak into this list.
+export async function getFocusedView(
+  tenantId: string,
+  focus: Focus,
+  locale: Locale = "en",
+  allowedPersonaIds?: string[],
+): Promise<FocusedView> {
   const dl = (s: string) => dataLabel(locale, s);
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -190,7 +199,12 @@ export async function getFocusedView(tenantId: string, focus: Focus, locale: Loc
 
   const tenant = tenants.find((t) => t.id === tenantId);
   const tenantKind: TenantKind = tenant?.kind === "business" ? "business" : "household";
-  const personas = tenants.map((t) => ({ id: t.id, name: dl(t.name || t.id), kind: (t.kind === "business" ? "business" : "household") as TenantKind }));
+  // Only the current tenant + explicitly-allowed personas are exposed — never the
+  // full tenant list, which now includes every consumer's private household.
+  const allowed = new Set([tenantId, ...(allowedPersonaIds ?? [])]);
+  const personas = tenants
+    .filter((t) => allowed.has(t.id))
+    .map((t) => ({ id: t.id, name: dl(t.name || t.id), kind: (t.kind === "business" ? "business" : "household") as TenantKind }));
   const tierMeta = categoryMeta(tenantKind);
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const labelOf = (id: string) => nodeById.get(id)?.label ?? "Unknown";

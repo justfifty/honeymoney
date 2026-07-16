@@ -14,7 +14,7 @@ import RatesNote from "../RatesNote";
 import { t as translate } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { normalizeCurrency, fmtMoney } from "@/lib/format";
-import { can, resolveViewTenant } from "@/lib/household";
+import { can, resolveViewTenant, listHouseholdsFor } from "@/lib/household";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +91,18 @@ export default async function GraphPage({
   // affordance for anonymous visitors browsing the demo personas, and must not
   // be able to point a logged-in user at somebody else's books.
   const { ctx, isDemo } = await resolveViewTenant();
-  const tenantId = ctx ? ctx.tenant.id : params.tenantId || config.demoTenantId;
+  // Anonymous visitors may only view the seed demo personas — never an arbitrary
+  // (real) household passed via ?tenantId. Signed in, you're locked to your own.
+  const tenantId = ctx
+    ? ctx.tenant.id
+    : params.tenantId && config.demoPersonaIds.includes(params.tenantId)
+      ? params.tenantId
+      : config.demoTenantId;
+  // The persona switcher lists the viewer's OWN households, or the demo personas
+  // for anonymous visitors — never every consumer's private household.
+  const personaIds = ctx
+    ? (await listHouseholdsFor(ctx.user.id)).map((h) => h.id)
+    : config.demoPersonaIds;
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
   const canManageGraph = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
   const mode: Mode = MODES.some((m) => m.key === params.mode) ? (params.mode as Mode) : "sankey";
@@ -102,7 +113,7 @@ export default async function GraphPage({
   const ccy = normalizeCurrency(params.ccy);
   const sticky = `&focus=${focusParam}&lang=${lang}&ccy=${ccy}`;
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
-  const view = await getFocusedView(tenantId, focus, lang);
+  const view = await getFocusedView(tenantId, focus, lang, personaIds);
   const { nodes, edges } = view.graph;
   const money = view.money;
 
