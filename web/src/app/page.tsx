@@ -142,11 +142,11 @@ export default async function Home() {
             {tr("home.personas.title")}
           </h2>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Persona emoji="🧑‍💻" label={tr("home.personas.solo")} />
+            <Persona emoji="🧑" label={tr("home.personas.solo")} />
+            <span aria-hidden className="text-zinc-300">→</span>
+            <Persona emoji="👫" label={tr("home.personas.couple")} />
             <span aria-hidden className="text-zinc-300">→</span>
             <Persona emoji="👨‍👩‍👧" label={tr("home.personas.family")} />
-            <span aria-hidden className="text-zinc-300">→</span>
-            <Persona emoji="🏪" label={tr("home.personas.business")} />
           </div>
         </div>
       </section>

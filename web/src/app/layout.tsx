@@ -34,7 +34,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 const SITE_URL = "https://honeymoney.app";
 const SITE_DESC =
-  "AI financial wellness for Malaysian households and small businesses — funding transparency, spending autonomy. A local-first knowledge-graph money engine. MAIC Nexus 2026, Track T3.";
+  "AI financial wellness for Malaysian individuals, couples and families — funding transparency, spending autonomy. A local-first knowledge-graph money engine. MAIC Nexus 2026, Track T3.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   keywords: [
     "financial wellness", "budgeting", "Malaysia", "fintech", "personal finance",
     "couples finance", "knowledge graph", "AI", "PocketBase", "MAIC Nexus 2026",
-    "financial inclusion", "e-wallet", "household budget", "SME cashflow",
+    "financial inclusion", "e-wallet", "household budget", "family finance",
   ],
   authors: [{ name: "Team HoneyMoney" }],
   // Icons come from the app/ file convention (favicon.ico, icon.svg,
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "HoneyMoney — AI Financial Wellness",
-    description: "Funding transparency, spending autonomy. Local-first, AI-supported, built for Malaysian families and SMEs.",
+    description: "Funding transparency, spending autonomy. Local-first, AI-supported, built for Malaysian couples and families.",
     images: ["/product-sankey.png"],
   },
 };
