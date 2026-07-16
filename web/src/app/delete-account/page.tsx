@@ -26,7 +26,7 @@ export default function DeleteAccountInfoPage() {
         <ol className="list-decimal space-y-2 pl-5">
           <li>Open the app and sign in.</li>
           <li>
-            Go to <b>Menu → Account</b> (or visit <Link href="/account" className="text-amber-600 hover:underline">/account</Link>).
+            Go to <b>Menu → Setup</b> (or visit <Link href="/setup" className="text-amber-600 hover:underline">/setup</Link>).
           </li>
           <li>Under <b>Danger zone</b>, type your email to confirm and tap <b>Delete my account</b>.</li>
         </ol>

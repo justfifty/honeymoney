@@ -11,7 +11,7 @@
 //     then permanently purged (login + immutable ledger included).
 
 import { pbList, pbFirst, pbUpdate, pbDelete, pbStr } from "./pocketbase";
-import { getSessionUser } from "./auth";
+import { getSessionUser, loginUser } from "./auth";
 import { AuthError, type AccessRole } from "./household";
 
 export const DELETE_GRACE_DAYS = 30;
@@ -32,6 +32,44 @@ interface MemberLite {
 // PocketBase stores datetimes as "YYYY-MM-DD HH:MM:SS.sssZ"; a space, not a "T".
 function pbDate(d: Date): string {
   return d.toISOString().replace("T", " ");
+}
+
+// ── Profile edits ───────────────────────────────────────────────────────────
+
+// Change the display name on the account (and mirror it onto the roster entry so
+// the household list and the graph attribution stay in sync).
+export async function updateMyName(name: string): Promise<{ name: string }> {
+  const user = await getSessionUser();
+  if (!user) throw new AuthError("Sign in first.", 401);
+  const clean = name.trim();
+  if (!clean) throw new AuthError("Name can’t be empty.", 400);
+  if (clean.length > 80) throw new AuthError("That name is too long.", 400);
+  await pbUpdate("app_users", user.id, { name: clean });
+  const member = await pbFirst<{ id: string }>("members", `user = ${pbStr(user.id)}`, { sort: "created" });
+  if (member) await pbUpdate("members", member.id, { display_name: clean });
+  return { name: clean };
+}
+
+// Change the password. We verify the *current* one by re-authenticating (the
+// superuser could set it without proof, but that would let a stolen session
+// change the password), then set the new one. Because PocketBase rotates the
+// token secret on a password change — invalidating the current session cookie —
+// we log back in and hand the caller a fresh token to re-set the cookie.
+export async function changeMyPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ token: string }> {
+  const user = await getSessionUser();
+  if (!user) throw new AuthError("Sign in first.", 401);
+  if (newPassword.length < 8) throw new AuthError("New password must be at least 8 characters.", 400);
+  try {
+    await loginUser(user.email, currentPassword);
+  } catch {
+    throw new AuthError("Your current password is incorrect.", 403);
+  }
+  await pbUpdate("app_users", user.id, { password: newPassword, passwordConfirm: newPassword });
+  const { token } = await loginUser(user.email, newPassword);
+  return { token };
 }
 
 export interface DeleteResult {

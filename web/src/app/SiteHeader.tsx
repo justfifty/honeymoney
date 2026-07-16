@@ -39,7 +39,7 @@ export default async function SiteHeader() {
           <LanguageSwitcher current={locale} label={tr("common.language")} />
           {user ? (
             <>
-              <Link href="/account" className="hidden max-w-[10rem] truncate text-xs text-zinc-500 hover:text-amber-600 sm:inline dark:hover:text-amber-400">
+              <Link href="/setup" className="hidden max-w-[10rem] truncate text-xs text-zinc-500 hover:text-amber-600 sm:inline dark:hover:text-amber-400">
                 {user.name || user.email}
                 {user.role === "admin" && <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">{tr("auth.admin")}</span>}
               </Link>
@@ -67,7 +67,6 @@ export default async function SiteHeader() {
               setup: tr("nav.setup"),
               install: tr("nav.install"),
               installed: tr("nav.installed"),
-              account: user ? tr("nav.account") : undefined,
               iosGuide: {
                 title: tr("install.ios.title"),
                 openSafari: tr("install.ios.openSafari"),

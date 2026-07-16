@@ -2,11 +2,16 @@ import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import { config, isTelegramConfigured, activeAiProvider } from "@/lib/config";
+import { getContext, listMembers } from "@/lib/household";
+import { DELETE_GRACE_DAYS } from "@/lib/account";
 import Logo from "../Logo";
 import IosInstallGuide from "../IosInstallGuide";
+import ProfileSettings from "../account/ProfileSettings";
+import AccountActions from "../account/AccountActions";
 
+export const dynamic = "force-dynamic";
 export const metadata = {
-  title: "AI Setup — connect zero-typing capture",
+  title: "Setup — account, AI capture & install",
 };
 
 const PROVIDER_LABEL: Record<string, string> = {
@@ -15,17 +20,26 @@ const PROVIDER_LABEL: Record<string, string> = {
   ollama: "Ollama",
 };
 
-// In-app "AI Setup": explains the zero-typing capture channel and walks a user
-// through connecting Telegram, with a live capability badge so a judge (or the
-// household) can see at a glance whether the bot is wired up. The deeper,
-// operator-level steps (BotFather token, webhook) link out to the doc.
+// The one Setup hub: personal account settings (name, password, delete/restore)
+// for a signed-in user, plus the AI-capture wiring and how-to-install — each a
+// self-contained section so signed-out visitors still get AI + install info.
 export default async function SetupPage() {
   const locale = await getLocale();
   const tr = (k: string) => t(locale, k);
 
+  const ctx = await getContext().catch(() => null);
   const telegramReady = isTelegramConfigured();
   const provider = activeAiProvider();
   const botUser = config.telegramBotUsername;
+
+  // Account-deletion context (only needed when signed in).
+  let members: Awaited<ReturnType<typeof listMembers>> = [];
+  if (ctx) members = await listMembers(ctx.tenant.id);
+  const others = ctx ? members.filter((m) => m.id !== ctx.memberId) : [];
+  const owners = members.filter((m) => m.access_role === "owner");
+  const purgeAtISO = ctx?.tenant.deletedAt
+    ? new Date(new Date(ctx.tenant.deletedAt.replace(" ", "T")).getTime() + DELETE_GRACE_DAYS * 86_400_000).toISOString()
+    : undefined;
 
   return (
     <main className="mx-auto min-h-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
@@ -40,8 +54,43 @@ export default async function SetupPage() {
       </header>
       <p className="mt-2 text-sm text-zinc-500">{tr("setup.subtitle")}</p>
 
-      {/* Live capability badges */}
-      <div className="mt-4 flex flex-wrap gap-2 text-xs">
+      {/* ── Your account (signed in) ─────────────────────────────────────── */}
+      {ctx ? (
+        <>
+          <Section title="👤 Your account" tone="plain">
+            <dl className="mb-5 grid grid-cols-[7rem_1fr] gap-y-1.5 text-sm">
+              <dt className="text-zinc-500">Email</dt>
+              <dd className="font-medium">{ctx.user.email}</dd>
+              <dt className="text-zinc-500">Household</dt>
+              <dd className="font-medium">{ctx.tenant.name}</dd>
+              <dt className="text-zinc-500">Your role</dt>
+              <dd className="font-medium capitalize">{ctx.accessRole}</dd>
+            </dl>
+            <ProfileSettings initialName={ctx.user.name} email={ctx.user.email} />
+          </Section>
+
+          {/* Delete / restore — reuses the guarded, reversible flow. */}
+          <AccountActions
+            email={ctx.user.email}
+            role={ctx.accessRole}
+            shared={others.length > 0}
+            soleOwner={ctx.accessRole === "owner" && owners.length <= 1 && others.length > 0}
+            pending={ctx.pendingDeletion}
+            purgeAtISO={purgeAtISO}
+            graceDays={DELETE_GRACE_DAYS}
+          />
+        </>
+      ) : (
+        <Section title="👤 Your account" tone="plain">
+          <p className="text-zinc-600 dark:text-zinc-400">
+            <Link href="/login?next=/setup" className="text-amber-600 hover:underline">Sign in</Link> to change your
+            name or password, or to delete your account.
+          </p>
+        </Section>
+      )}
+
+      {/* ── AI capture ───────────────────────────────────────────────────── */}
+      <div className="mt-8 flex flex-wrap gap-2 text-xs">
         <span
           className={
             "inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium " +
@@ -58,7 +107,6 @@ export default async function SetupPage() {
         </span>
       </div>
 
-      {/* What you get */}
       <Section title={`✨ ${tr("setup.what.title")}`} tone="plain">
         <ul className="list-disc space-y-2 pl-5">
           <li>{tr("setup.what.1")}</li>
@@ -68,7 +116,6 @@ export default async function SetupPage() {
         </ul>
       </Section>
 
-      {/* The AI engine */}
       <Section title={`🧠 ${tr("setup.stack.title")}`} tone="plain">
         <p className="mb-3">{tr("setup.stack.body")}</p>
         <ul className="space-y-2">
@@ -88,7 +135,6 @@ export default async function SetupPage() {
         </ul>
       </Section>
 
-      {/* Connect Telegram */}
       <Section title={`💬 ${tr("setup.connect.title")}`} tone="good">
         <ol className="list-decimal space-y-2 pl-5">
           <li>{tr("setup.connect.1")}</li>
@@ -109,14 +155,13 @@ export default async function SetupPage() {
         )}
       </Section>
 
-      {/* Self-hosting / admin */}
       <Section title={`🛠️ ${tr("setup.admin.title")}`} tone="plain">
         <p>
           {tr("setup.admin.body")} <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800">docs/TELEGRAM_SETUP.md</code>.
         </p>
       </Section>
 
-      {/* Install / remove / account */}
+      {/* ── Install / remove ─────────────────────────────────────────────── */}
       <Section title={`📱 ${tr("setup.remove.title")}`} tone="plain">
         <p>
           {tr("setup.remove.body")}{" "}
@@ -125,7 +170,6 @@ export default async function SetupPage() {
           </Link>
           .
         </p>
-        {/* iPhone / iPad has no one-tap install — spell out the Safari steps. */}
         <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <IosInstallGuide
             strings={{
