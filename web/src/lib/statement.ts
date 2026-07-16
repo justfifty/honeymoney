@@ -248,23 +248,52 @@ export async function readStatement(
   tenantId: string,
   fileBase64: string,
   password?: string,
+  mimeType = "application/pdf",
 ): Promise<StatementResult> {
   const provider = activeAiProvider();
   if (!isProviderConfigured(provider)) {
     throw new Error(`AI is not configured (AI_PROVIDER=${provider}). See docs/AI_SETUP.md.`);
   }
 
-  const bytes = Buffer.from(fileBase64, "base64");
-  const pdf = await extractPdfText(new Uint8Array(bytes), password);
-
   // Grounding and the existing-transaction list are needed either way, and
-  // neither depends on the PDF — fetch them while the model reads.
+  // neither depends on the file — fetch them while the model reads.
   const [g, existing] = await Promise.all([ground(tenantId), loadExisting(tenantId)]);
   const knownVendors = g.vendorHistory.map((v) => v.vendor).filter((v) => v && v !== "Unknown");
 
   let meta: StatementMeta;
   let rows: StatementRow[];
   let degraded: string | undefined;
+  let pageCount = 1;
+  let scanned = false;
+
+  if (mimeType.startsWith("image/")) {
+    // A phone photo or screenshot of a statement / multi-item receipt — read
+    // EVERY row visually. Unlike a raw PDF this works on any vision provider.
+    scanned = true;
+    degraded =
+      "This was read from an image, so the amounts were read visually rather than from text — please check them against the original.";
+    const raw = await aiVision(
+      rowsPrompt("(the attached image)", knownVendors, "") + "\n\nAlso return the statement header fields.",
+      fileBase64,
+      {
+        mimeType,
+        system: EXTRACT_SYSTEM,
+        json: true,
+        fn: "readStatement.image",
+        provider,
+        meta: { tenantId, source: "statement" },
+      },
+    );
+    const parsed = parseJson<{ rows?: Record<string, unknown>[] } & Partial<StatementMeta>>(raw);
+    rows = (parsed.rows ?? []).map(coerceRow).filter((r): r is StatementRow => r !== null);
+    meta = coerceMeta(parsed);
+    return finalizeStatement(rows, meta, { g, existing, provider, pageCount, scanned, degraded, tenantId });
+  }
+
+  const bytes = Buffer.from(fileBase64, "base64");
+  const pdf = await extractPdfText(new Uint8Array(bytes), password);
+  pageCount = pdf.pageCount;
+  scanned = pdf.scanned;
 
   if (pdf.scanned) {
     // No text layer. Only a multimodal model can read this, and only Gemini
@@ -272,7 +301,7 @@ export async function readStatement(
     // back a confidently wrong set of numbers.
     if (provider !== "gemini") {
       throw new Error(
-        "This PDF is a scan — it has no text to read. Reading it needs a vision model that accepts PDFs: set AI_PROVIDER=gemini, or upload screenshots of the pages instead.",
+        "This PDF is a scan — it has no text to read. Reading it needs a vision model that accepts PDFs: set AI_PROVIDER=gemini, or upload a photo/screenshot image of the pages instead.",
       );
     }
     degraded =
@@ -312,6 +341,26 @@ export async function readStatement(
     rows = perChunk.flat();
   }
 
+  return finalizeStatement(rows, meta, { g, existing, provider, pageCount, scanned, degraded, tenantId });
+}
+
+// Shared tail for both the PDF and image paths: sort, dedupe against the books,
+// pre-file buckets from history (+ classify genuinely-new merchants), and build
+// the reviewable proposal. Nothing is saved here — the user confirms on /import.
+async function finalizeStatement(
+  rows: StatementRow[],
+  meta: StatementMeta,
+  ctx: {
+    g: Awaited<ReturnType<typeof ground>>;
+    existing: Awaited<ReturnType<typeof loadExisting>>;
+    provider: AiProvider;
+    pageCount: number;
+    scanned: boolean;
+    degraded?: string;
+    tenantId: string;
+  },
+): Promise<StatementResult> {
+  const { g, existing, provider, pageCount, scanned, degraded, tenantId } = ctx;
   rows.sort((a, b) => a.date.localeCompare(b.date));
 
   // Duplicates: against the books, and against the rest of this statement.
@@ -369,9 +418,9 @@ export async function readStatement(
     meta,
     rows: proposed,
     reconciliation: reconcile(rows, meta),
-    pageCount: pdf.pageCount,
+    pageCount,
     provider,
-    scanned: pdf.scanned,
+    scanned,
     degraded,
   };
 }

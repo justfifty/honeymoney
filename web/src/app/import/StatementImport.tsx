@@ -136,7 +136,7 @@ export default function StatementImport({
       const res = await fetch("/api/statement", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileBase64, ...(pwd ? { password: pwd } : {}) }),
+        body: JSON.stringify({ fileBase64, mimeType: f.type, ...(pwd ? { password: pwd } : {}) }),
       });
       const data = await res.json();
 
@@ -163,7 +163,7 @@ export default function StatementImport({
   }
 
   function pick(f: File) {
-    if (f.type !== "application/pdf") {
+    if (f.type !== "application/pdf" && !f.type.startsWith("image/")) {
       setError(tr("imp.notAPdf"));
       return;
     }
@@ -313,7 +313,7 @@ export default function StatementImport({
           <input
             ref={fileRef}
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/*"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];

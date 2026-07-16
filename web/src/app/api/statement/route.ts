@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let body: { fileBase64?: string; password?: string };
+    let body: { fileBase64?: string; password?: string; mimeType?: string };
     try {
       body = await request.json();
     } catch {
@@ -50,12 +50,18 @@ export async function POST(request: NextRequest) {
     if (!file) return NextResponse.json({ error: "fileBase64 is required" }, { status: 400 });
     if (file.length > MAX_B64) {
       return NextResponse.json(
-        { error: "That PDF is too large — under 15 MB, please." },
+        { error: "That file is too large — under 15 MB, please." },
         { status: 413 },
       );
     }
 
-    const result = await readStatement(ctx.tenant.id, file, body.password);
+    // A photo/screenshot of a statement or a multi-item receipt reads all rows
+    // through the same pipeline; anything else falls back to the PDF path.
+    const mimeType = /^image\/(png|jpe?g|webp|heic|heif)$/.test(body.mimeType ?? "")
+      ? body.mimeType!
+      : "application/pdf";
+
+    const result = await readStatement(ctx.tenant.id, file, body.password, mimeType);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     // A locked PDF isn't a failure — it's the app asking for the password. Most
