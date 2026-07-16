@@ -3,6 +3,7 @@ import Image from "next/image";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import Logo from "./Logo";
+import IosInstallHint from "./IosInstallHint";
 
 export default async function Home() {
   const locale = await getLocale();
@@ -52,6 +53,17 @@ export default async function Home() {
             </Link>
           </div>
           <p className="mt-4 text-xs text-zinc-500">{tr("home.heroNote")}</p>
+
+          <IosInstallHint
+            label={tr("install.ios.hintCta")}
+            guide={{
+              title: `🍎 ${tr("install.ios.title")}`,
+              openSafari: tr("install.ios.openSafari"),
+              step1: tr("install.ios.step1"),
+              step2: tr("install.ios.step2"),
+              step3: tr("install.ios.step3"),
+            }}
+          />
 
           <div className="mt-5 flex items-center justify-center gap-3 text-sm">
             <Link href="/login" className="font-medium text-amber-600 hover:underline">{tr("auth.login")}</Link>
