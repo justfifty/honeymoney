@@ -7,6 +7,9 @@ import SiteFooter from "./SiteFooter";
 import HoneyField from "./HoneyField";
 import InstallPrompt from "./InstallPrompt";
 import PendingDeletionNotice from "./PendingDeletionNotice";
+import BottomNav from "./BottomNav";
+import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 import FxRates from "./FxRates";
 import { getRates } from "@/lib/fx";
 import { applyRates, type RateTable } from "@/lib/format";
@@ -95,12 +98,16 @@ export default async function RootLayout({
     /* offline or the central banks are down — the indicative fallback stands */
   }
 
+  const locale = await getLocale();
+  const tr = (k: string) => t(locale, k);
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* pb-16 on mobile so content clears the fixed bottom nav; none on desktop */}
+      <body className="min-h-full flex flex-col pb-16 md:pb-0">
         <FxRates table={table} />
         {/* dotted sunburst that trails the cursor behind every page */}
         <HoneyField />
@@ -109,6 +116,15 @@ export default async function RootLayout({
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
         <InstallPrompt />
+        <BottomNav
+          labels={{
+            dashboard: tr("nav.dashboard"),
+            records: tr("nav.records"),
+            capture: tr("nav.capture"),
+            goals: tr("nav.goals"),
+            learn: tr("nav.learn"),
+          }}
+        />
         <Track />
       </body>
     </html>
