@@ -39,6 +39,7 @@ export default function AddTransaction({
   const [ccy, setCcy] = useState("MYR");
   const [when, setWhen] = useState(todayLocal());
   const [bucket, setBucket] = useState(buckets[0]?.id ?? "");
+  const [direction, setDirection] = useState<"out" | "in">("out");
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
   const [analysis, setAnalysis] = useState<CaptureAnalysis | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +76,7 @@ export default function AddTransaction({
           walletNodeId: bucket,
           vendorLabel: vendor,
           amount: base,
+          direction,
           occurredAt: when ? new Date(`${when}T12:00:00`).toISOString() : undefined,
           confidence,
           ...(ccy !== "MYR"
@@ -147,6 +149,27 @@ export default function AddTransaction({
         {confidence !== undefined && confidence < 0.6 && (
           <p className="mt-1 text-[11px] text-amber-600">⚠️ {tr("cap.lowConfidence")}</p>
         )}
+      </div>
+
+      {/* Debit / credit: is this money going out (a spend) or coming in? */}
+      <div className="mb-3 flex items-center gap-2 text-xs">
+        <span className="text-zinc-500">{tr("dash.add.direction")}</span>
+        <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
+          <button
+            type="button"
+            onClick={() => setDirection("out")}
+            className={"px-3 py-1.5 font-medium " + (direction === "out" ? "bg-rose-500 text-white" : "text-zinc-500")}
+          >
+            − {tr("dash.add.out")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDirection("in")}
+            className={"px-3 py-1.5 font-medium " + (direction === "in" ? "bg-emerald-500 text-white" : "text-zinc-500")}
+          >
+            + {tr("dash.add.in")}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-end gap-3">

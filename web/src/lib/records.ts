@@ -7,6 +7,7 @@ import { pbList, pbStr } from "./pocketbase";
 export interface SpendRecord {
   id: string;
   amount: number; // base currency (MYR)
+  direction: "out" | "in"; // "out" = debit/spend (default), "in" = credit/money-in
   currency: string;
   occurred_at: string; // ISO
   vendor: string | null;
@@ -36,6 +37,7 @@ export interface PeriodGroup {
 interface PBTxn {
   id: string;
   amount: number;
+  direction?: string;
   currency: string;
   occurred_at: string;
   source: string;
@@ -97,6 +99,7 @@ export async function getSpendRecords(
   return txns.map((t) => ({
     id: t.id,
     amount: Number(t.amount),
+    direction: (t.direction === "in" ? "in" : "out") as "out" | "in",
     currency: t.currency || "MYR",
     occurred_at: t.occurred_at,
     vendor: t.expand?.vendor_node?.label ?? null,
@@ -152,8 +155,9 @@ export function groupByPeriod(records: SpendRecord[], period: Period): PeriodGro
       groups.set(key, g);
     }
     // A voided record is shown but never counted — it's evidence, not spending.
+    // Credits (money in) are shown too but don't add to the period's spend total.
     if (!r.voided) {
-      g.total += r.amount;
+      if (r.direction !== "in") g.total += r.amount;
       g.count += 1;
     }
     g.records.push(r);

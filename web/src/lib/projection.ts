@@ -33,6 +33,7 @@ interface PBTransaction {
   currency: string;
   occurred_at: string;
   source: string;
+  direction?: string; // "in" = credit/money-in (not spend); anything else = "out"
   wallet_node: string;
   vendor_node: string;
   expand?: { vendor_node?: { label: string } };
@@ -108,6 +109,7 @@ export async function getBucketProjection(
   const mtd = new Map<string, number>();
   for (const t of txns) {
     if (!t.wallet_node) continue;
+    if (t.direction === "in") continue; // credits (refunds, cashback) aren't spend
     mtd.set(t.wallet_node, (mtd.get(t.wallet_node) ?? 0) + Number(t.amount));
   }
 

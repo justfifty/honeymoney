@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       walletNodeId?: string;
       vendorLabel?: string;
       amount?: number;
+      direction?: "out" | "in";
       occurredAt?: string;
       memberId?: string;
       note?: string;
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       {
         vendorLabel: body.vendorLabel.trim(),
         amount,
+        direction: body.direction === "in" ? "in" : "out",
         walletNodeId: body.walletNodeId,
         occurredAt: body.occurredAt,
         // A child logs only their own spending — they can't attribute a spend

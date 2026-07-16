@@ -120,6 +120,7 @@ export async function ingestReceipt(
     currency: parsed.currency,
     occurred_at: parsed.occurredAt,
     source,
+    direction: "out", // a scanned receipt is a spend
     voided: false,
     parse_confidence: parsed.confidence,
     raw: parsed as unknown as Record<string, unknown>,
@@ -162,6 +163,7 @@ export async function addManualTransaction(
     source?: string;
     note?: string;
     confidence?: number;
+    direction?: "out" | "in"; // "out" = debit/spend (default), "in" = credit/money-in
     entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
   },
   actor?: Actor,
@@ -184,6 +186,7 @@ export async function addManualTransaction(
     currency: "MYR",
     occurred_at: input.occurredAt ?? new Date().toISOString().replace("T", " "),
     source: input.source ?? "manual",
+    direction: input.direction === "in" ? "in" : "out",
     note: input.note ?? "",
     voided: false,
     parse_confidence: input.confidence ?? 1,

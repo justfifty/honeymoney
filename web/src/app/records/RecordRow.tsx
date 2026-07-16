@@ -217,7 +217,16 @@ export default function RecordRow({
               {record.source}
             </span>
           )}
-          <span className={`font-medium ${record.voided ? "text-zinc-400 line-through" : ""}`}>
+          <span
+            className={`font-medium ${
+              record.voided
+                ? "text-zinc-400 line-through"
+                : record.direction === "in"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : ""
+            }`}
+          >
+            {record.direction === "in" ? "+" : ""}
             {fmtMoney(record.amount, ccy)}
           </span>
 
