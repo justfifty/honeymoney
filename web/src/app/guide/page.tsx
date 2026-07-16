@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import Logo from "../Logo";
+import IosInstallGuide from "../IosInstallGuide";
 
 export const metadata = {
   title: "HoneyMoney — Guide, Disclaimer & Privacy",
@@ -36,6 +37,22 @@ export default async function GuidePage() {
           <li><b>{tr("guide.howto.4.label")}</b> — <b>➕ {tr("guide.howto.4.addPanel")}</b> {tr("guide.howto.4.body")} <b>{tr("guide.howto.4.type")} 🎤 {tr("guide.howto.4.speak")} 📷 {tr("guide.howto.4.scan")}</b> — {tr("guide.howto.4.body2")}</li>
           <li><b>{tr("guide.howto.5.label")}</b> — {tr("guide.howto.5.body")} <i>{tr("guide.howto.5.needs")}</i>, <i>{tr("guide.howto.5.savings")}</i> {tr("guide.howto.5.shield")} <i>{tr("guide.howto.5.personal")}</i> {tr("guide.howto.5.body2")} <b>{tr("guide.howto.5.notItemized")}</b>{tr("guide.howto.5.body3")}</li>
         </ol>
+      </Section>
+
+      {/* Install on your phone */}
+      <Section title={`📲 ${tr("guide.install.title")}`} tone="plain">
+        <p className="mb-3">{tr("guide.install.body")}</p>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <IosInstallGuide
+            strings={{
+              title: `🍎 ${tr("install.ios.title")}`,
+              openSafari: tr("install.ios.openSafari"),
+              step1: tr("install.ios.step1"),
+              step2: tr("install.ios.step2"),
+              step3: tr("install.ios.step3"),
+            }}
+          />
+        </div>
       </Section>
 
       {/* Privacy */}

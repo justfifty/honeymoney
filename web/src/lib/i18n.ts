@@ -266,6 +266,8 @@ const en: Dict = {
   // guide tab
   "guide.title": "HoneyMoney — Guide",
   "guide.subtitle": "Funding transparency, spending autonomy — one money engine for personal, family and business.",
+  "guide.install.title": "Install on your phone",
+  "guide.install.body": "Add HoneyMoney to your home screen — it works offline, no app store. On Android, open the ☰ menu → “Install app” for a one-tap install. On iPhone / iPad, Apple only allows it through Safari:",
   "guide.howto.title": "How to use it",
   "guide.howto.1.label": "Pick a persona",
   "guide.howto.1.body": "the switcher at the top of",
@@ -667,6 +669,8 @@ const ms: Dict = {
   // guide tab
   "guide.title": "HoneyMoney — Panduan",
   "guide.subtitle": "Ketelusan pendanaan, autonomi perbelanjaan — satu enjin wang untuk peribadi, keluarga dan perniagaan.",
+  "guide.install.title": "Pasang pada telefon anda",
+  "guide.install.body": "Tambah HoneyMoney ke skrin utama — berfungsi luar talian, tiada gedung aplikasi. Pada Android, buka menu ☰ → “Pasang apl” untuk pemasangan satu ketikan. Pada iPhone / iPad, Apple hanya membenarkannya melalui Safari:",
   "guide.howto.title": "Cara menggunakannya",
   "guide.howto.1.label": "Pilih persona",
   "guide.howto.1.body": "penukar di bahagian atas",
