@@ -15,9 +15,10 @@ export interface AppMenuLabels {
   iosGuide?: IosGuideStrings; // translated Add-to-Home-Screen steps
 }
 
-// Mobile-only nav: the header's inline links are `hidden md:flex`, so on phones
-// this hamburger is the *only* way to reach Dashboard/Records/Graph/Guide, plus
-// the two menu-specific actions the user asked for — AI Setup and Install.
+// The hamburger menu, shown at every size. On phones it's the *only* way to
+// reach Dashboard/Records/Graph/Guide (the header's inline links are `hidden
+// md:flex`); on desktop it sits alongside the inline nav and is the home for the
+// menu-specific actions — AI Setup, Account, and Install.
 export default function AppMenu({
   items,
   labels,
@@ -65,7 +66,7 @@ export default function AppMenu({
   const showInstall = !installed && (canPrompt || anyIos);
 
   return (
-    <div ref={ref} className="relative md:hidden">
+    <div ref={ref} className="relative">
       <button
         type="button"
         aria-label={labels.menu}
