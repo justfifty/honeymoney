@@ -54,6 +54,25 @@ export default async function Home() {
           </div>
           <p className="mt-4 text-xs text-zinc-500">{tr("home.heroNote")}</p>
 
+          {/* Three ways in — what you can do, and where to go */}
+          <div className="hm-animate hm-delay-3 mx-auto mt-8 grid max-w-xl grid-cols-3 gap-3">
+            {[
+              { href: "/graph", emoji: "📷", title: tr("nav.capture"), desc: tr("home.do.captureDesc") },
+              { href: "/dashboard", emoji: "📊", title: tr("nav.dashboard"), desc: tr("home.do.dashboardDesc") },
+              { href: "/goals", emoji: "🎯", title: tr("nav.goals"), desc: tr("home.do.goalsDesc") },
+            ].map((c) => (
+              <Link
+                key={c.href}
+                href={c.href}
+                className="rounded-2xl border border-zinc-200 bg-white/70 p-4 text-center transition-colors hover:border-amber-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-amber-800"
+              >
+                <div className="text-2xl" aria-hidden="true">{c.emoji}</div>
+                <div className="mt-1 text-sm font-semibold text-zinc-800 dark:text-zinc-100">{c.title}</div>
+                <div className="mt-0.5 text-xs text-zinc-500">{c.desc}</div>
+              </Link>
+            ))}
+          </div>
+
           <IosInstallHint
             label={tr("install.ios.hintCta")}
             guide={{
@@ -69,8 +88,6 @@ export default async function Home() {
             <Link href="/login" className="font-medium text-amber-600 hover:underline">{tr("auth.login")}</Link>
             <span className="text-zinc-300">·</span>
             <Link href="/signup" className="font-medium text-amber-600 hover:underline">{tr("auth.createAccount")}</Link>
-            <span className="text-zinc-300">·</span>
-            <a href="https://github.com/justfifty/honeymoney" target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:underline">{tr("home.ctaRepo")}</a>
           </div>
         </div>
 
