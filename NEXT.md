@@ -143,6 +143,34 @@ households, a tamper-evident ledger, and capture that works in every language we
 
 ---
 
+## ✅ Shipped — 2026-07-15 (PWA install on iOS · Telegram setup guide)
+
+High-leverage "spread like fire" polish: remove install friction and document the
+lowest-friction acquisition channel.
+
+### 📲 Install prompt now works on iPhone `[Relevance][Commercial]`
+- [x] **Fixed: the bottom "Install HoneyMoney" banner never appeared on iOS.** It
+      relied on `beforeinstallprompt`, which Safari does **not** fire — so only Android
+      ever saw it. Added an iOS-Safari branch that shows the **Share → "Add to Home
+      Screen"** steps (with the Share glyph); Android keeps the one-tap native install.
+      `web/src/app/InstallPrompt.tsx`. Dismiss + already-installed checks unchanged.
+- [x] **Mobile icon confirmed current** — the sunburst-on-orange PWA icon set is
+      correct and served byte-for-byte. An "old icon" on a phone is the home-screen
+      shortcut cached at install time (delete + re-add to refresh), not a build issue.
+
+### 🤖 Telegram — setup documented, bot not yet created `[Technical][Commercial]`
+- [x] **`docs/TELEGRAM_SETUP.md`** — full BotFather → env → webhook → verify guide with
+      a troubleshooting table, grounded in the real handler/config.
+- [ ] **Create the bot + fill secrets.** Code is complete and `DEMO_TENANT_ID` is set,
+      but `TELEGRAM_BOT_TOKEN` / `TELEGRAM_WEBHOOK_SECRET` are **empty** in
+      `web/.env.local`, so `isTelegramConfigured()` is false and the webhook silently
+      acks. Follow the guide's Steps 1–4 to go live.
+- [ ] **Per-user linking (growth unlock).** Today every `/start` hard-links to the one
+      `DEMO_TENANT_ID` household. A `/start <code>` that binds a chat to the code-issuer's
+      household would let *any* family use the bot — the real "spread like fire" enabler.
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:
@@ -215,7 +243,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [x] Dashboard (buckets, recent spend, Honey card) — `web/src/app/dashboard/page.tsx`
 - [x] **End-to-end verified locally**: PB migrations → projection → dashboard → Honey insight (both tenants)
 - [ ] Add a `GEMINI_API_KEY` + test `/api/receipt` with a real TNG/MAE screenshot
-- [ ] Register Telegram bot (@BotFather) + expose webhook via tunnel (`cloudflared`/`ngrok`) for the demo
+- [ ] Register Telegram bot (@BotFather) + expose webhook via tunnel (`cloudflared`/`ngrok`) for the demo — **step-by-step in `docs/TELEGRAM_SETUP.md`**; only the bot token/secret are missing
 - [ ] Curate 20 real TNG/MAE/GrabPay screenshots → measure OCR accuracy vs a golden set
 
 ### Monitoring & visualization layer — built P1.5 `[Technical][Scalability]`
@@ -234,7 +262,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [x] **No-token capture** — 🎤 voice (browser Speech API) + 📷 receipt scan (tesseract.js), on-device, **no AI tokens** (answers the PDPA/data-residency + RM-0 story). Parser handles EN + Malay.
 - [x] **Multi-language** — EN + Bahasa Melayu complete; Chinese/Tamil/Hindi core, graceful English fallback; language switcher (`?lang=`).
 - [x] **Multi-currency** — display + capture in MYR · SGD · THB · CNY · HKD · TWD · JPY · USD · GBP (converts from MYR base; capture normalizes back). *(Rates are indicative — wire a live FX source before real use.)*
-- [x] **Mobile-first + installable PWA** (never forced) — manifest, icon, theme-color, responsive.
+- [x] **Mobile-first + installable PWA** (never forced) — manifest, icon, theme-color, responsive. Bottom install banner works on **both** Android (native prompt) and iOS Safari (Share → Add to Home Screen) as of 2026-07-15.
 - [x] **In-app `/guide`** — how-to + privacy promise + disclaimer (`docs/DISCLAIMER.md`).
 
 ### Public showcase — hosting + onboarding (decided; see `DEPLOY.md`) `[Technical][Commercial]`
@@ -245,7 +273,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 - [ ] Host PocketBase (Fly.io via the Dockerfile, or PocketHost) → get an `https` `POCKETBASE_URL`.
 - [ ] Import repo to Vercel (root = `web/`), set env vars, deploy → free `.vercel.app` URL (**first cut**). Buy + attach a domain later (2-min, no redeploy).
 - [ ] Handle the shared-sandbox problem before wide sharing: nightly reseed **or** guard demo-tenant mutations **or** ephemeral per-visitor tenant.
-- [ ] Telegram bot live (@BotFather + webhook) — the lowest-friction acquisition channel ("forward one receipt").
+- [ ] Telegram bot live (@BotFather + webhook) — the lowest-friction acquisition channel ("forward one receipt"). Code + guide ready (`docs/TELEGRAM_SETUP.md`); just needs the BotFather token in `web/.env.local`.
 - [ ] Play Store later via TWA (PWA is ready) — needs the permanent URL + PNG icons + a $25 Play account. PWA "Add to Home Screen" already works with zero fees.
 - [ ] P3: optional sign-up via PocketBase auth (bind user→tenant; gate persist/Telegram only, never the showcase).
 
@@ -300,4 +328,4 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 7. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
 8. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
 
-_Last updated: 2026-07-14_
+_Last updated: 2026-07-15_
