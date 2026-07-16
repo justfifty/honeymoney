@@ -31,6 +31,9 @@ export const config = {
 
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
+  // Public @handle (no leading @) so the /setup page can render a t.me deep
+  // link straight to the bot. Optional — the page degrades to generic steps.
+  telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME ?? "").replace(/^@/, ""),
 
   demoTenantId: process.env.DEMO_TENANT_ID ?? "",
 };

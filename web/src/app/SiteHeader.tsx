@@ -4,6 +4,7 @@ import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import LanguageSwitcher from "./graph/LanguageSwitcher";
 import HeaderNav from "./HeaderNav";
+import AppMenu from "./AppMenu";
 import LogoutButton from "./admin/LogoutButton";
 import Logo from "./Logo";
 
@@ -59,6 +60,16 @@ export default async function SiteHeader() {
               </Link>
             </>
           )}
+          <AppMenu
+            items={navItems}
+            labels={{
+              menu: tr("nav.menu"),
+              setup: tr("nav.setup"),
+              install: tr("nav.install"),
+              installed: tr("nav.installed"),
+              iosHint: tr("install.iosHint"),
+            }}
+          />
         </div>
       </div>
     </header>
