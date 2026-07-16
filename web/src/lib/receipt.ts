@@ -27,10 +27,16 @@ import { pbList, pbStr } from "./pocketbase";
 
 export interface ReceiptExtraction {
   vendor: string;
-  amount: number;
+  amount: number; // the final total paid — the canonical figure the app records
   currency: string;
   occurredAt: string; // ISO 8601, or "" if the receipt didn't say
   paymentMethod: string; // "Touch 'n Go", "MAE", "card", "cash"…
+  // The Malaysian receipt breakdown, when printed. Each is 0 if the receipt
+  // doesn't show it. `total` is the printed grand total and equals `amount`.
+  subtotal: number; // goods/services before service charge & tax
+  serviceCharge: number; // e.g. 10% (restaurants), 0 if none
+  tax: number; // SST / service tax (or older GST), 0 if none
+  total: number; // final total after service charge & tax
   lineItems: { label: string; amount: number }[];
   confidence: number; // 0..1, the model's own honesty about the read
 }
@@ -65,6 +71,12 @@ Rules you must follow:
 - The AMOUNT is what left the user's pocket. Ignore the wallet's remaining
   balance, any reload amount, cashback, and points. If several totals appear,
   take the one labelled Total / Jumlah / Amount Paid / Bayaran.
+- Many Malaysian receipts print a BREAKDOWN before the total: a Subtotal, then a
+  Service Charge (often 10%, common in restaurants), then SST / Service Tax (or
+  older receipts GST), sometimes a Rounding Adjustment, then the final Total.
+  Capture subtotal, serviceCharge, tax and total separately when they are
+  printed; put 0 for any that the receipt does not show. "amount" and "total"
+  are the SAME final figure paid, after service charge and tax.
 - Malaysian receipts write dates as DD/MM/YYYY, never MM/DD. "03/07/2026" is
   3 July, not 3 March.
 - If the image genuinely does not show a field, leave it empty and lower your
@@ -74,10 +86,14 @@ Rules you must follow:
 const EXTRACT_PROMPT = `Extract the payment from this image. Return ONLY strict JSON:
 {
   "vendor": string,          // the merchant paid; "" if truly unreadable
-  "amount": number,          // what was paid, as a number; 0 if unreadable
+  "amount": number,          // final total paid, as a number; 0 if unreadable
   "currency": string,        // ISO code, default "MYR"
   "occurredAt": string,      // ISO 8601 datetime, or "" if absent
   "paymentMethod": string,   // wallet/app/card/cash used, or ""
+  "subtotal": number,        // before service charge & tax; 0 if not shown
+  "serviceCharge": number,   // service charge (e.g. 10%); 0 if not shown
+  "tax": number,             // SST / service tax / GST; 0 if not shown
+  "total": number,           // final total after service charge & tax; = amount
   "lineItems": [ { "label": string, "amount": number } ],  // [] if not itemised
   "confidence": number       // 0..1 — your honest confidence in the amount+vendor
 }`;
@@ -93,13 +109,25 @@ function parseJson<T>(raw: string): T {
 }
 
 function coerceExtraction(raw: Partial<ReceiptExtraction>): ReceiptExtraction {
-  const amount = Number(raw.amount);
+  // Non-negative money coercion, rounded to sen; 0 when absent/invalid.
+  const money = (v: unknown) => {
+    const x = Number(v);
+    return Number.isFinite(x) && x > 0 ? Math.round(x * 100) / 100 : 0;
+  };
+  const total = money(raw.total);
+  // The canonical amount is the final total; if the model only filled one of the
+  // two, borrow from the other so the recorded figure is never lost.
+  const amount = money(raw.amount) || total;
   return {
     vendor: typeof raw.vendor === "string" ? raw.vendor.trim().slice(0, 80) : "",
-    amount: Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) / 100 : 0,
+    amount,
     currency: (typeof raw.currency === "string" && raw.currency.trim().toUpperCase()) || "MYR",
     occurredAt: typeof raw.occurredAt === "string" ? raw.occurredAt : "",
     paymentMethod: typeof raw.paymentMethod === "string" ? raw.paymentMethod.slice(0, 40) : "",
+    subtotal: money(raw.subtotal),
+    serviceCharge: money(raw.serviceCharge),
+    tax: money(raw.tax),
+    total: total || amount,
     lineItems: Array.isArray(raw.lineItems)
       ? raw.lineItems
           .filter((li) => li && typeof li.label === "string" && Number.isFinite(Number(li.amount)))

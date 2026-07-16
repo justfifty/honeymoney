@@ -284,13 +284,21 @@ export default function SpendCapture({
               confidence: e.confidence,
             });
             onAnalysis?.(data.analysis ?? null);
+            // When the receipt printed a breakdown, show it so the user can see
+            // the subtotal/service/tax behind the total, not just the total.
+            const cur = e.currency ?? "MYR";
+            const parts: string[] = [];
+            if (e.subtotal) parts.push(`${tr("cap.subtotal")} ${cur} ${e.subtotal}`);
+            if (e.serviceCharge) parts.push(`${tr("cap.service")} ${cur} ${e.serviceCharge}`);
+            if (e.tax) parts.push(`${tr("cap.tax")} ${cur} ${e.tax}`);
+            const breakdown = parts.length ? `  ·  ${parts.join(" · ")}` : "";
             setStatus(
-              e.amount || e.vendor
+              (e.amount || e.vendor
                 ? tr("g.cap.readResult", {
                     vendor: e.vendor ? ` “${e.vendor}”` : "",
-                    amount: e.amount ? ` · ${e.currency ?? "MYR"} ${e.amount}` : "",
+                    amount: e.amount ? ` · ${cur} ${e.amount}` : "",
                   })
-                : tr("g.cap.readFail"),
+                : tr("g.cap.readFail")) + breakdown,
             );
             setBusy(false);
             return;
