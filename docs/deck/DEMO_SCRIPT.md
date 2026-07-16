@@ -1,48 +1,51 @@
 # HoneyMoney — Demo Video Script (MAIC Nexus 2026, Track T3)
 
-**Target length:** 2:40 (keep under the 3:00 hard cap).
-**Format:** screen recording of the live app + Telegram, with voiceover (VO).
-**Goal:** show a *working* end-to-end path — capture → parse → bucket → Honey
-insight → dashboard — while touching each judging criterion.
+**Target length:** 2:45 (hard cap 3:00). **Format:** screen recording of the live
+app + Telegram, with voiceover (VO). **Goal:** show a *working* end-to-end path —
+capture → confirm → **ask Honey** → graph → projection → proactive nudge — while
+touching every judging criterion.
 
-> Record at 1080p. Speak slowly; a calm, confident tone beats a rushed one.
-> Every screen shown must be real (no mockups) — judges reward a working product.
-> On-screen captions reinforce the VO for muted viewing.
+> Record at 1080p. Calm, confident tone beats a rushed one. Every screen is real
+> (no mockups — a disqualifier). Captions always on for muted viewing.
+> Word budget ≈ 150 wpm → keep narration under ~410 words. Hook in the first 8s.
 
 ---
 
-## Shot list
+## Shot list (beat → seconds → rubric)
 
-> **Hook rule (see the `/demo-video` skill):** land the pain in the first sentence,
-> show a concrete visual within 5s, no logo animation up front. Word budget ≈ 150 wpm
-> → keep total narration under ~430 words.
-
-| Time | On screen | Voiceover | Caption |
-| --- | --- | --- | --- |
-| **0:00–0:08** | Cold open **straight into** a messy pile of e-wallet screenshots / a couple tense over a phone (no title card yet). | "In Malaysian homes, money is the #1 thing couples fight about — and that stress follows them to work." | *Money = #1 household conflict* |
-| **0:08–0:22** | Cut to HoneyMoney at **honeymoney.app** (logo appears here, in motion). | "HoneyMoney gives couples funding transparency and spending autonomy — no tracking fatigue. Here's the whole loop, live." | *honeymoney.app — live product* |
-| **0:25–0:38** | The **3-Bucket** view: Must-paid, Savings, Spendings. | "Money sits in three buckets: Must-paid, like rent and bills, Savings that auto-sets aside a percentage, and Spendings — the private bucket, where tracking simply stops." | *3 buckets: Must-paid · Savings · Spendings* |
-| **0:38–1:05** | On the **graph page**, use **SpendCapture**: tap 📷 *Scan receipt* and pick a receipt image — the on-device OCR reads vendor + amount and prefills the form. (Optionally tap 🎤 *Speak* and say "25 ringgit at Speedmart".) | "Capture is frictionless and private. Scan a receipt or just speak the spend — this runs on-device, costs zero AI tokens, and nothing leaves the browser. It reads the vendor and amount and prefills the entry." | *Scan or speak — on-device, zero tokens* |
-| **1:05–1:22** | Go to the **dashboard → Add spend** form: confirm vendor/amount, pick the **bucket**, hit *Add spend*. Buckets update instantly. | "Nothing is recorded silently — you confirm the amount and choose the bucket, then it saves and the buckets recalculate live. The human always decides." | *You confirm the bucket before it saves* |
-| **1:22–1:50** | Open the **knowledge-graph / six-view gallery**; highlight income → bucket → spend → goal. Then trigger the **Honey** insight on a shared goal. | "Under the hood, your money is a living knowledge graph — income flowing into buckets, out to spending, toward goals. So Honey can see, structurally, when one bucket's spending pace is about to threaten a shared goal — and warn you *before* it happens, not after." | *Honey warns you before a goal slips* |
-| **1:50–2:08** | **Dashboard**: projection delta / spending-schedule audit updating after the new transaction. | "The dashboard updates instantly — a spending-schedule audit and a forward projection show the impact on the goal, weeks ahead." | *Forward projection, not just a ledger* |
-| **2:08–2:22** | Quick pass over: multi-currency/-language toggle; the **admin AI cost/token ledger**; mention 3 personas (household / family / business). | "It's local-first — your data stays on your machine, a real PDPA story. AI is swappable across Gemini Flash, Groq, and local Ollama, with a per-call cost ledger. And the same engine runs a household, a family, or a small business." | *Local-first · multi-provider AI · one engine, 3 personas* |
-| **2:22–2:34** | Split card: free household tier + "employer-sponsored" seat; SDG 1/3/8 icons. | "We're free for households, and monetise through employers who sponsor financial-wellness seats for their teams — mapped to SDG 1, 3, and 8 and Malaysia's financial-inclusion agenda." | *B2B2C wellness · SDG 1·3·8* |
-| **2:34–2:40** | End card: logo, **honeymoney.app**, "MAIC Nexus 2026 · Track T3". | "HoneyMoney — helping families plan together, without policing each other. It's live now at honeymoney.app." | *honeymoney.app* |
+| Time | On screen | Voiceover | Caption | Rubric |
+| --- | --- | --- | --- | --- |
+| **0:00–0:08** | Cold open on a messy pile of e-wallet screenshots / a couple tense over a phone (no title card). | "In Malaysian homes, money is the number-one thing couples fight about — and that stress follows them to work." | *Money = #1 household conflict* | Relevance |
+| **0:08–0:20** | Cut to HoneyMoney at **honeymoney.app** (logo in motion). | "HoneyMoney gives couples funding transparency and spending autonomy — no tracking fatigue. Here's the whole loop, live." | *honeymoney.app — live product* | Commercial |
+| **0:20–0:33** | The **3-Bucket** dashboard: Must-paid · Savings · Spendings. | "Money flows into three buckets — Must-paid, Savings that auto-sets aside *before* you spend, and Spendings: the private bucket, where tracking simply stops." | *3 buckets · autonomy over surveillance* | Relevance · ESG |
+| **0:33–0:58** | On **/graph**, use **SpendCapture**: 📷 *Scan receipt* (on-device OCR prefills vendor+amount) — optionally 🎤 *Speak* "25 ringgit at Speedmart". Then confirm the bucket on the dashboard **Add spend** form. | "Capture is frictionless and private — scan a receipt or just say the spend. It runs on-device, costs zero AI tokens, and you confirm the bucket before anything saves. The human always decides." | *Scan or speak — on-device, zero tokens, you confirm* | Technical · ESG |
+| **0:58–1:24** | **Ask Honey** panel on the dashboard. Type: *"Can we afford RM2,000 for a Raya trip?"* → grounded answer appears. Then click the chip *"What's my EPF on RM4,000?"* → statutory answer. | "Now just ask, in plain language — can we afford two thousand ringgit for Raya? Honey reasons over *your own* plan and answers, grounded in your numbers, never judging. It even explains your EPF and take-home — real Malaysian figures, not guesses." | *Ask Honey — grounded in your plan, advice-free* | **Technical · Commercial · Relevance** |
+| **1:24–1:42** | The **knowledge-graph** view (Sankey / organic): income → buckets → spend → goal. | "Under the hood, your money is a living knowledge graph — income into buckets, out to spending, toward goals. That structure is *why* Honey's answers are grounded, not made up." | *A real money graph — grounded, not guessed* | Technical |
+| **1:42–2:02** | **Dashboard**: forward projection updating; scroll to the **Subscriptions & bills radar** (recurring charges + monthly total). | "The dashboard projects the month forward — and the subscription radar surfaces every recurring bill and duplicate. Money quietly leaking, found." | *Forward projection + subscription radar* | Technical · Commercial |
+| **2:02–2:14** | Pre-staged **Telegram** screenshot: Honey's proactive nudge ("…heading over plan — rebalance together?"). | "And Honey is proactive — it messages you on Telegram *before* a bucket slips, not after." | *Proactive: warns before the shortfall* | Commercial · ESG |
+| **2:14–2:30** | Quick pass: multi-currency/-language toggle; admin **AI cost/token ledger**; three personas. | "It's local-first — your data stays on your machine, a real PDPA story — with swappable free AI across Gemini, Groq, and local Ollama, and one engine for a person, a family, or a business." | *Local-first · multi-provider AI · one engine, 3 personas* | ESG · Scalability |
+| **2:30–2:40** | Split card: free household tier + employer-sponsored seat + paid business tier; SDG 1/3/8. | "Free for households — we monetise through employers sponsoring wellness seats, and a paid business tier — mapped to SDG 1, 3, and 8." | *B2B2C wellness · SDG 1·3·8* | Commercial · ESG |
+| **2:40–2:45** | End card: logo, **honeymoney.app**, "MAIC Nexus 2026 · Track T3". | "HoneyMoney — plan together, without policing each other. Live now." | *honeymoney.app* | — |
 
 ---
 
 ## Recording checklist
 
-- [ ] Seed the demo account with realistic data first (a shared goal that's *close*
-      to slipping makes the Honey insight land).
-- [ ] Pre-stage the Telegram screenshot you'll forward so the parse is quick on camera.
-- [ ] Do a silent screen-capture pass first, then record VO over it (cleaner than
-      talking and clicking at once).
-- [ ] Keep the PC/app awake and on a stable connection during recording.
-- [ ] Only show real screens. If a feature isn't built yet, cut it — don't fake it.
-- [ ] Export 1080p MP4. Upload as **YouTube (unlisted)** or Google Drive share link.
-- [ ] Replace the placeholder link in `REGISTRATION.md` §7 with the final video URL.
+- [x] **Demo data already lights up the AI** (verified 2026-07-16): the demo household
+      has **14 recurring subscriptions** for the radar and an **over-budget bucket** so
+      Honey's insight + nudge have something real to say. No extra seeding needed.
+- [ ] **(Optional but higher-wow) set a free `GROQ_API_KEY` or `GEMINI_API_KEY`** before
+      recording, so the co-pilot answers *free-form* questions live instead of the
+      rule-based fallback. The fallback is reliable and won't fail on stage if you skip this.
+- [ ] **Pre-stage the co-pilot question** ("Can we afford RM2,000 for a Raya trip?") and
+      the **EPF chip** so beat 0:58 is one clean take.
+- [ ] **Pre-stage the Telegram nudge screenshot** — trigger it once via
+      `POST /api/insight/nudge` (header `x-purge-secret: <ACCOUNT_PURGE_SECRET>`, needs
+      Telegram configured), screenshot Honey's message, and cut to it at 2:02.
+- [ ] Do a silent screen-capture pass first, then record VO over it.
+- [ ] Keep the PC/app awake and on a stable connection.
+- [ ] Only real screens. Export 1080p MP4 → YouTube (unlisted) or Drive link.
+- [ ] Replace the placeholder link in `docs/REGISTRATION.md` §7 with the final URL.
 
 ## Upload metadata
 
