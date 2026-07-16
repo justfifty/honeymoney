@@ -8,6 +8,7 @@ import IosInstallGuide, { type IosGuideStrings } from "./IosInstallGuide";
 
 export interface AppMenuLabels {
   menu: string;       // aria-label for the trigger
+  goals: string;      // "Goals" — own savings targets
   learn: string;      // "Learn" — money quiz / academy
   setup: string;      // "Setup" — account, AI capture & install hub
   install: string;    // "Install app"
@@ -117,6 +118,14 @@ export default function AppMenu({
           })}
 
           <div className="my-1 border-t border-zinc-200/70 dark:border-zinc-800/70" />
+
+          <Link
+            href="/goals"
+            role="menuitem"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+          >
+            <span aria-hidden="true">🎯</span> {labels.goals}
+          </Link>
 
           <Link
             href="/learn"
