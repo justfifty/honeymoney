@@ -39,10 +39,10 @@ export default async function SiteHeader() {
           <LanguageSwitcher current={locale} label={tr("common.language")} />
           {user ? (
             <>
-              <span className="hidden max-w-[10rem] truncate text-xs text-zinc-500 sm:inline">
+              <Link href="/account" className="hidden max-w-[10rem] truncate text-xs text-zinc-500 hover:text-amber-600 sm:inline dark:hover:text-amber-400">
                 {user.name || user.email}
                 {user.role === "admin" && <span className="ml-1 rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">{tr("auth.admin")}</span>}
-              </span>
+              </Link>
               <LogoutButton />
             </>
           ) : (
@@ -68,6 +68,7 @@ export default async function SiteHeader() {
               install: tr("nav.install"),
               installed: tr("nav.installed"),
               iosHint: tr("install.iosHint"),
+              account: user ? tr("nav.account") : undefined,
             }}
           />
         </div>

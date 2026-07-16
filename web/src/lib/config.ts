@@ -36,6 +36,10 @@ export const config = {
   telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME ?? "").replace(/^@/, ""),
 
   demoTenantId: process.env.DEMO_TENANT_ID ?? "",
+
+  // Shared secret that guards the scheduled account-purge endpoint
+  // (/api/account/purge-expired), so only your cron/task can trigger erasure.
+  accountPurgeSecret: process.env.ACCOUNT_PURGE_SECRET ?? "",
 };
 
 export const isPocketBaseConfigured = (): boolean =>

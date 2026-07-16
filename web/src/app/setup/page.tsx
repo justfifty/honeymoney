@@ -115,6 +115,17 @@ export default async function SetupPage() {
         </p>
       </Section>
 
+      {/* Install / remove / account */}
+      <Section title={`📱 ${tr("setup.remove.title")}`} tone="plain">
+        <p>
+          {tr("setup.remove.body")}{" "}
+          <Link href="/delete-account" className="text-amber-600 hover:underline">
+            {tr("setup.remove.link")}
+          </Link>
+          .
+        </p>
+      </Section>
+
       <p className="mt-8 text-xs text-zinc-400">{tr("setup.disclaimer")}</p>
     </main>
   );

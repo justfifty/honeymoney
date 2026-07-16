@@ -11,6 +11,7 @@ export interface AppMenuLabels {
   install: string;   // "Install app"
   installed: string; // "App installed" (shown disabled when already standalone)
   iosHint: string;   // "Tap Share, then Add to Home Screen"
+  account?: string;  // "Account" — only when signed in
 }
 
 // Mobile-only nav: the header's inline links are `hidden md:flex`, so on phones
@@ -113,6 +114,16 @@ export default function AppMenu({
           })}
 
           <div className="my-1 border-t border-zinc-200/70 dark:border-zinc-800/70" />
+
+          {labels.account && (
+            <Link
+              href="/account"
+              role="menuitem"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              <span aria-hidden="true">👤</span> {labels.account}
+            </Link>
+          )}
 
           <Link
             href="/setup"

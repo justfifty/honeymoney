@@ -6,6 +6,7 @@ import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 import HoneyField from "./HoneyField";
 import InstallPrompt from "./InstallPrompt";
+import PendingDeletionNotice from "./PendingDeletionNotice";
 import FxRates from "./FxRates";
 import { getRates } from "@/lib/fx";
 import { applyRates, type RateTable } from "@/lib/format";
@@ -104,6 +105,7 @@ export default async function RootLayout({
         {/* dotted sunburst that trails the cursor behind every page */}
         <HoneyField />
         <SiteHeader />
+        <PendingDeletionNotice />
         <div className="flex flex-1 flex-col">{children}</div>
         <SiteFooter />
         <InstallPrompt />

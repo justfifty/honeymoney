@@ -25,6 +25,7 @@ export interface Household {
   name: string;
   kind: "household" | "business";
   baseCurrency: string;
+  deletedAt?: string; // set while soft-deleted (pending purge); see lib/account.ts
 }
 
 export interface MemberRow {
@@ -43,6 +44,7 @@ export interface Ctx {
   tenant: Household;
   memberId: string;
   accessRole: AccessRole;
+  pendingDeletion: boolean; // the household is soft-deleted, awaiting purge/restore
 }
 
 // ── Permissions ─────────────────────────────────────────────────────────────
@@ -91,7 +93,7 @@ export class AuthError extends Error {
 // ── Session → household ─────────────────────────────────────────────────────
 
 async function loadTenant(id: string): Promise<Household | null> {
-  const t = await pbFirst<{ id: string; name: string; kind: string; base_currency: string }>(
+  const t = await pbFirst<{ id: string; name: string; kind: string; base_currency: string; deleted_at?: string }>(
     "tenants",
     `id = ${pbStr(id)}`,
   );
@@ -101,6 +103,7 @@ async function loadTenant(id: string): Promise<Household | null> {
     name: t.name,
     kind: t.kind === "business" ? "business" : "household",
     baseCurrency: t.base_currency || "MYR",
+    deletedAt: t.deleted_at || undefined,
   };
 }
 
@@ -125,6 +128,7 @@ export async function getContext(): Promise<Ctx | null> {
     tenant,
     memberId: member.id,
     accessRole: (member.access_role as AccessRole) || "adult",
+    pendingDeletion: Boolean(tenant.deletedAt),
   };
 }
 
