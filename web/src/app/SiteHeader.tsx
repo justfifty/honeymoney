@@ -64,6 +64,7 @@ export default async function SiteHeader() {
             items={navItems}
             labels={{
               menu: tr("nav.menu"),
+              learn: tr("nav.learn"),
               setup: tr("nav.setup"),
               install: tr("nav.install"),
               installed: tr("nav.installed"),
