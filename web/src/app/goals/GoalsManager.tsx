@@ -41,6 +41,9 @@ export default function GoalsManager({
 }) {
   const [adding, setAdding] = useState(false);
 
+  const active = goals.filter((g) => g.pct < 100);
+  const achieved = goals.filter((g) => g.pct >= 100);
+
   return (
     <div className="mt-6 space-y-4">
       {canWrite && (
@@ -61,13 +64,36 @@ export default function GoalsManager({
 
       {goals.length === 0 && (
         <p className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-6 text-center text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/20">
-          No goals yet. {canWrite ? "Set your first target — a trip, a study fund, an emergency cushion." : "Sign in to set your own targets."}
+          No goals yet. {canWrite ? "Set your first target — a trip, a study fund, a gift, an emergency cushion." : "Sign in to set your own targets."}
         </p>
       )}
 
-      {goals.map((g) => (
+      {active.map((g) => (
         <GoalCard key={g.id} goal={g} canWrite={canWrite} />
       ))}
+
+      {/* Achievements — a record of the targets you've reached */}
+      {achieved.length > 0 && (
+        <div className="pt-2">
+          <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            🏆 Achievements <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">{achieved.length}</span>
+          </h2>
+          <div className="space-y-2">
+            {achieved.map((g) => (
+              <div
+                key={g.id}
+                className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm dark:border-emerald-800 dark:bg-emerald-950/30"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-xl" aria-hidden="true">{g.emoji}</span>
+                  <span className="font-medium">{g.name}</span>
+                </span>
+                <span className="font-medium text-emerald-700 dark:text-emerald-300">{rm(g.target)} ✅</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

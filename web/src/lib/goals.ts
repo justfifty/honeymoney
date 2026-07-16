@@ -14,7 +14,8 @@ export const GOAL_CATEGORIES = [
   { key: "vehicle", emoji: "🚗", label: "Vehicle" },
   { key: "emergency", emoji: "🛡️", label: "Emergency fund" },
   { key: "wedding", emoji: "💍", label: "Wedding" },
-  { key: "custom", emoji: "🎯", label: "Custom" },
+  { key: "gift", emoji: "🎁", label: "Gift" },
+  { key: "custom", emoji: "🎯", label: "Custom (your own)" },
 ] as const;
 
 const EMOJI_BY_CAT: Record<string, string> = Object.fromEntries(GOAL_CATEGORIES.map((c) => [c.key, c.emoji]));
