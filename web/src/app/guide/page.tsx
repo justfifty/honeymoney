@@ -39,6 +39,21 @@ export default async function GuidePage() {
         </ol>
       </Section>
 
+      {/* The AI — killer features, honestly framed */}
+      <Section title={`🤖 ${tr("guide.ai.title")}`} tone="plain">
+        <p className="mb-3">{tr("guide.ai.intro")}</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li><b>{tr("guide.ai.1.label")}</b> — {tr("guide.ai.1.body")}</li>
+          <li><b>{tr("guide.ai.2.label")}</b> — {tr("guide.ai.2.body")}</li>
+          <li>
+            <b>{tr("guide.ai.3.label")}</b> — {tr("guide.ai.3.body")}{" "}
+            <Link href="/setup" className="text-amber-600 hover:underline">{tr("guide.ai.setupLink")}</Link>
+          </li>
+          <li><b>{tr("guide.ai.4.label")}</b> — {tr("guide.ai.4.body")}</li>
+        </ul>
+        <p className="mt-3 text-xs text-zinc-500">{tr("guide.ai.note")}</p>
+      </Section>
+
       {/* Install on your phone */}
       <Section title={`📲 ${tr("guide.install.title")}`} tone="plain">
         <p className="mb-3">{tr("guide.install.body")}</p>
