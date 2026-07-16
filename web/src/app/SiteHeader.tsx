@@ -67,8 +67,14 @@ export default async function SiteHeader() {
               setup: tr("nav.setup"),
               install: tr("nav.install"),
               installed: tr("nav.installed"),
-              iosHint: tr("install.iosHint"),
               account: user ? tr("nav.account") : undefined,
+              iosGuide: {
+                title: tr("install.ios.title"),
+                openSafari: tr("install.ios.openSafari"),
+                step1: tr("install.ios.step1"),
+                step2: tr("install.ios.step2"),
+                step3: tr("install.ios.step3"),
+              },
             }}
           />
         </div>

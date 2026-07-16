@@ -3,6 +3,7 @@ import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import { config, isTelegramConfigured, activeAiProvider } from "@/lib/config";
 import Logo from "../Logo";
+import IosInstallGuide from "../IosInstallGuide";
 
 export const metadata = {
   title: "AI Setup — connect zero-typing capture",
@@ -124,6 +125,18 @@ export default async function SetupPage() {
           </Link>
           .
         </p>
+        {/* iPhone / iPad has no one-tap install — spell out the Safari steps. */}
+        <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <IosInstallGuide
+            strings={{
+              title: `🍎 ${tr("install.ios.title")}`,
+              openSafari: tr("install.ios.openSafari"),
+              step1: tr("install.ios.step1"),
+              step2: tr("install.ios.step2"),
+              step3: tr("install.ios.step3"),
+            }}
+          />
+        </div>
       </Section>
 
       <p className="mt-8 text-xs text-zinc-400">{tr("setup.disclaimer")}</p>

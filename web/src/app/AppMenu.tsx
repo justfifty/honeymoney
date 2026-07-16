@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { usePwaInstall } from "./usePwaInstall";
+import IosInstallGuide, { type IosGuideStrings } from "./IosInstallGuide";
 
 export interface AppMenuLabels {
-  menu: string;      // aria-label for the trigger
-  setup: string;     // "AI Setup"
-  install: string;   // "Install app"
-  installed: string; // "App installed" (shown disabled when already standalone)
-  iosHint: string;   // "Tap Share, then Add to Home Screen"
-  account?: string;  // "Account" — only when signed in
+  menu: string;       // aria-label for the trigger
+  setup: string;      // "AI Setup"
+  install: string;    // "Install app"
+  installed: string;  // "App installed" (shown disabled when already standalone)
+  account?: string;   // "Account" — only when signed in
+  iosGuide?: IosGuideStrings; // translated Add-to-Home-Screen steps
 }
 
 // Mobile-only nav: the header's inline links are `hidden md:flex`, so on phones
@@ -27,7 +28,8 @@ export default function AppMenu({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const ref = useRef<HTMLDivElement>(null);
-  const { canPrompt, isIos, installed, promptInstall } = usePwaInstall();
+  const { canPrompt, isIos, iosNeedsSafari, installed, promptInstall } = usePwaInstall();
+  const anyIos = isIos || iosNeedsSafari;
   const [iosOpen, setIosOpen] = useState(false);
 
   // Close on route change so the panel never lingers over the new page.
@@ -55,12 +57,12 @@ export default function AppMenu({
     if (canPrompt) {
       await promptInstall();
       setOpen(false);
-    } else if (isIos) {
+    } else if (anyIos) {
       setIosOpen((v) => !v); // reveal the manual Share steps inline
     }
   }
 
-  const showInstall = !installed && (canPrompt || isIos);
+  const showInstall = !installed && (canPrompt || anyIos);
 
   return (
     <div ref={ref} className="relative md:hidden">
@@ -139,13 +141,15 @@ export default function AppMenu({
                 type="button"
                 role="menuitem"
                 onClick={onInstall}
-                aria-expanded={isIos ? iosOpen : undefined}
+                aria-expanded={anyIos ? iosOpen : undefined}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
               >
                 <span aria-hidden="true">⬇️</span> {labels.install}
               </button>
-              {isIos && iosOpen && (
-                <p className="px-3 pb-2 text-xs text-zinc-500">{labels.iosHint}</p>
+              {anyIos && iosOpen && (
+                <div className="px-3 pb-2">
+                  <IosInstallGuide needsSafari={iosNeedsSafari} showTitle={false} strings={labels.iosGuide} />
+                </div>
               )}
             </>
           )}
