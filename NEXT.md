@@ -440,14 +440,52 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 
 ---
 
-## 7. This week (do now)
-1. [x] **`git push`** — done; committing daily to `justfifty/honeymoney` (real, non-backdated history). ✅
-2. [~] Malaysian-citizen member = **Chua Kia Wah** (confirmed). ⬜ Still need his **MyKad number** on the portal. *(last eligibility field)*
-3. [ ] **Register on the MAIC portal** — the full submission pack (deck/summary/AI-disclosure PDFs + video + repo + profiles) is ready; see `docs/REGISTRATION.md`. Enter Chua's MyKad + IDs directly on the form.
-4. [ ] **First cut deploy** — Fly PocketBase (via `pocketbase/Dockerfile`) + Vercel (root `web/`) → free `.vercel.app` URL. Build is already verified green. Buy a domain after.
-5. [ ] Get a Gemini API key (AI Studio free tier); test `/api/receipt` with a real screenshot. *(App runs fine without it — on-device capture already works token-free.)*
-6. [ ] Draft the LOI + send to first 3 HR contacts.
-7. [ ] Record a 60-sec demo of the `/graph` gallery — persona switcher (personal→family→business), Focus lens, 💱 currency, 🌐 language, ➕ add via speak/scan.
-8. [ ] Pick the next build: **research-backed top-3** (§6.5 — couples toggles / round-ups / goal ETA) vs **translation expansion** (landing + dashboard) vs **P3 cashflow statement**. Recommend the couples toggles (biggest differentiation).
+## 7. Next (do now) — **13 days to the 15 Aug application deadline**
 
-_Last updated: 2026-07-15_
+Everything below is ordered by what actually blocks the submission. The app is
+live and the pack is written; the risk now is an **eligibility field** and a set
+of **stale artefacts**, not missing features.
+
+### 🔴 Blocking the submission
+1. [~] **Chua Kia Wah's MyKad number** — the last eligibility field. Nothing else is
+   outstanding on the team profile. *(Malaysian-citizen member confirmed.)*
+2. [ ] **Register on the MAIC portal** — pack is ready (deck · summary · AI disclosure ·
+   video · repo · live URL). See `docs/REGISTRATION.md`. **Do not leave this to the
+   final week** — the 15 Aug gate is the 300-team cut.
+
+### 🟠 Stale artefacts — the 2026-08-02 UI ships a different product than the pack shows
+3. [ ] **Re-export the deck + summary PDFs.** Every landing-page screenshot in
+   `docs/deck/` predates the 3-second hook: they show the old brand-only hero and the
+   two-CTA layout that no longer exists. Judges compare deck to live app.
+   → **pitch-deck** skill.
+4. [ ] **Re-shoot the demo video / explainer.** `HoneyMoney_Demo_MAIC2026.mp4` (35s) opens
+   on the old hero. The new opening is objectively stronger for a 3-minute run: the
+   first shot can now be *type "kopi 6.50" → bucketed card in 3 ms*, signed out, no
+   setup — which lands the technical, privacy and UX points in one take.
+   → **demo-video** skill; `docs/deck/DEMO_SCRIPT.md` beat 1 needs rewriting.
+5. [ ] **Refresh the graph gallery** (`docs/deck/graph_gallery/`) if any frame includes
+   the dashboard header — that layout changed (mobile stacking fix).
+
+### 🟡 Product — the next build
+6. [ ] **Couples hide/share toggles** (§6.5 #1) — still the recommendation: the biggest
+   differentiator, native to the graph, and the only one on the list nobody else owns.
+7. [ ] **Finish the capture-friction pass** — the three deferred items from 2026-08-02:
+   `FlexibleInput` still shows every field at once · a half-entered expense dies on
+   navigation · verify buckets are seeded before a first capture can meet them.
+8. [ ] **Validate the AI capture paths** against real Malaysian receipts/statements with a
+   Gemini key (AI Studio free tier). Receipt breakdown + statement-photo multi-row are
+   both shipped but unvalidated. *(On-device capture works token-free regardless.)*
+
+### 🟢 Commercial (highest ROI on the 25% Commercial score)
+9. [ ] **Draft the LOI + send to the first 3 HR contacts** — `docs/LOI_TEMPLATE.md`.
+   One signed LOI is worth more to the score than any further feature.
+
+### ⚙️ Ops
+10. [ ] **Activate the crons** — set `ACCOUNT_PURGE_SECRET`, run
+    `install-maintenance-tasks.ps1` elevated once. Until then deletes never auto-purge
+    and nudges don't fire.
+11. [ ] Commit or discard the in-flight static-site work left uncommitted on 2026-08-02
+    (`scripts/build-static-site.mjs`, `deploy/pages/`, `web/src/app/{deck,gallery}/`,
+    `.gitignore`, `DEPLOY.md`, `next.config.ts`, `package.json`, `SiteFooter.tsx`).
+
+_Last updated: 2026-08-02_
