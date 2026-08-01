@@ -73,14 +73,17 @@ export default async function Dashboard() {
 
     return (
       <main className="mx-auto min-h-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-        <header className="flex items-center justify-between">
-          <div>
+        {/* Stacks on a phone. As one row it was wider than a 390px viewport —
+            the four nav links don't wrap — which pushed the whole document into
+            horizontal scroll and clipped every card below it off the right edge. */}
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Logo size={24} /> {tr("dash.title")}</h1>
             <p className="text-sm text-zinc-500">{tr("dash.subtitle")}</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-col items-start gap-2 sm:items-end">
             <PrivacyToggle hideLabel={tr("dash.privacy.hide")} showLabel={tr("dash.privacy.show")} />
-            <nav className="flex gap-4 text-sm">
+            <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               <Link href="/records" className="text-amber-600 hover:underline">🧾 {tr("nav.records")}</Link>
               <Link href="/graph" className="text-amber-600 hover:underline">🕸️ {tr("nav.graph")}</Link>
               <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
@@ -98,6 +101,38 @@ export default async function Dashboard() {
             </span>
           </div>
           <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
+        </section>
+
+        {/* Capture, directly under the insight.
+            This used to be the fifth section on the page — below the co-pilot,
+            the stats and every bucket card — which put the one thing a returning
+            user opens the app to do a full screen-and-a-half below the fold on a
+            phone. Reading comes second to logging; the numbers above it are
+            re-rendered by the save anyway. */}
+        <section id="add" className="mt-6 scroll-mt-20">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+            {tr("dash.addSpend")}
+          </h2>
+          {canWrite ? (
+            <AddTransaction
+              lang={locale}
+              knownVendors={vendorNodes.map((v) => v.label)}
+              buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
+            />
+          ) : (
+            <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+              {isDemo ? (
+                <>
+                  {tr("demo.readOnly")}{" "}
+                  <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+                    {tr("demo.createHousehold")}
+                  </Link>
+                </>
+              ) : (
+                tr("role.readOnly")
+              )}
+            </p>
+          )}
         </section>
 
         {/* What-if co-pilot */}
@@ -173,33 +208,6 @@ export default async function Dashboard() {
           </div>
         </section>
 
-        {/* Manual input */}
-        <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            {tr("dash.addSpend")}
-          </h2>
-          {canWrite ? (
-            <AddTransaction
-              lang={locale}
-              knownVendors={vendorNodes.map((v) => v.label)}
-              buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
-            />
-          ) : (
-            <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-              {isDemo ? (
-                <>
-                  {tr("demo.readOnly")}{" "}
-                  <Link href="/signup" className="font-medium text-amber-600 hover:underline">
-                    {tr("demo.createHousehold")}
-                  </Link>
-                </>
-              ) : (
-                tr("role.readOnly")
-              )}
-            </p>
-          )}
-        </section>
-
         {/* Subscription & bill radar */}
         {radar.items.length > 0 && (
           <section className="mt-8">
@@ -234,10 +242,20 @@ export default async function Dashboard() {
             {tr("dash.recent")}
           </h2>
           <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+            {/* An empty list is a capture surface, not a full stop — it says what
+                to do and puts the control one tap away. */}
             {recent.length === 0 && (
-              <p className="p-4 text-sm text-zinc-500">
-                {tr("dash.recentEmpty")}
-              </p>
+              <div className="p-4 text-sm text-zinc-500">
+                <p>{tr("dash.recentEmpty")}</p>
+                {canWrite && (
+                  <a
+                    href="#add"
+                    className="mt-3 inline-flex min-h-11 items-center rounded-full bg-amber-600 px-4 text-xs font-semibold text-white hover:bg-amber-700"
+                  >
+                    ⬆ {tr("dash.recentEmptyCta")}
+                  </a>
+                )}
+              </div>
             )}
             {recent.map((t) => (
               <div

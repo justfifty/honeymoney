@@ -4,6 +4,7 @@ import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import Logo from "./Logo";
 import IosInstallHint from "./IosInstallHint";
+import TryItNow from "./TryItNow";
 
 export default async function Home() {
   const locale = await getLocale();
@@ -21,57 +22,57 @@ export default async function Home() {
     <div className="flex flex-1 flex-col">
       {/* ---------- HERO ---------- */}
       {/* no background: the site-wide sunburst field (see layout) shows through */}
-      <section className="relative overflow-hidden px-6 pt-16 pb-16 text-center sm:pt-24">
+      <section className="relative overflow-hidden px-6 pt-6 pb-14 text-center sm:pt-16">
         <div className="relative z-10 mx-auto max-w-3xl">
-          <span className="hm-animate mb-5 inline-block rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">
+          <span className="hm-animate mb-4 inline-block rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">
             {tr("home.badge")}
           </span>
-          <h1 className="hm-animate hm-delay-1 mt-2 flex items-center justify-center gap-0 text-4xl font-extrabold tracking-tight text-zinc-900 sm:text-6xl md:text-7xl">
+          {/* Wordmark, then the OUTCOME. The old hero led with the brand and made
+              the visitor infer the benefit; the h1 now says what they get. */}
+          <h1 className="hm-animate hm-delay-1 mt-1 flex items-center justify-center gap-0 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
             {/* The mark only fills ~45% of its own viewBox, so a ~1.9em box lands
                 its rays at roughly the wordmark's cap height and the leftover
                 padding becomes the lockup's optical gap. */}
             <Logo size={72} className="h-[1.9em] w-[1.9em] shrink-0" />
             <span>Honey<span className="text-amber-500">Money</span></span>
           </h1>
-          <p className="hm-animate hm-delay-2 mx-auto mt-5 max-w-2xl text-lg text-zinc-600 sm:text-xl">
+          <p className="hm-animate hm-delay-1 mx-auto mt-4 max-w-2xl text-xl font-bold leading-snug tracking-tight text-zinc-900 sm:text-3xl">
+            {tr("home.outcome")}
+          </p>
+          {/* Hidden on a phone: three lines of positioning between the headline
+              and the try-it box pushed the result card — the payoff — below the
+              fold on a 390×844 screen. The headline already carries the promise;
+              this paragraph is the elaboration, and it fits once there's room. */}
+          <p className="hm-animate hm-delay-2 mx-auto mt-3 hidden max-w-xl text-base text-zinc-600 sm:block">
             {tr("home.tagline")}
           </p>
-          <p className="hm-animate hm-delay-2 mt-3 text-lg font-semibold text-amber-700">{tr("home.slogan")}</p>
 
-          <div className="hm-animate hm-delay-3 mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/dashboard"
-              className="w-full rounded-full bg-amber-500 px-7 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 sm:w-auto"
-            >
+          {/* The hook: a working expense parser, above the fold, no account.
+              This replaces the two same-weight CTAs that used to sit here —
+              the primary action is now doing the thing, not navigating to it. */}
+          <TryItNow lang={locale} />
+
+          {/* trust bar — honest signals, immediately under the thing they qualify */}
+          <ul className="hm-animate hm-delay-3 mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-zinc-600">
+            {trust.map((item) => (
+              <li key={item} className="flex items-center gap-1.5">
+                <span aria-hidden className="text-amber-500">✓</span>
+                {item}
+              </li>
+            ))}
+          </ul>
+
+          {/* Secondary routes, demoted to text so they don't compete with the box */}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
+            <Link href="/dashboard" className="font-medium text-amber-600 hover:underline">
               {tr("home.ctaDemo")} →
             </Link>
-            <Link
-              href="/guide"
-              className="w-full rounded-full border border-zinc-300 bg-white px-7 py-3 text-base font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 sm:w-auto"
-            >
-              {tr("home.ctaGuide")}
-            </Link>
+            <span aria-hidden className="text-zinc-300">·</span>
+            <Link href="/guide" className="font-medium text-zinc-600 hover:underline">{tr("home.ctaGuide")}</Link>
+            <span aria-hidden className="text-zinc-300">·</span>
+            <Link href="/login" className="font-medium text-zinc-600 hover:underline">{tr("auth.login")}</Link>
           </div>
-          <p className="mt-4 text-xs text-zinc-500">{tr("home.heroNote")}</p>
-
-          {/* Three ways in — what you can do, and where to go */}
-          <div className="hm-animate hm-delay-3 mx-auto mt-8 grid max-w-xl grid-cols-3 gap-3">
-            {[
-              { href: "/graph", emoji: "📷", title: tr("nav.capture"), desc: tr("home.do.captureDesc") },
-              { href: "/dashboard", emoji: "📊", title: tr("nav.dashboard"), desc: tr("home.do.dashboardDesc") },
-              { href: "/goals", emoji: "🎯", title: tr("nav.goals"), desc: tr("home.do.goalsDesc") },
-            ].map((c) => (
-              <Link
-                key={c.href}
-                href={c.href}
-                className="rounded-2xl border border-zinc-200 bg-white/70 p-4 text-center transition-colors hover:border-amber-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-amber-800"
-              >
-                <div className="text-2xl" aria-hidden="true">{c.emoji}</div>
-                <div className="mt-1 text-sm font-semibold text-zinc-800 dark:text-zinc-100">{c.title}</div>
-                <div className="mt-0.5 text-xs text-zinc-500">{c.desc}</div>
-              </Link>
-            ))}
-          </div>
+          <p className="mt-3 text-xs text-zinc-500">{tr("home.heroNote")}</p>
 
           <IosInstallHint
             label={tr("install.ios.hintCta")}
@@ -83,23 +84,7 @@ export default async function Home() {
               step3: tr("install.ios.step3"),
             }}
           />
-
-          <div className="mt-5 flex items-center justify-center gap-3 text-sm">
-            <Link href="/login" className="font-medium text-amber-600 hover:underline">{tr("auth.login")}</Link>
-            <span className="text-zinc-300">·</span>
-            <Link href="/signup" className="font-medium text-amber-600 hover:underline">{tr("auth.createAccount")}</Link>
-          </div>
         </div>
-
-        {/* trust bar — honest signals, next to the decision */}
-        <ul className="relative mx-auto mt-12 flex max-w-4xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-zinc-600">
-          {trust.map((item) => (
-            <li key={item} className="flex items-center gap-1.5">
-              <span aria-hidden className="text-amber-500">✓</span>
-              {item}
-            </li>
-          ))}
-        </ul>
       </section>
 
       {/* ---------- PRODUCT SHOT ---------- */}
@@ -148,6 +133,37 @@ export default async function Home() {
             <span aria-hidden className="text-zinc-300">→</span>
             <Persona emoji="👨‍👩‍👧" label={tr("home.personas.family")} />
           </div>
+          <p className="mt-8 text-lg font-semibold text-amber-700">{tr("home.slogan")}</p>
+        </div>
+      </section>
+
+      {/* ---------- THE 3-MINUTE PATH ---------- */}
+      {/* The claim the hero makes, itemised and timed, so it reads as a designed
+          funnel rather than marketing. Each step is a real screen in this app. */}
+      <section className="px-6 py-16">
+        <div className="mx-auto max-w-4xl">
+          <p className="text-center text-xs font-semibold uppercase tracking-widest text-amber-600">
+            {tr("home.path.kicker")}
+          </p>
+          <h2 className="mx-auto mt-2 max-w-2xl text-center text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">
+            {tr("home.path.title")}
+          </h2>
+          <ol className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { at: "0:00", title: tr("home.path.s1.title"), body: tr("home.path.s1.body") },
+              { at: "0:45", title: tr("home.path.s2.title"), body: tr("home.path.s2.body") },
+              { at: "1:45", title: tr("home.path.s3.title"), body: tr("home.path.s3.body") },
+              { at: "3:00", title: tr("home.path.s4.title"), body: tr("home.path.s4.body") },
+            ].map((s) => (
+              <li key={s.at} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <span className="inline-block rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold tabular-nums text-amber-800">
+                  {s.at}
+                </span>
+                <h3 className="mt-3 text-sm font-semibold text-zinc-900">{s.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-600">{s.body}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -168,6 +184,26 @@ export default async function Home() {
           >
             🕸️ {tr("nav.graph")}
           </Link>
+        </div>
+
+        {/* Three ways in. These used to sit in the hero, where they were three
+            extra decisions competing with the one that mattered. */}
+        <div className="mx-auto mt-10 grid max-w-xl grid-cols-3 gap-3">
+          {[
+            { href: "/graph", emoji: "📷", title: tr("nav.capture"), desc: tr("home.do.captureDesc") },
+            { href: "/dashboard", emoji: "📊", title: tr("nav.dashboard"), desc: tr("home.do.dashboardDesc") },
+            { href: "/goals", emoji: "🎯", title: tr("nav.goals"), desc: tr("home.do.goalsDesc") },
+          ].map((c) => (
+            <Link
+              key={c.href}
+              href={c.href}
+              className="rounded-2xl border border-zinc-200 bg-white/70 p-4 text-center transition-colors hover:border-amber-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-amber-800"
+            >
+              <div className="text-2xl" aria-hidden="true">{c.emoji}</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-800 dark:text-zinc-100">{c.title}</div>
+              <div className="mt-0.5 text-xs text-zinc-500">{c.desc}</div>
+            </Link>
+          ))}
         </div>
       </section>
     </div>

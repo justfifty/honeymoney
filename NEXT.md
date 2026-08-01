@@ -219,6 +219,80 @@ All pushed to `origin/main`; app rebuilt + restarted; PocketBase migrations appl
 
 ---
 
+## ✅ Shipped — 2026-08-02 (the 3-second hook · capture friction · mobile overflow fix)
+
+The landing page promised value and charged a navigation to deliver it. It now
+**delivers the value in the first screenful, signed out**: a working expense
+parser in the hero, running the same on-device code the signed-in app runs.
+Downstream, the add-spend form stopped asking for four things it could already
+guess, and a real mobile layout bug on `/dashboard` is fixed.
+
+### ⚡ The 3-second hook — value before the click `[Commercial][Technical]`
+- [x] **`TryItNow.tsx` — a live parser in the hero.** Type or tap `kopi 6.50` and a
+      real spend card appears: vendor · amount · **which of the three buckets it
+      lands in** · a Honey line · CTA. Uses `lib/voiceParse.ts` — the *same*
+      parser the app uses, so a visitor is trying the product, not a mock-up.
+      Zero network, zero tokens, works offline, no account.
+- [x] **The privacy claim is now measured, not asserted** — the card prints the real
+      parse time ("Read on your device in 3 ms · 0 AI tokens · nothing left this
+      browser"). A judge can verify it in the network tab.
+- [x] **One-tap examples** (`kopi 6.50` · `Grab 18.40` · `TNB bill 142`) — the literal
+      three seconds. The third lands in *Must-paid*, so the bucket visibly changes.
+- [x] **Mic in the hero** — signed-out voice capture, on-device.
+- [x] **Hero rewritten to an outcome** — "Say it, snap it, or type it. See where the
+      money actually goes." replaces the brand-only h1. The two equal-weight CTAs and
+      the "three ways in" cards left the hero (they were 5 competing decisions in the
+      first screenful, and the previous 2026-07-16 "3s-hook" entry was really three
+      navigation choices, not a hook); they now live above the final CTA.
+- [x] **The claim is itemised** — a new "Three minutes from stranger to your first
+      insight" strip (0:00 / 0:45 / 1:45 / 3:00), each step a real screen.
+- [x] **Verified above the fold at 390×844** — input → parse → bucket → Honey → CTA all
+      fit without a scroll (the mobile tagline is hidden to buy the room).
+
+### 🧾 Capture friction — stop asking what we can guess `[Technical][Relevance]`
+- [x] **`AddTransaction` cut from 6 visible fields to 2.** Direction · currency · date
+      moved behind a disclosure **whose label states their current values**
+      ("Spent · MYR · Today · change") — so the defaults stay auditable without
+      costing a tap. Amount leads (it opens the number pad); vendor follows.
+- [x] **Bucket is now one-tap chips**, not a dropdown — the 3-bucket model made visible
+      at the moment of filing, which is where a correction becomes the household's
+      own training data.
+- [x] **Undo on the spot** — a save returns its `transactionId` and offers ↩ Undo inline
+      (voids via `DELETE /api/transactions/:id`; reversible, fully audited). Closes the
+      1:45 step of the 3-minute path.
+- [x] **Confidence gates the UI** — a parse below 0.6 auto-opens the details and focuses
+      the amount, instead of silently filing a shaky guess.
+- [x] **Capture moved to the top of `/dashboard`** — it was the 5th section, a
+      screen-and-a-half below the fold on a phone, on the page people open to *log*.
+- [x] **Empty state is a capture surface** — the "no transactions yet" panel now carries
+      an "Add your first spend" button instead of ending the sentence.
+
+### 🐛 Fixes `[Technical]`
+- [x] **`/dashboard` scrolled horizontally on every phone.** The header's four nav links
+      couldn't wrap, forcing `scrollWidth` past the viewport and clipping every card
+      below off the right edge. Header stacks on mobile; nav wraps. Verified
+      `scrollWidth == innerWidth` at 390px on `/` and `/dashboard`.
+- [x] **`useDictation.ts` — one recogniser, shared.** The speech path (locale map +
+      best-alternative scoring) was inlined in `SpendCapture`; the landing box could
+      only have got a mic by copy-pasting the two details most likely to rot — the
+      `zh-Hant` mapping and the alternative heuristic. Now one hook, used by both.
+- [x] Lint errors cleared in `SpendCapture` (use-before-declare) and the new hook
+      (ref-write during render, setState-in-effect → `useSyncExternalStore`).
+
+### 🌏 i18n
+- [x] Hook copy translated across **all six locales** (EN · BM · 简中 · 繁中 · தமிழ் · हिन्दी);
+      the form/undo strings are EN + BM with the file's per-key English fallback.
+      Non-EN/BM values are machine translations — flag for native review.
+
+### ⬜ Not done / next
+- [ ] Mirror the same friction cuts in `/graph`'s `FlexibleInput` (it still shows every
+      field at once).
+- [ ] Draft-survival: a half-entered expense still dies on navigation/refresh.
+- [ ] Seed the three buckets *at signup* so the first capture never meets an empty
+      bucket list (currently created with the household — verify the ordering).
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:

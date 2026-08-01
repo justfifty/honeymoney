@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t as translate, type Locale } from "@/lib/i18n";
-import { parseReceiptText, parseVoiceLocal, scoreAlternative } from "@/lib/voiceParse";
+import { parseReceiptText, parseVoiceLocal } from "@/lib/voiceParse";
+import { useDictation } from "../useDictation";
 
 // Capture a spend by SPEAKING, SCANNING, PHOTOGRAPHING or PASTING.
 //
@@ -17,17 +18,9 @@ import { parseReceiptText, parseVoiceLocal, scoreAlternative } from "@/lib/voice
 // The AI tier is strictly an enhancement. Every AI failure degrades to the
 // on-device result rather than to an error.
 
-// App locale → BCP-47 speech locale. zh-Hant was missing here, which silently
-// routed Traditional-Chinese speakers into an ENGLISH recogniser — their
-// transcripts came back as garbage and only the digits survived.
-const SPEECH_LANG: Record<string, string> = {
-  en: "en-MY",
-  ms: "ms-MY",
-  zh: "zh-CN",
-  "zh-Hant": "zh-TW",
-  ta: "ta-IN",
-  hi: "hi-IN",
-};
+// The speech recogniser (locale map + alternative scoring) lives in
+// ../useDictation so the landing page's try-it box and this component cannot
+// drift apart.
 
 // App locale → tesseract traineddata. The old code hardcoded "eng" for every
 // language, so a Malay or Chinese receipt was OCR'd with an English model.
@@ -65,32 +58,6 @@ export interface CaptureAnalysis {
   insight?: string;
 }
 
-interface SpeechRecognitionLike {
-  lang: string;
-  interimResults: boolean;
-  continuous: boolean;
-  maxAlternatives: number;
-  onresult: (e: SpeechResultEvent) => void;
-  onerror: (e: { error?: string }) => void;
-  onend: () => void;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-}
-
-interface SpeechResultEvent {
-  resultIndex: number;
-  results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }>;
-}
-
-const VOICE_ERRORS: Record<string, string> = {
-  "no-speech": "I didn't hear anything — try again, a little closer to the mic.",
-  "audio-capture": "No microphone found. Check your device's microphone.",
-  "not-allowed": "Microphone access was blocked. Allow it in your browser settings.",
-  network: "Speech recognition needs a network connection.",
-  aborted: "Listening stopped.",
-};
-
 export default function SpendCapture({
   onResult,
   onAnalysis,
@@ -105,28 +72,26 @@ export default function SpendCapture({
   aiEnabled?: boolean;
 }) {
   const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
-  const speechLang = SPEECH_LANG[lang] ?? "en-MY";
 
   const [status, setStatus] = useState<string | null>(null);
-  const [heard, setHeard] = useState("");
-  const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [supportsVoice, setSupportsVoice] = useState(true);
 
-  const recRef = useRef<SpeechRecognitionLike | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const dropRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown };
-    setSupportsVoice(Boolean(w.SpeechRecognition ?? w.webkitSpeechRecognition));
-    return () => recRef.current?.abort();
-  }, []);
-
   // ── Voice ────────────────────────────────────────────────────────────────
+
+  function describe(p: Captured, transcript: string): string {
+    const bits: string[] = [];
+    if (p.vendor) bits.push(`“${p.vendor}”`);
+    if (p.amount) bits.push(`${p.currency ?? "MYR"} ${p.amount}`);
+    if (!bits.length) return tr("cap.heardNothing", { text: transcript });
+    const low = (p.confidence ?? 1) < 0.6 ? ` · ${tr("cap.checkThis")}` : "";
+    return `${tr("cap.heard", { text: transcript })} → ${bits.join(" · ")}${low}`;
+  }
 
   const finishVoice = useCallback(
     async (transcript: string) => {
@@ -166,82 +131,50 @@ export default function SpendCapture({
     [aiEnabled, knownVendors, lang, onResult, tr],
   );
 
-  function describe(p: Captured, transcript: string): string {
-    const bits: string[] = [];
-    if (p.vendor) bits.push(`“${p.vendor}”`);
-    if (p.amount) bits.push(`${p.currency ?? "MYR"} ${p.amount}`);
-    if (!bits.length) return tr("cap.heardNothing", { text: transcript });
-    const low = (p.confidence ?? 1) < 0.6 ? ` · ${tr("cap.checkThis")}` : "";
-    return `${tr("cap.heard", { text: transcript })} → ${bits.join(" · ")}${low}`;
-  }
-
-  function speak() {
-    const w = window as unknown as {
-      SpeechRecognition?: new () => SpeechRecognitionLike;
-      webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-    };
-    const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-    if (!Ctor) {
-      setStatus(tr("g.cap.noVoice"));
-      return;
-    }
-    if (listening) {
-      recRef.current?.stop();
-      return;
-    }
-
-    const rec = new Ctor();
-    recRef.current = rec;
-    rec.lang = speechLang;
-    rec.interimResults = true; // show words as they land — a live mic that shows
-    rec.continuous = false; //    nothing feels broken and people give up on it
-    rec.maxAlternatives = 5;
-
-    let finalTranscript = "";
-
-    rec.onresult = (e) => {
-      let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const result = e.results[i];
-        const alts = Array.from(result as ArrayLike<{ transcript: string; confidence: number }>);
-
-        if (result.isFinal) {
-          // Pick the alternative that yields the best *spend*, not merely the
-          // one containing a digit. The old heuristic explicitly preferred any
-          // alternative with a number in it, which selected for exactly the
-          // number-only readings this component was criticised for.
-          const best = alts
-            .map((a) => ({
-              transcript: a.transcript,
-              score: scoreAlternative(a.transcript, knownVendors) + (a.confidence ?? 0),
-            }))
-            .sort((x, y) => y.score - x.score)[0];
-          finalTranscript += ` ${best?.transcript ?? alts[0]?.transcript ?? ""}`;
-        } else {
-          interim += alts[0]?.transcript ?? "";
-        }
-      }
-      setHeard((finalTranscript + interim).trim());
-    };
-
-    rec.onerror = (e) => {
-      const key = e.error ?? "unknown";
-      setStatus(VOICE_ERRORS[key] ?? tr("g.cap.voiceError", { error: key }));
-      setListening(false);
-    };
-
-    rec.onend = () => {
-      setListening(false);
-      void finishVoice(finalTranscript.trim());
-    };
-
-    setHeard("");
-    setStatus(tr("g.cap.listening"));
-    setListening(true);
-    rec.start();
-  }
+  const { listening, heard, supported: supportsVoice, toggle: speak } = useDictation({
+    lang,
+    knownVendors,
+    onStart: () => setStatus(tr("g.cap.listening")),
+    onFinal: (transcript) => void finishVoice(transcript),
+    onError: (message, code) => setStatus(message || tr("g.cap.voiceError", { error: code })),
+  });
 
   // ── Images: file, camera, drag-drop, paste ───────────────────────────────
+
+  async function scanOnDevice(file: File) {
+    setStatus(tr("g.cap.scanning", { pct: 0 }));
+    try {
+      const { recognize } = await import("tesseract.js");
+      const ocrLang = OCR_LANG[lang] ?? "eng";
+      let data;
+      try {
+        ({ data } = await recognize(file, ocrLang, {
+          logger: (m: { status: string; progress: number }) => {
+            if (m.status === "recognizing text") {
+              setStatus(tr("g.cap.scanning", { pct: Math.round(m.progress * 100) }));
+            }
+          },
+        }));
+      } catch {
+        // The language pack may not be downloadable (offline, or no such pack).
+        // English still reads the digits, which is the half that matters most.
+        ({ data } = await recognize(file, "eng"));
+      }
+
+      const parsed = parseReceiptText(data.text || "", knownVendors);
+      onResult(parsed);
+      setStatus(
+        parsed.amount || parsed.vendor
+          ? tr("g.cap.readResult", {
+              vendor: parsed.vendor ? ` “${parsed.vendor}”` : "",
+              amount: parsed.amount ? ` · ${parsed.currency ?? "MYR"} ${parsed.amount}` : "",
+            })
+          : tr("g.cap.readFail"),
+      );
+    } catch {
+      setStatus(tr("g.cap.scanFail"));
+    }
+  }
 
   const handleImage = useCallback(
     async (file: File) => {
@@ -315,41 +248,6 @@ export default function SpendCapture({
     },
     [aiEnabled, onAnalysis, onResult, tr],
   );
-
-  async function scanOnDevice(file: File) {
-    setStatus(tr("g.cap.scanning", { pct: 0 }));
-    try {
-      const { recognize } = await import("tesseract.js");
-      const ocrLang = OCR_LANG[lang] ?? "eng";
-      let data;
-      try {
-        ({ data } = await recognize(file, ocrLang, {
-          logger: (m: { status: string; progress: number }) => {
-            if (m.status === "recognizing text") {
-              setStatus(tr("g.cap.scanning", { pct: Math.round(m.progress * 100) }));
-            }
-          },
-        }));
-      } catch {
-        // The language pack may not be downloadable (offline, or no such pack).
-        // English still reads the digits, which is the half that matters most.
-        ({ data } = await recognize(file, "eng"));
-      }
-
-      const parsed = parseReceiptText(data.text || "", knownVendors);
-      onResult(parsed);
-      setStatus(
-        parsed.amount || parsed.vendor
-          ? tr("g.cap.readResult", {
-              vendor: parsed.vendor ? ` “${parsed.vendor}”` : "",
-              amount: parsed.amount ? ` · ${parsed.currency ?? "MYR"} ${parsed.amount}` : "",
-            })
-          : tr("g.cap.readFail"),
-      );
-    } catch {
-      setStatus(tr("g.cap.scanFail"));
-    }
-  }
 
   // Paste a Touch 'n Go screenshot straight from the clipboard — on a phone or
   // desktop this is how people actually have the receipt: they screenshotted it.
