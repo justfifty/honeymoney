@@ -293,6 +293,45 @@ guess, and a real mobile layout bug on `/dashboard` is fixed.
 
 ---
 
+## ✅ Shipped — 2026-08-21 (evening) — the four-tab app: Record · Dashboard · H-Score · More
+
+The demo proved the shape; the signed-in app still had the old five-item bar with a
+raised centre capture button pointing at `/graph`. It now runs the same architecture.
+
+- [x] **`/record` is the default landing** — capture is the only thing this app asks of
+      a user every day, so it gets the first screen rather than a tab they have to find.
+      Login, signup and join all now arrive there instead of `/dashboard`. It reuses
+      `dashboard/AddTransaction` (→ `graph/SpendCapture`): a navigation change, not a
+      second implementation.
+- [x] **`/hscore` — the adapter finally has a page.** `lib/hscoreData.ts` had its
+      collections migrated and its code written and was imported by nothing. It now
+      renders through the *same* presentational components as the demo, so the score a
+      judge sees at `/demo` and the score a user sees signed in cannot drift into two
+      different products. `persist: true` when signed in — writing band state is what
+      makes the 7-day hysteresis real, and the daily snapshot is what gives "what moved
+      your score" a yesterday.
+- [x] **`/more`** — goals, graph, records, import, household, ledger, account, guide,
+      Academy, gallery. Its job is what it keeps *off* the other three.
+- [x] **`/demo` is not a tab.** Someone with real data never opens it, so a fifth tab
+      would be dead space on every screen for everyone who signed up. It stays public and
+      is reachable from More.
+- [x] **The raised centre capture button is gone.** When the first tab *is* capture, a
+      floating action button for capture is a second door to the same room.
+- [x] Desktop header and mobile tab bar now carry the identical four, so the two stop
+      being different products at the `md` breakpoint.
+
+### 🐛 Fixed while wiring it
+- [x] **The score celebrated a number it had just disclaimed.** On a provisional score
+      the ring greys out and says "not enough to be honest about" — and then the
+      Thriving stars fired underneath it. Tier engagement and "what moved your score"
+      are now gated on the confidence check; the provisional notice already names the
+      next best action, which is to finish telling us what's missing.
+- [x] `HScoreView` took a `previous` score and recomputed movement itself, which would
+      have become a second source of truth beside the adapter's. It is now purely
+      presentational — both callers pass the movement and the savings gap in.
+
+---
+
 ## ✅ Shipped — 2026-08-21 (a public demo · H-Score on screen · SST done properly)
 
 **The app had no way to be tried.** `/dashboard` on a signed-out visitor rendered the
@@ -623,15 +662,16 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
    wired through `/records`, `/graph` and the money view) and the couple persona
    demonstrates it. ⬜ Remaining: a **UI toggle** so a user can mark a bucket private
    themselves, instead of tier 3 being the only way in.
-6b. [~] **Surface what's already built.** ✅ `hscore.ts`, `sst.ts` and `directory.ts`
-   are now on screen — but **only inside `/demo`**. ⬜ The signed-in app still has no
-   H-Score tab: wire `hscoreData.ts` (adapter + migrated `hscore_state` /
-   `hscore_snapshots` tables) behind the same components. `forecast.ts` remains
-   imported by nothing.
-6c. [ ] **Port the demo's shape into the real app** — Record as the default landing,
-   the Record · Dashboard · H-Score · More tab bar, no horizontal swipe (it collides
-   with chart pan and swipe-to-delete). `ChromeGate` already exists for routes that
-   carry their own nav.
+6b. [~] **Surface what's already built.** ✅ `hscore.ts` + `hscoreData.ts` are live on
+   `/hscore` for real households; `directory.ts` renders from the H-Score goals.
+   ⬜ `sst.ts` is still only exercised by the demo's sample receipt — wire it into the
+   real `/api/receipt` path. ⬜ `forecast.ts` remains imported by nothing.
+6c. [x] ~~**Port the demo's shape into the real app**~~ — shipped 2026-08-21 (evening).
+   Record · Dashboard · H-Score · More on both header and tab bar, `/record` as the
+   default landing, `/hscore` wired to `hscoreData.ts`, `/demo` reachable from More.
+   ⬜ Still open from that spec: **the Dashboard has not been rebuilt** — contributor
+   split and the editable-history view exist in `/demo` and `/records` but the real
+   `/dashboard` is unchanged. And `forecast.ts` is still imported by nothing.
 6d. [ ] **Translate the new UI.** ~90 new `hscore.*` / `dir.*` / `demo.*` / `cap.*`
    keys are **English-only**. They fall back cleanly, so nothing is broken — but a
    Malay-first judge opening `/demo` reads English.

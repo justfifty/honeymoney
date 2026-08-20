@@ -127,11 +127,10 @@ export default async function RootLayout({
         <ChromeGate hideOn={SELF_CHROME}>
           <BottomNav
             labels={{
+              record: tr("nav.record"),
               dashboard: tr("nav.dashboard"),
-              records: tr("nav.records"),
-              capture: tr("nav.capture"),
-              goals: tr("nav.goals"),
-              learn: tr("nav.learn"),
+              hscore: tr("nav.hscore"),
+              more: tr("more.title"),
             }}
           />
         </ChromeGate>

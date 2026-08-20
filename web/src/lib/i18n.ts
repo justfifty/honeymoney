@@ -769,6 +769,29 @@ const en: Dict = {
   "demo.more.signup": "Start your own household",
   "demo.more.privacy": "Nothing you do here leaves this browser tab. The demo holds its data in memory, sends nothing to a server, and forgets everything when you reload.",
 
+  // ── the four tabs ──────────────────────────────────────────────────────────
+  "nav.record": "Record",
+  "nav.hscore": "H-Score",
+  "rec.recent": "Just logged",
+  "rec.seeAll": "See all",
+  "rec.readOnly.role": "Your role on this household is read-only, so you can't add entries.",
+  "hscore.noHousehold": "No household yet — create one and your score starts building from your first entry.",
+  "hscore.tryDemo": "Try the demo instead",
+
+  "more.title": "More",
+  "more.signedOut": "You're browsing signed out. Everything below is public.",
+  "more.household.is": "Signed in to {name}.",
+  "more.g.money": "Your money",
+  "more.g.household": "Household",
+  "more.g.learn": "Learn & share",
+  "more.household": "Household & invites",
+  "more.ledger": "Audit ledger",
+  "more.account": "Account & data",
+  "more.demo": "Public demo",
+  "more.signup.pitch": "Create a household and this becomes your own money — capture stays on your device, and your score builds from your first entry.",
+  "more.privacy": "Bucket caps, goals and export live here so the three daily tabs stay uncluttered. The demo is public and holds no data of yours.",
+
+
   // ── Record (capture) ───────────────────────────────────────────────────────
   "cap.title": "Record a spend",
   "cap.subtitle": "Type it, say it, or point a camera at it.",

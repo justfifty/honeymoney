@@ -11,13 +11,12 @@
 import { useState } from "react";
 import {
   pointsToNextBand,
-  savingsGapToNextBand,
-  describeMovement,
   BANDS,
   MIN_TXNS_30D,
   type Band,
   type HScore,
   type ScoreInputs,
+  type ScoreMovement,
   type SubScore,
   type ComponentKey,
 } from "@/lib/hscore";
@@ -147,8 +146,7 @@ function SubScoreBars({ subScores, tr }: { subScores: SubScore[]; tr: Tr }) {
 
 // ── 3. what moved (deterministic — never an LLM) ────────────────────────────
 
-function WhatMoved({ current, previous, tr }: { current: HScore; previous: HScore | null; tr: Tr }) {
-  const moved = describeMovement(current, previous);
+function WhatMoved({ moved, tr }: { moved: ScoreMovement | null; tr: Tr }) {
   // "rose 1 points" is the kind of detail that makes a generated sentence read
   // as generated, so the unit is a variable rather than baked into the template.
   const points = Number(moved?.vars.points ?? 0);
@@ -179,16 +177,15 @@ function nextBandName(score: number, tr: Tr): string {
   return next ? tr(`hscore.band.${next.band}`) : tr("hscore.band.thriving");
 }
 
-function BuildingCard({ hscore, inputs, streak, tr }: { hscore: HScore; inputs: ScoreInputs; streak: number; tr: Tr }) {
-  const gap = savingsGapToNextBand(inputs, hscore.score);
-  const band = nextBandName(hscore.score, tr);
+function BuildingCard({ score, gap, streak, tr }: { score: number; gap: number | null; streak: number; tr: Tr }) {
+  const band = nextBandName(score, tr);
   return (
     <section className="mt-6 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
       <h3 className="text-sm font-semibold">{tr("hscore.nba.title")}</h3>
       <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-300">
         {gap
           ? tr("hscore.nba.savings", { amount: rm(gap).replace("RM", ""), band })
-          : tr("hscore.nba.generic", { points: pointsToNextBand(hscore.score), band })}
+          : tr("hscore.nba.generic", { points: pointsToNextBand(score), band })}
       </p>
       <div className="mt-3 flex items-center gap-2 text-xs">
         <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-medium tabular-nums dark:bg-zinc-800">
@@ -380,13 +377,16 @@ function Goals({
 
 export default function HScoreView({
   hscore,
-  previous,
+  movement,
+  savingsGap,
   inputs,
   streakMonths,
   tr,
 }: {
   hscore: HScore;
-  previous: HScore | null;
+  /** Pre-computed by the caller — deterministic, never LLM-written. */
+  movement: ScoreMovement | null;
+  savingsGap: number | null;
   inputs: ScoreInputs;
   streakMonths: number;
   tr: Tr;
@@ -405,14 +405,23 @@ export default function HScoreView({
       <ProvisionalNotice hscore={hscore} tr={tr} />
 
       <SubScoreBars subScores={hscore.subScores} tr={tr} />
-      <WhatMoved current={hscore} previous={previous} tr={tr} />
+      {hscore.confidence.ok && <WhatMoved moved={movement} tr={tr} />}
 
-      {hscore.band === "building" && (
-        <BuildingCard hscore={hscore} inputs={inputs} streak={streakMonths} tr={tr} />
+      {/* Tier engagement only once the score is trustworthy. Firing the Thriving
+          stars under a greyed ring that has just said "we don't have enough to
+          be honest yet" congratulates someone on a number we disclaimed in the
+          line above — and the provisional notice already names the next best
+          action, which is to finish telling us what we're missing. */}
+      {hscore.confidence.ok && (
+        <>
+          {hscore.band === "building" && (
+            <BuildingCard score={hscore.score} gap={savingsGap} streak={streakMonths} tr={tr} />
+          )}
+          {hscore.band === "steady" && <BufferMeter months={bufferMonths} tr={tr} />}
+          {hscore.band === "strong" && <StrongRecap subScores={hscore.subScores} tr={tr} />}
+          {hscore.band === "thriving" && <ThrivingStars tr={tr} />}
+        </>
       )}
-      {hscore.band === "steady" && <BufferMeter months={bufferMonths} tr={tr} />}
-      {hscore.band === "strong" && <StrongRecap subScores={hscore.subScores} tr={tr} />}
-      {hscore.band === "thriving" && <ThrivingStars tr={tr} />}
 
       <Goals subScores={hscore.subScores} onOpen={setCategory} tr={tr} />
 

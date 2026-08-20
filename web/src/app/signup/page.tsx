@@ -42,7 +42,7 @@ function SignupForm() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Sign-up failed");
-      router.push("/dashboard");
+      router.push("/record");
       router.refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Sign-up failed");

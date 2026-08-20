@@ -23,7 +23,8 @@ import {
   type DemoTxn,
   type PersonaKey,
 } from "@/lib/demoData";
-import HScoreView from "./HScoreView";
+import { describeMovement, savingsGapToNextBand } from "@/lib/hscore";
+import HScoreView from "../hscore/HScoreView";
 import DashboardView from "./DashboardView";
 import RecordView from "./RecordView";
 
@@ -69,10 +70,12 @@ export default function DemoApp({ lang }: { lang: Locale }) {
 
   // The "previous" for the movement sentence is this household a month ago, read
   // off the same ledger — derived, not invented, so the statement is auditable.
-  const previous = useMemo(() => {
+  const movement = useMemo(() => {
     const monthAgo = new Date(asOf.getFullYear(), asOf.getMonth() - 1, asOf.getDate());
-    return scoreFor(live, monthAgo).hscore;
-  }, [live, asOf]);
+    return describeMovement(hscore, scoreFor(live, monthAgo).hscore);
+  }, [hscore, live, asOf]);
+
+  const savingsGap = useMemo(() => savingsGapToNextBand(inputs, hscore.score), [inputs, hscore.score]);
 
   const streakMonths = useMemo(() => {
     const seen = new Set(ledger.map((t) => new Date(t.date).toISOString().slice(0, 7)));
@@ -172,7 +175,8 @@ export default function DemoApp({ lang }: { lang: Locale }) {
         {tab === "hscore" && (
           <HScoreView
             hscore={hscore}
-            previous={previous}
+            movement={movement}
+            savingsGap={savingsGap}
             inputs={inputs}
             streakMonths={streakMonths}
             tr={tr}

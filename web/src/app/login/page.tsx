@@ -30,7 +30,7 @@ function LoginForm() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Login failed");
-      router.push(next || (d.role === "admin" ? "/admin" : "/dashboard"));
+      router.push(next || (d.role === "admin" ? "/admin" : "/record"));
       router.refresh();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Login failed");

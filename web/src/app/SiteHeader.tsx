@@ -8,11 +8,14 @@ import AppMenu from "./AppMenu";
 import LogoutButton from "./admin/LogoutButton";
 import Logo from "./Logo";
 
+// The same four tabs the bottom bar carries, so desktop and mobile are one
+// product rather than two. Everything else (graph, records, goals, ledger,
+// household, the demo) is reachable from More.
 const NAV = [
+  { href: "/record", key: "nav.record" },
   { href: "/dashboard", key: "nav.dashboard" },
-  { href: "/records", key: "nav.records" },
-  { href: "/graph", key: "nav.graph" },
-  { href: "/guide", key: "nav.guide" },
+  { href: "/hscore", key: "nav.hscore" },
+  { href: "/more", key: "more.title" },
 ];
 
 // Global app chrome: brand + primary nav + language + auth state, on every page.
@@ -20,9 +23,6 @@ export default async function SiteHeader() {
   const [user, locale] = await Promise.all([getSessionUser().catch(() => null), getLocale()]);
   const tr = (k: string) => t(locale, k);
   const navItems = NAV.map((n) => ({ href: n.href, label: tr(n.key) }));
-  // Importing writes to the books, so it only exists for someone signed in —
-  // there is no demo version of it to show a visitor.
-  if (user) navItems.push({ href: "/import", label: tr("nav.import") });
   if (user?.role === "admin") navItems.push({ href: "/admin", label: tr("auth.admin") });
 
   return (

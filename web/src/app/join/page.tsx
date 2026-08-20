@@ -35,7 +35,7 @@ function JoinForm() {
       if (!res.ok) throw new Error(data.error ?? "That code didn't work.");
       setOk(data.tenant?.name ?? "the household");
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push("/record");
         router.refresh();
       }, 1200);
     } catch (e) {
