@@ -64,7 +64,10 @@ export default async function Home() {
 
           {/* Secondary routes, demoted to text so they don't compete with the box */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-            <Link href="/dashboard" className="font-medium text-amber-600 hover:underline">
+            {/* /demo, not /dashboard: it needs no login and no origin machine —
+                it holds its own data in memory, so it is the one CTA here that
+                still works when the laptop serving the app is off. */}
+            <Link href="/demo" className="font-medium text-amber-600 hover:underline">
               {tr("home.ctaDemo")} →
             </Link>
             <span aria-hidden className="text-zinc-300">·</span>

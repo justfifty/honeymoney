@@ -40,7 +40,10 @@ export const CATEGORIES: CategoryDef[] = [
   { key: "unitTrust", labelKey: "dir.cat.unitTrust", addresses: "savingsRate" },
   { key: "debtHelp", labelKey: "dir.cat.debtHelp", addresses: "debtService" },
   { key: "takaful", labelKey: "dir.cat.takaful", addresses: "essentialBurden" },
-  { key: "budgeting", labelKey: "dir.cat.budgeting", addresses: "privacyDiscipline" },
+  // Deliberately no category for privacyDiscipline: staying inside your own
+  // cap is a habit, and there is no product that sells it to you. The goal
+  // still shows on the H-Score tab; it just has nowhere to route, which is
+  // the honest outcome rather than a manufactured one.
 ];
 
 export interface Listing {
@@ -84,6 +87,56 @@ export const LISTINGS: Listing[] = [
     regulator: "SC",
     licenceRef: "Amanah Saham Nasional Berhad — SC-registered UTMC",
     url: "https://www.asnb.com.my",
+    commercial: "unpaid",
+  },
+  {
+    id: "bsn-savings",
+    category: "deposits",
+    provider: "Bank Simpanan Nasional",
+    descKey: "dir.l.bsn",
+    regulator: "PIDM",
+    licenceRef: "Government-owned savings bank; deposits protected by PIDM",
+    url: "https://www.bsn.com.my",
+    commercial: "unpaid",
+  },
+  {
+    id: "etiqa-takaful",
+    category: "takaful",
+    provider: "Etiqa Takaful",
+    descKey: "dir.l.takafulOperator",
+    regulator: "BNM",
+    licenceRef: "Licensed takaful operator under the Islamic Financial Services Act 2013",
+    url: "https://www.etiqa.com.my",
+    commercial: "unpaid",
+  },
+  {
+    id: "ppa-prs",
+    category: "savings",
+    provider: "Private Pension Administrator Malaysia",
+    descKey: "dir.l.ppa",
+    regulator: "SC",
+    licenceRef: "PPA — approved by the Securities Commission to administer the PRS",
+    url: "https://www.ppa.my",
+    commercial: "unpaid",
+  },
+  {
+    id: "prubsn-takaful",
+    category: "takaful",
+    provider: "Prudential BSN Takaful",
+    descKey: "dir.l.takafulOperator",
+    regulator: "BNM",
+    licenceRef: "Licensed takaful operator under the Islamic Financial Services Act 2013",
+    url: "https://www.prubsn.com.my",
+    commercial: "unpaid",
+  },
+  {
+    id: "takaful-malaysia",
+    category: "takaful",
+    provider: "Syarikat Takaful Malaysia Keluarga",
+    descKey: "dir.l.takafulOperator",
+    regulator: "BNM",
+    licenceRef: "Licensed takaful operator under the Islamic Financial Services Act 2013",
+    url: "https://www.takaful-malaysia.com.my",
     commercial: "unpaid",
   },
   {

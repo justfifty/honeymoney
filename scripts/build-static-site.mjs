@@ -35,7 +35,11 @@ const BASE = (argBase > -1 ? process.argv[argBase + 1] : "http://localhost:3000"
 // The public surface: every route here must render without PocketBase, because
 // the snapshot has no database behind it. Keep this list and the SNAPSHOT set
 // in deploy/pages/_worker.js identical.
-const ROUTES = ["/", "/guide", "/learn", "/gallery", "/deck"];
+// /demo belongs here more than anything else on the list: it is the one public
+// page that is a working product rather than a description of one, and it holds
+// its data in memory, so it stays fully interactive from the snapshot with the
+// origin machine switched off.
+const ROUTES = ["/", "/demo", "/guide", "/learn", "/gallery", "/deck"];
 
 const log = (...a) => console.log("  ", ...a);
 

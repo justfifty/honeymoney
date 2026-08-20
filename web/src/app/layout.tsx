@@ -8,6 +8,12 @@ import HoneyField from "./HoneyField";
 import InstallPrompt from "./InstallPrompt";
 import PendingDeletionNotice from "./PendingDeletionNotice";
 import BottomNav from "./BottomNav";
+import ChromeGate from "./ChromeGate";
+
+// Routes that ship their own navigation and must not also get the site's.
+// /demo is a one-page app with its own bottom tab bar; two fixed bars stack,
+// and the global one wins every tap.
+const SELF_CHROME = ["/demo"];
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import FxRates from "./FxRates";
@@ -114,17 +120,21 @@ export default async function RootLayout({
         <SiteHeader />
         <PendingDeletionNotice />
         <div className="flex flex-1 flex-col">{children}</div>
-        <SiteFooter />
+        <ChromeGate hideOn={SELF_CHROME}>
+          <SiteFooter />
+        </ChromeGate>
         <InstallPrompt />
-        <BottomNav
-          labels={{
-            dashboard: tr("nav.dashboard"),
-            records: tr("nav.records"),
-            capture: tr("nav.capture"),
-            goals: tr("nav.goals"),
-            learn: tr("nav.learn"),
-          }}
-        />
+        <ChromeGate hideOn={SELF_CHROME}>
+          <BottomNav
+            labels={{
+              dashboard: tr("nav.dashboard"),
+              records: tr("nav.records"),
+              capture: tr("nav.capture"),
+              goals: tr("nav.goals"),
+              learn: tr("nav.learn"),
+            }}
+          />
+        </ChromeGate>
         <Track />
       </body>
     </html>

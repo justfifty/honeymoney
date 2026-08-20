@@ -10,6 +10,7 @@ const NAV = [
   { href: "/guide", key: "nav.guide" },
   // Both live in the always-on static snapshot, so the footer keeps working as
   // a way out of the offline page when the origin is down.
+  { href: "/demo", key: "demo.title" },
   { href: "/gallery", key: "gallery.title" },
   { href: "/deck", key: "deck.title" },
   { href: "/setup", key: "nav.setup" },
