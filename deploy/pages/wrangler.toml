@@ -1,0 +1,7 @@
+# Cloudflare Pages project that fronts honeymoney.app.
+# `dist/` is generated — run `npm run site:build` from the repo root first.
+name = "honeymoney"
+pages_build_output_dir = "dist"
+# Pinned to what the installed wrangler's local runtime can emulate, so
+# `npm run site:preview` behaves exactly like production.
+compatibility_date = "2026-05-22"
