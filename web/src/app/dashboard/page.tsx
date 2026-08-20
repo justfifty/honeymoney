@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
-import { getBucketProjection, getRecentSpend, getHoneyInsight } from "@/lib/projection";
+import { getBucketProjection, getHoneyInsight } from "@/lib/projection";
+import { getSpendRecords } from "@/lib/records";
 import { detectRecurring } from "@/lib/radar";
 import { can, resolveViewTenant } from "@/lib/household";
 import { pbList, pbStr } from "@/lib/pocketbase";
@@ -8,12 +9,17 @@ import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
-import AddTransaction from "./AddTransaction";
+import RecordRow from "../records/RecordRow";
 import PrivacyToggle from "./PrivacyToggle";
 import HoneyAsk from "./HoneyAsk";
 import Logo from "../Logo";
 
 export const dynamic = "force-dynamic";
+
+// How many editable rows the Dashboard shows before handing off to /records.
+// The whole month is 30+ rows, which turned this page into a 10,000px scroll and
+// buried everything under it — a view screen should end, not continue.
+const RECENT_ROWS = 8;
 
 function SetupNotice({ reason, lang }: { reason: string; lang: Locale }) {
   const tr = (k: string) => t(lang, k);
@@ -56,16 +62,26 @@ export default async function Dashboard() {
   }
 
   try {
-    const [projection, recent, vendorNodes, radar] = await Promise.all([
+    // The editable rows need the full SpendRecord shape (bucket, member, voided
+    // state), not the trimmed recent-spend projection — RecordRow edits real
+    // records, so it has to be handed real records.
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const [projection, editable, radar, bucketNodes] = await Promise.all([
       getBucketProjection(tenantId),
-      getRecentSpend(tenantId, 8),
-      pbList<{ label: string }>("nodes", {
-        filter: `tenant = ${pbStr(tenantId)} && kind = 'vendor'`,
-        sort: "-created",
-        perPage: 80,
+      getSpendRecords(tenantId, monthStart, new Date(), {
+        viewerMemberId: ctx?.memberId,
+        redact: Boolean(ctx),
       }),
       detectRecurring(tenantId),
+      pbList<{ id: string; label: string }>("nodes", {
+        filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+        sort: "created",
+      }),
     ]);
+    const bucketOptions = bucketNodes.map((b) => ({ id: b.id, label: dataLabel(locale, b.label) }));
     const insight = await getHoneyInsight(projection, locale);
 
     const totalAllocated = projection.reduce((s, b) => s + b.allocated, 0);
@@ -83,12 +99,12 @@ export default async function Dashboard() {
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <PrivacyToggle hideLabel={tr("dash.privacy.hide")} showLabel={tr("dash.privacy.show")} />
-            <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-              <Link href="/records" className="text-amber-600 hover:underline">🧾 {tr("nav.records")}</Link>
-              <Link href="/graph" className="text-amber-600 hover:underline">🕸️ {tr("nav.graph")}</Link>
-              <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
-              <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
-            </nav>
+            {/* The four-link nav that used to sit here duplicated the tab bar
+                and More, on the one screen that should be quiet. Graph is the
+                one worth a shortcut: it is this page's own drill-down. */}
+            <Link href="/graph" className="text-sm text-amber-600 hover:underline">
+              🕸️ {tr("nav.graph")}
+            </Link>
           </div>
         </header>
 
@@ -103,37 +119,31 @@ export default async function Dashboard() {
           <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
         </section>
 
-        {/* Capture, directly under the insight.
-            This used to be the fifth section on the page — below the co-pilot,
-            the stats and every bucket card — which put the one thing a returning
-            user opens the app to do a full screen-and-a-half below the fold on a
-            phone. Reading comes second to logging; the numbers above it are
-            re-rendered by the save anyway. */}
-        <section id="add" className="mt-6 scroll-mt-20">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            {tr("dash.addSpend")}
-          </h2>
-          {canWrite ? (
-            <AddTransaction
-              lang={locale}
-              knownVendors={vendorNodes.map((v) => v.label)}
-              buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
-            />
-          ) : (
-            <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-              {isDemo ? (
-                <>
-                  {tr("demo.readOnly")}{" "}
-                  <Link href="/signup" className="font-medium text-amber-600 hover:underline">
-                    {tr("demo.createHousehold")}
-                  </Link>
-                </>
-              ) : (
-                tr("role.readOnly")
-              )}
-            </p>
-          )}
-        </section>
+        {/* Capture moved to /record, which is the default landing and the first
+            tab. This page views and edits what already exists; creating a new
+            entry has one front door, not two. A returning user who opened the
+            app to log something is one tap away. */}
+        {canWrite ? (
+          <Link
+            href="/record"
+            className="mt-6 flex min-h-[3.25rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-400 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20"
+          >
+            <span aria-hidden>✍️</span> {tr("dash.addSpend")}
+          </Link>
+        ) : (
+          <p className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+            {isDemo ? (
+              <>
+                {tr("demo.readOnly")}{" "}
+                <Link href="/signup" className="font-medium text-amber-600 hover:underline">
+                  {tr("demo.createHousehold")}
+                </Link>
+              </>
+            ) : (
+              tr("role.readOnly")
+            )}
+          </p>
+        )}
 
         {/* What-if co-pilot */}
         <HoneyAsk
@@ -236,45 +246,50 @@ export default async function Dashboard() {
           </section>
         )}
 
-        {/* Recent spend */}
+        {/* Recent entries — VIEW AND EDIT.
+            These were read-only rows, so the one screen a user actually looks at
+            could show them a mis-parsed amount and offer nothing to do about it
+            but navigate elsewhere and find it again. RecordRow is the same
+            component /records uses: inline edit, remove/restore, and a per-entry
+            history. Reused rather than reimplemented, so the two can't drift. */}
         <section className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500">
-            {tr("dash.recent")}
-          </h2>
+          <div className="mb-3 flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              {tr("dash.recent")}
+            </h2>
+            <Link href="/records" className="text-xs text-amber-600 hover:underline">
+              {editable.length > RECENT_ROWS
+                ? tr("dash.recentMore", { n: editable.length - RECENT_ROWS })
+                : tr("rec.seeAll")}{" "}
+              →
+            </Link>
+          </div>
           <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
             {/* An empty list is a capture surface, not a full stop — it says what
                 to do and puts the control one tap away. */}
-            {recent.length === 0 && (
+            {editable.length === 0 && (
               <div className="p-4 text-sm text-zinc-500">
                 <p>{tr("dash.recentEmpty")}</p>
                 {canWrite && (
-                  <a
-                    href="#add"
+                  <Link
+                    href="/record"
                     className="mt-3 inline-flex min-h-11 items-center rounded-full bg-amber-600 px-4 text-xs font-semibold text-white hover:bg-amber-700"
                   >
-                    ⬆ {tr("dash.recentEmptyCta")}
-                  </a>
+                    ✍️ {tr("dash.recentEmptyCta")}
+                  </Link>
                 )}
               </div>
             )}
-            {recent.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between border-b border-zinc-100 px-4 py-3 text-sm last:border-0 dark:border-zinc-800"
-              >
-                <div>
-                  <span className="font-medium">{t.vendor ?? tr("dash.unknownVendor")}</span>
-                  <span className="ml-2 text-xs text-zinc-400">{shortDate(t.occurred_at)}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {t.source && (
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
-                      {t.source}
-                    </span>
-                  )}
-                  <span className="hm-money font-medium">{rm(t.amount)}</span>
-                </div>
-              </div>
+            {editable.slice(0, RECENT_ROWS).map((r) => (
+              <RecordRow
+                key={r.id}
+                record={r}
+                buckets={bucketOptions}
+                canEdit={canWrite}
+                canVoid={canWrite}
+                ccy="MYR"
+                lang={locale}
+              />
             ))}
           </div>
         </section>

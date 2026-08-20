@@ -35,7 +35,7 @@ export default async function SiteHeader() {
 
         <HeaderNav items={navItems} />
 
-        <div className="flex items-center gap-1.5 text-sm sm:gap-2">
+        <div className="flex min-w-0 items-center gap-1.5 text-sm sm:gap-2">
           <LanguageSwitcher current={locale} label={tr("common.language")} />
           {user ? (
             <>
@@ -55,7 +55,14 @@ export default async function SiteHeader() {
                 </svg>
                 <span className="hidden sm:inline">{tr("auth.login")}</span>
               </Link>
-              <Link href="/signup" className="whitespace-nowrap rounded-lg bg-amber-500 px-2.5 py-1.5 font-medium text-white hover:bg-amber-600">
+              {/* Truncates rather than pushing the menu button off-screen. In
+                  Tamil this label is long enough to overflow a 360px header and
+                  carry the hamburger past the right edge, which loses the user
+                  their only way into navigation. */}
+              <Link
+                href="/signup"
+                className="max-w-[7.5rem] shrink truncate whitespace-nowrap rounded-lg bg-amber-400 px-2.5 py-1.5 font-semibold text-zinc-950 hover:bg-amber-300"
+              >
                 {tr("auth.signup")}
               </Link>
             </>

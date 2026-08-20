@@ -67,7 +67,7 @@ export default function AppMenu({
   const showInstall = !installed && (canPrompt || anyIos);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         aria-label={labels.menu}

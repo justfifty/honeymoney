@@ -18,33 +18,33 @@ export const dynamic = "force-dynamic";
 // signed up — but it still needs a way in for someone showing the app to a
 // partner, or to a judge.
 
-type Item = { href: string; key: string; icon: string; auth?: boolean };
+type Item = { href: string; key: string; desc: string; icon: string; auth?: boolean };
 
 const GROUPS: { titleKey: string; items: Item[] }[] = [
   {
     titleKey: "more.g.money",
     items: [
-      { href: "/goals", key: "nav.goals", icon: "🎯" },
-      { href: "/graph", key: "nav.graph", icon: "🕸️" },
-      { href: "/records", key: "nav.records", icon: "🧾" },
-      { href: "/import", key: "nav.import", icon: "📄", auth: true },
+      { href: "/goals", key: "nav.goals", desc: "more.d.goals", icon: "🎯" },
+      { href: "/graph", key: "nav.graph", desc: "more.d.graph", icon: "🕸️" },
+      { href: "/records", key: "nav.records", desc: "more.d.records", icon: "🧾" },
+      { href: "/import", key: "nav.import", desc: "more.d.import", icon: "📄", auth: true },
     ],
   },
   {
     titleKey: "more.g.household",
     items: [
-      { href: "/household", key: "more.household", icon: "👪", auth: true },
-      { href: "/ledger", key: "more.ledger", icon: "⛓️", auth: true },
-      { href: "/account", key: "more.account", icon: "⚙️", auth: true },
+      { href: "/household", key: "more.household", desc: "more.d.household", icon: "👪", auth: true },
+      { href: "/ledger", key: "more.ledger", desc: "more.d.ledger", icon: "⛓️", auth: true },
+      { href: "/account", key: "more.account", desc: "more.d.account", icon: "⚙️", auth: true },
     ],
   },
   {
     titleKey: "more.g.learn",
     items: [
-      { href: "/guide", key: "nav.guide", icon: "📖" },
-      { href: "/learn", key: "nav.learn", icon: "🎓" },
-      { href: "/gallery", key: "gallery.title", icon: "🖼️" },
-      { href: "/demo", key: "more.demo", icon: "▶️" },
+      { href: "/guide", key: "nav.guide", desc: "more.d.guide", icon: "📖" },
+      { href: "/learn", key: "nav.learn", desc: "more.d.learn", icon: "🎓" },
+      { href: "/gallery", key: "gallery.title", desc: "more.d.gallery", icon: "🖼️" },
+      { href: "/demo", key: "more.demo", desc: "more.d.demo", icon: "▶️" },
     ],
   },
 ];
@@ -79,11 +79,14 @@ export default async function MorePage() {
                 <li key={i.href} className={n > 0 ? "border-t border-zinc-100 dark:border-zinc-800" : ""}>
                   <Link
                     href={i.href}
-                    className="flex items-center gap-3 px-4 py-3 text-sm transition hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                    className="flex min-h-[3.25rem] items-start gap-3 px-4 py-3 text-sm transition hover:bg-zinc-50 dark:hover:bg-zinc-900"
                   >
-                    <span aria-hidden className="text-base">{i.icon}</span>
-                    <span className="flex-1">{tr(i.key)}</span>
-                    <span aria-hidden className="text-zinc-300">›</span>
+                    <span aria-hidden className="mt-0.5 text-base">{i.icon}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{tr(i.key)}</span>
+                      <span className="mt-0.5 block text-xs leading-snug text-zinc-500">{tr(i.desc)}</span>
+                    </span>
+                    <span aria-hidden className="mt-1 text-zinc-300">›</span>
                   </Link>
                 </li>
               ))}

@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
-import Logo from "./Logo";
 import IosInstallHint from "./IosInstallHint";
 import TryItNow from "./TryItNow";
 
@@ -24,21 +23,14 @@ export default async function Home() {
       {/* no background: the site-wide sunburst field (see layout) shows through */}
       <section className="relative overflow-hidden px-6 pt-6 pb-14 text-center sm:pt-16">
         <div className="relative z-10 mx-auto max-w-3xl">
-          <span className="hm-animate mb-4 inline-block rounded-full border border-amber-300 bg-amber-100/80 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">
-            {tr("home.badge")}
-          </span>
-          {/* Wordmark, then the OUTCOME. The old hero led with the brand and made
-              the visitor infer the benefit; the h1 now says what they get. */}
-          <h1 className="hm-animate hm-delay-1 mt-1 flex items-center justify-center gap-0 text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-5xl">
-            {/* The mark only fills ~45% of its own viewBox, so a ~1.9em box lands
-                its rays at roughly the wordmark's cap height and the leftover
-                padding becomes the lockup's optical gap. */}
-            <Logo size={72} className="h-[1.9em] w-[1.9em] shrink-0" />
-            <span>Honey<span className="text-amber-500">Money</span></span>
-          </h1>
-          <p className="hm-animate hm-delay-1 mx-auto mt-4 max-w-2xl text-xl font-bold leading-snug tracking-tight text-zinc-900 sm:text-3xl">
+          {/* The outcome IS the h1 now. The wordmark used to sit here at 72px,
+              repeating the sticky header two rows above and costing ~150px of a
+              844px fold before the visitor learned anything. A brand a first-time
+              visitor has never heard of does not earn the top of the fold; what
+              they get does. */}
+          <h1 className="hm-animate hm-delay-1 mx-auto mt-2 max-w-2xl text-[1.7rem] font-extrabold leading-[1.15] tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">
             {tr("home.outcome")}
-          </p>
+          </h1>
           {/* Hidden on a phone: three lines of positioning between the headline
               and the try-it box pushed the result card — the payoff — below the
               fold on a 390×844 screen. The headline already carries the promise;
@@ -52,9 +44,11 @@ export default async function Home() {
               the primary action is now doing the thing, not navigating to it. */}
           <TryItNow lang={locale} />
 
-          {/* trust bar — honest signals, immediately under the thing they qualify */}
-          <ul className="hm-animate hm-delay-3 mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-zinc-600">
-            {trust.map((item) => (
+          {/* Trust bar — one line, three claims. Five ticks wrapped to three
+              lines here and read as a wall rather than as reassurance; the rest
+              of the list is still made, and made better, further down the page. */}
+          <ul className="hm-animate hm-delay-3 mx-auto mt-5 flex max-w-xl flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            {trust.slice(0, 3).map((item) => (
               <li key={item} className="flex items-center gap-1.5">
                 <span aria-hidden className="text-amber-500">✓</span>
                 {item}
@@ -62,20 +56,33 @@ export default async function Home() {
             ))}
           </ul>
 
-          {/* Secondary routes, demoted to text so they don't compete with the box */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm">
-            {/* /demo, not /dashboard: it needs no login and no origin machine —
-                it holds its own data in memory, so it is the one CTA here that
-                still works when the laptop serving the app is off. */}
-            <Link href="/demo" className="font-medium text-amber-600 hover:underline">
-              {tr("home.ctaDemo")} →
+          {/* ONE primary CTA. This was three same-weight text links in a row —
+              demo, guide, log in — which is three ways of saying "you decide".
+              /demo, not /dashboard: it needs no login and no origin machine, so
+              it is the one destination here that still works when the laptop
+              serving the app is off. */}
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <Link
+              href="/demo"
+              className="inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full bg-amber-400 px-7 text-base font-bold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
+            >
+              {tr("home.ctaDemo")} <span aria-hidden>→</span>
             </Link>
-            <span aria-hidden className="text-zinc-300">·</span>
-            <Link href="/guide" className="font-medium text-zinc-600 hover:underline">{tr("home.ctaGuide")}</Link>
-            <span aria-hidden className="text-zinc-300">·</span>
-            <Link href="/login" className="font-medium text-zinc-600 hover:underline">{tr("auth.login")}</Link>
+            <p className="text-xs text-zinc-500">{tr("home.heroNote")}</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
+              <Link href="/guide" className="text-zinc-500 hover:text-zinc-700 hover:underline dark:hover:text-zinc-300">{tr("home.ctaGuide")}</Link>
+              <span aria-hidden className="text-zinc-300 dark:text-zinc-700">·</span>
+              <Link href="/login" className="text-zinc-500 hover:text-zinc-700 hover:underline dark:hover:text-zinc-300">{tr("auth.login")}</Link>
+            </div>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">{tr("home.heroNote")}</p>
+
+          {/* The competition badge, demoted from the top of the fold to a
+              credential under the CTA. It is a signal for judges, and it was
+              occupying the single highest-value row on the page — the one a
+              first-time user reads before deciding whether to keep reading. */}
+          <p className="hm-animate hm-delay-3 mt-6 text-[11px] font-medium tracking-wide text-zinc-400">
+            {tr("home.badge")}
+          </p>
 
           <IosInstallHint
             label={tr("install.ios.hintCta")}
@@ -177,7 +184,7 @@ export default async function Home() {
         <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
             href="/dashboard"
-            className="w-full rounded-full bg-amber-500 px-7 py-3 text-base font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 sm:w-auto"
+            className="w-full rounded-full bg-amber-400 px-7 py-3 text-base font-bold text-zinc-950 shadow-sm transition-colors hover:bg-amber-300 sm:w-auto"
           >
             {tr("home.ctaDemo")} →
           </Link>
