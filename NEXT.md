@@ -293,6 +293,92 @@ guess, and a real mobile layout bug on `/dashboard` is fixed.
 
 ---
 
+## ✅ Shipped — 2026-08-21 (a public demo · H-Score on screen · SST done properly)
+
+**The app had no way to be tried.** `/dashboard` on a signed-out visitor rendered the
+seeded PocketBase tenant — which needed the origin machine awake, was a shared sandbox
+one visitor could degrade for the next, and showed *a household* rather than *the
+product*. There is now a real demo at **honeymoney.app/demo**.
+
+### 🎬 `/demo` — public, no login, no backend `[Technical][Commercial]`
+- [x] **The whole dataset is generated in the browser** and held in React state. That is
+      what makes an unauthenticated public demo *safe* rather than merely convenient:
+      no server-side state to corrupt, no account to guess into, no per-visitor cost.
+      Edits are real — add a spend, delete a row, watch the ring move — and
+      session-local, which the page **says** rather than leaves you to discover.
+- [x] **Works with the network unplugged**, and is in the edge snapshot
+      (`scripts/build-static-site.mjs` ROUTES), so it stays fully interactive when the
+      machine serving the real app is off. It is now the only public CTA that does.
+- [x] **Four Malaysian households, a year of ledger each, one per band** — every score
+      state on screen without a toggle:
+
+  | Household | Band | Score | The squeeze |
+  |---|---|---|---|
+  | The Azlans | Building | 31 | RM7,000 gross across four; **78% of net is must-paid** before food |
+  | Nadia & Faiz | Steady | 54 | Two incomes, a mortgage, buffer barely past one month |
+  | Suria | Strong | 70 | One salary, supporting her parents; the buffer is what's missing |
+  | Hafiz & Lina | Thriving | 89 | Same kinds of loans, carried against more income |
+
+- [x] **Scores are read back OFF each generated ledger**, never declared — the ring and
+      the rows a visitor scrolls cannot disagree. Seeded PRNG (no `Math.random`), so a
+      deck screenshot matches what a judge sees.
+- [x] **`npm run check:demo`** asserts all four hold their band on **every day of the
+      coming year** — currently **0 drift across 1460 day/persona combinations**. A demo
+      that quietly slides out of Building next March is worse than no demo.
+- [x] **Contributor attribution has its own dashboard block**, not a filter in settings:
+      two people writing into one ledger, every row tagged with who logged it, and the
+      month split between them. The thing single-user budgeting apps structurally can't do.
+- [x] **The directory is identical across all four personas** — a visitor can switch
+      Building → Thriving and watch the catalogue not change, which demonstrates
+      "products are not score-gated" better than a paragraph promising it.
+
+### 💛 H-Score, on screen at last `[Technical][ESG]`
+- [x] The engine (`lib/hscore.ts`) already matched the spec exactly — five components,
+      the anchor curves, bands, 90-day window, 12-month amortisation, 7-day band
+      hysteresis, confidence gate. It had **no UI**. It has one now.
+- [x] **Fixed order**: ring + band → five sub-score bars → what moved → goals →
+      (directory, reachable *only* by tapping a goal, so "here is a product" stays
+      downstream of "here is what you're trying to fix").
+- [x] **Engagement matched to tier** — confetti at the bottom tier is condescending.
+      Building gets a named ringgit gap (*"RM388/month more into Savings moves you to
+      Steady"*) plus a logging streak; Steady a buffer meter ticked at 1/3/6 months;
+      Strong a recap and a five-axis radar; **only Thriving animates**.
+- [x] **"What moved your score" is a template over the largest sub-score delta** — never
+      an LLM. It cannot hallucinate a financial claim, which is the same invariant the
+      rest of the app runs on.
+
+### 🧾 Record — nothing is auto-committed `[Technical][Relevance]`
+- [x] Four ways in, primary action above the fold with no scroll. Every capture lands in
+      a **draft** with per-line confidence, an editable line list, bucket, an
+      annual/recurring flag, and a provenance line (image SHA-256 + parser version) so a
+      re-parse is auditable against the original.
+- [x] **SST done properly** (`lib/sst.ts`, wired at last): 19.60 + **1.96 service charge,
+      labelled as the merchant's own and NOT a tax** + 1.29 service tax at the protected
+      **6% F&B rate on subtotal + service charge**, rounded to 5 sen = **22.85**.
+      Mislabelling the service charge as tax breaks the total on most restaurant receipts.
+
+### 🐛 Four bugs the browser found that reading wouldn't have
+- [x] **The site-wide `BottomNav` stacked on the demo's own tab bar and swallowed every
+      tap meant for it.** `ChromeGate` now withholds global chrome from routes that ship
+      their own navigation.
+- [x] **The receipt button promised RM19.60 and committed RM22.85** — and unticking a
+      line didn't recompute the tax. The bill now derives from the ticked lines, so the
+      figure on the button is always the figure written.
+- [x] **Two directory categories had no listings**, so a goal could open a dead end.
+      Added real BNM/SC/PIDM-regulated entries, and **removed the privacyDiscipline →
+      "budgeting tools" mapping entirely**: staying inside your own cap is a habit and
+      there is no product that sells it to you. That goal now simply doesn't route.
+- [x] **The trend caption asserted "that's Raya"** for whatever month came out highest —
+      wrong, since the family's peak is June road tax. It now names the actual cause.
+
+> **Two things to check before this is judged.** The new UI strings are **English-only**
+> (they fall back cleanly, but MS/ZH/TA/HI users get English on these screens). And the
+> directory now **names real regulated providers** — descriptions say what each product
+> *is* and quote no rates, but publishing a directory of licensees is outward-facing and
+> wants a human sign-off before it's in front of judges.
+
+---
+
 ## ✅ Shipped — 2026-08-20 (business persona retired → individual · couple · family)
 
 The demo arced personal → family → **business**, which asked judges and first-time
@@ -503,12 +589,14 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 
 ---
 
-## 7. Next (do now) — **11 days to the 31 Aug artefact gate**
+## 7. Next (do now) — **10 days to the 31 Aug artefact gate**
 
 The 15 Aug application deadline has passed — confirm the portal submission actually
 went in before working anything else. From here the gate is the **31 Aug working
-artefact**. The app is live and the persona arc is now coherent; the risk is a set of
-**stale artefacts** and four **built-but-unsurfaced** modules, not missing engine.
+artefact**, and the artefact is in good shape: the persona arc is coherent, there is a
+public demo that works with the origin machine off, and the H-Score is on screen. The
+remaining risk is **stale deck artefacts** and the fact that the demo proves shapes the
+**signed-in app doesn't have yet**.
 
 ### 🔴 Blocking the submission
 1. [~] **Chua Kia Wah's MyKad number** — the last eligibility field. Nothing else is
@@ -535,16 +623,30 @@ artefact**. The app is live and the persona arc is now coherent; the risk is a s
    wired through `/records`, `/graph` and the money view) and the couple persona
    demonstrates it. ⬜ Remaining: a **UI toggle** so a user can mark a bucket private
    themselves, instead of tier 3 being the only way in.
-6b. [ ] **Surface what's already built.** `hscore.ts` + `hscoreData.ts` (+ migrated
-   tables), `forecast.ts`, `sst.ts` and `directory.ts` all typecheck and none is
-   imported by a page. The H-Score is the highest-value of the four and the closest
-   to done.
+6b. [~] **Surface what's already built.** ✅ `hscore.ts`, `sst.ts` and `directory.ts`
+   are now on screen — but **only inside `/demo`**. ⬜ The signed-in app still has no
+   H-Score tab: wire `hscoreData.ts` (adapter + migrated `hscore_state` /
+   `hscore_snapshots` tables) behind the same components. `forecast.ts` remains
+   imported by nothing.
+6c. [ ] **Port the demo's shape into the real app** — Record as the default landing,
+   the Record · Dashboard · H-Score · More tab bar, no horizontal swipe (it collides
+   with chart pan and swipe-to-delete). `ChromeGate` already exists for routes that
+   carry their own nav.
+6d. [ ] **Translate the new UI.** ~90 new `hscore.*` / `dir.*` / `demo.*` / `cap.*`
+   keys are **English-only**. They fall back cleanly, so nothing is broken — but a
+   Malay-first judge opening `/demo` reads English.
+6e. [ ] **Sign off the product directory.** It now names real BNM/SC/PIDM-regulated
+   providers (AKPK · ASNB · EPF · PIDM · BSN · PPA · Etiqa · Prudential BSN · Takaful
+   Malaysia). No rates are quoted and nothing is ranked, but this is outward-facing
+   and wants a human check before judging.
 7. [ ] **Finish the capture-friction pass** — the three deferred items from 2026-08-02:
    `FlexibleInput` still shows every field at once · a half-entered expense dies on
    navigation · verify buckets are seeded before a first capture can meet them.
 8. [ ] **Validate the AI capture paths** against real Malaysian receipts/statements with a
    Gemini key (AI Studio free tier). Receipt breakdown + statement-photo multi-row are
    both shipped but unvalidated. *(On-device capture works token-free regardless.)*
+   Also: **bank statement PDFs need an explicit password prompt** — Maybank, CIMB and
+   others ship them locked to IC or DOB.
 
 ### 🟢 Commercial (highest ROI on the 25% Commercial score)
 9. [ ] **Draft the LOI + send to the first 3 HR contacts** — `docs/LOI_TEMPLATE.md`.
@@ -554,10 +656,18 @@ artefact**. The app is live and the persona arc is now coherent; the risk is a s
 10. [ ] **Activate the crons** — set `ACCOUNT_PURGE_SECRET`, run
     `install-maintenance-tasks.ps1` elevated once. Until then deletes never auto-purge
     and nudges don't fire.
-11. [ ] Commit or discard the in-flight static-site work left uncommitted on 2026-07-27
-    (`scripts/build-static-site.mjs`, `deploy/pages/`, `web/src/app/{deck,gallery}/`,
-    `.gitignore`, `DEPLOY.md`, `next.config.ts`, `package.json`, `SiteFooter.tsx`).
-    `/gallery` is now load-bearing for the couple story, so this is no longer optional
-    housekeeping — it is unreviewed code on the live site.
+11. [x] ~~Commit or discard the in-flight static-site work~~ — committed 2026-08-20
+    (`89163e8`) and the Cloudflare Pages project is live at `honeymoney-e84.pages.dev`.
+12. [ ] **Point honeymoney.app at Pages.** The apex still resolves straight to the
+    tunnel, so the always-on snapshot isn't actually fronting the domain yet — the
+    outage problem it was written to solve is still live. Cloudflare → Pages →
+    `honeymoney` → Custom domains → add `honeymoney.app` + `www`. Rollback is removing
+    them and `cloudflared tunnel route dns honeymoney honeymoney.app`.
+    ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to a
+    public page — the snapshot is point-in-time and does not update itself.
+13. [ ] **DOM Cloud** (free tier) as the always-on host: thin server / fat client, ARM
+    binary only, `--dir` outside `public_html`, nightly pull-backup via GitHub Actions
+    before the first real user, and log in monthly or the site is removed for
+    inactivity.
 
-_Last updated: 2026-08-20_
+_Last updated: 2026-08-21_
