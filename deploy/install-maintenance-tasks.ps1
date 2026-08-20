@@ -1,11 +1,13 @@
 # HoneyMoney — install the scheduled maintenance tasks (run ELEVATED / as admin).
 #
-# Registers two daily Windows scheduled tasks that call run-maintenance.ps1:
+# Registers three daily Windows scheduled tasks that call run-maintenance.ps1:
 #   HoneyMoney-Purge  03:00 — permanently erase accounts past their 30-day grace
 #   HoneyMoney-Nudge  09:00 — send proactive Honey nudges (needs Telegram configured)
+#   HoneyMoney-Demo   03:30 — roll the seeded demo personas into the current month
 #
-# Both are safe no-ops until ACCOUNT_PURGE_SECRET is set in web/.env.local. S4U so
-# they run without an interactive session and without storing a password.
+# Purge/Nudge are safe no-ops until ACCOUNT_PURGE_SECRET is set in web/.env.local;
+# Demo needs no secret and is a no-op whenever the personas are already current.
+# S4U so they run without an interactive session and without storing a password.
 $ErrorActionPreference = 'Stop'
 $log = 'C:\2026_honeymoney\deploy\maintenance-install.log'
 "=== HoneyMoney maintenance install $(Get-Date -Format o) ===" | Set-Content $log
@@ -26,6 +28,10 @@ function Register-Maintenance($name, $task, $at, $desc) {
 try {
   Register-Maintenance 'HoneyMoney-Purge' 'purge' '03:00' 'HoneyMoney: erase accounts past their 30-day deletion grace window.'
   Register-Maintenance 'HoneyMoney-Nudge' 'nudge' '09:00' 'HoneyMoney: send proactive Honey nudges to at-risk households (Telegram).'
+  # Daily rather than monthly: it is idempotent and costs nothing on the days it
+  # has nothing to do, and a daily run means the showcase can never be more than
+  # 24h into a month with an empty month-to-date view.
+  Register-Maintenance 'HoneyMoney-Demo' 'demo' '03:30' 'HoneyMoney: roll the seeded demo personas forward so month-to-date views are never empty.'
 } catch {
   "FAIL: $($_.Exception.Message)" | Add-Content $log
   throw

@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 // POST /api/graph — one flexible endpoint for adding to the knowledge graph.
 // { entity: "income" | "bucket" | "spend" | "allocation", ... }
-// Keeps the graph editable across personal / family / business without a schema
+// Keeps the graph editable across individual / couple / family without a schema
 // change — a "subject matter" is just props.subject.
 //
 // The tenant comes from the session. It used to come from the request body,

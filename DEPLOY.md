@@ -1,5 +1,12 @@
 # DEPLOY.md — public showcase (hosted PocketBase + Vercel)
 
+> **How honeymoney.app is actually served today:** local-first from the Windows
+> PC (`deploy/start-honeymoney.ps1`) through a named Cloudflare Tunnel, with the
+> public pages mirrored to an always-on Cloudflare Pages snapshot so the site
+> survives the PC being off — see **[deploy/pages/README.md](deploy/pages/README.md)**.
+> The cloud path below (Vercel + hosted PocketBase) is kept as the documented
+> migration route, not the current deployment.
+>
 > Goal: a shareable public URL where **anyone can open and explore the graph
 > showcase with no login**, and sign up only when they want to save their own
 > household or connect Telegram. Decision log in `NEXT.md`.
@@ -8,7 +15,7 @@ The app is already env-driven and deploy-ready — the Next.js **server** talks 
 PocketBase over REST (the browser never does), so there is no CORS work and no
 code change. You only need to (1) host PocketBase, (2) set env vars on Vercel,
 (3) deploy. Migrations + demo seed auto-apply on PocketBase's first start, so the
-showcase tenants (household + café) exist out of the box.
+showcase tenants (individual + couple + family) exist out of the box.
 
 ---
 
@@ -55,7 +62,9 @@ Pick one. Both give a persistent `https://…` URL for `POCKETBASE_URL`.
 ## 3. Verify the public showcase
 
 - `GET https://<app>.vercel.app/graph` renders the six-view gallery on the demo household.
-- The **Lens** row works; "View business ☕" swaps to the café tenant with business categories.
+- The **Lens** row works; the persona switcher walks individual 🧑 → couple 👫 → family 👪.
+- The seeded personas carry absolute dates and go stale: run `node scripts/refresh-demo-data.mjs`
+  (or `deploy/run-maintenance.ps1 -Task demo`) so month-to-date views aren't empty.
 - If PB/Gemini are unset the app **degrades gracefully** (setup notice), never a crash.
 
 ---

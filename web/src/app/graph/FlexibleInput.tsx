@@ -26,7 +26,7 @@ function todayLocal(): string {
 }
 
 // Flexible in-app input: add any item — a spend, an income stream, a bucket, or
-// an allocation — for any person or business, with an optional subject-matter
+// an allocation — for any person in the household, with an optional subject-matter
 // tag. Posts to /api/graph and refreshes the server-rendered views.
 export default function FlexibleInput({
   buckets,

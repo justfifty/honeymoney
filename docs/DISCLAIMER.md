@@ -7,7 +7,7 @@ _The in-app version lives at `/guide`. This file is the canonical text; keep the
 - **Not financial advice.** HoneyMoney is an informational budgeting & insight tool, **not** a licensed financial adviser, and nothing in it constitutes personal financial, tax, or investment advice. For personal advice, consult a licensed financial planner or, in Malaysia, **AKPK** (Agensi Kaunseling dan Pengurusan Kredit — free credit counselling, <https://www.akpk.org.my>).
 - **Not a bank / not a fund manager.** HoneyMoney does **not** hold, move, or invest your money. It helps you *see and plan* it. Any savings/investment products referenced belong to their respective **licensed providers** and are subject to their terms.
 - **Estimates, not guarantees.** Projections extrapolate from the data you enter (spend velocity, allocations). They are planning aids only — always verify against your bank/e-wallet statements.
-- **Demo data is synthetic.** The Rahman household, Nasi Lemak Sedap, and Aisha are illustrative fixtures; any resemblance to real people or businesses is coincidental.
+- **Demo data is synthetic.** The Rahman family, Nadia & Faiz, and Aisha are illustrative fixtures; any resemblance to real people is coincidental.
 - **Statutory compliance is the user's responsibility.** For business use (income tax, EPF/SOCSO/EIS, SST, LHDN e-Invoicing), HoneyMoney is a **cashflow lens**, not an accounting or e-invoicing system of record. File statutory returns through a qualified accountant or LHDN-approved software.
 - **No warranty.** The software is provided "as is", without warranty of any kind, to the extent permitted by law.
 

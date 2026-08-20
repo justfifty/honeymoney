@@ -113,7 +113,12 @@ export default async function GraphPage({
   const ccy = normalizeCurrency(params.ccy);
   const sticky = `&focus=${focusParam}&lang=${lang}&ccy=${ccy}`;
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
-  const view = await getFocusedView(tenantId, focus, lang, personaIds);
+  // Redaction is for real households only: the seeded personas are fictional,
+  // and their vendor breakdown is the whole point of this page.
+  const view = await getFocusedView(tenantId, focus, lang, personaIds, {
+    viewerMemberId: ctx?.memberId,
+    redact: !isDemo,
+  });
   const { nodes, edges } = view.graph;
   const money = view.money;
 
@@ -135,10 +140,9 @@ export default async function GraphPage({
   const maxFlow = Math.max(...edges.map((e) => e.flow), 1);
   const width = COL_X.income + NODE_W + 40;
 
-  const isBiz = view.tenantKind === "business";
-  const rootLabel = isBiz ? "Business" : "Household";
-  const personaIcon = (kind: string, name: string) =>
-    kind === "business" ? "🏢" : /solo|freelance/i.test(name) ? "🧑‍💻" : "🏠";
+  const rootLabel = "Household";
+  const personaIcon = (name: string) =>
+    /solo|freelance|individual/i.test(name) ? "🧑" : /couple|partner/i.test(name) ? "👫" : "👪";
 
   return (
     <main className="mx-auto min-h-full max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
@@ -159,7 +163,7 @@ export default async function GraphPage({
         </nav>
       </header>
 
-      {/* persona switcher — personal · family · business on one engine.
+      {/* persona switcher — individual · couple · family on one engine.
           Only for anonymous visitors touring the demo; a signed-in user is
           always looking at their own household. */}
       {isDemo ? (
@@ -175,7 +179,7 @@ export default async function GraphPage({
                   : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
               }`}
             >
-              {personaIcon(p.kind, p.name)} {p.name}
+              {personaIcon(p.name)} {p.name}
             </Link>
           ))}
           <Link href="/login" className="ml-auto text-xs text-amber-600 hover:underline">

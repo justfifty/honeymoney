@@ -4,12 +4,16 @@
 screenshot of the live app (`/graph`) over the seeded demo data. The point this gallery
 makes to judges: HoneyMoney isn't a ledger with charts bolted on — a household's money
 is modelled as a **knowledge graph** (income → buckets → spend → goals), and the *same*
-graph re-renders six ways, filters through any lens, and serves a person, a family, and
-a business with **zero schema changes**.
+graph re-renders six ways, filters through any lens, and serves one person, a couple and
+a whole family with **zero schema changes**.
 
 > Why this matters for scoring: **Technical (25)** — a real graph model + explainable AI
 > surface; **Scalability (15)** — one engine, three personas; **Relevance (20)** —
 > Malaysian context throughout (EPF/KWSP, PCB/LHDN, PERKESO, TnG, GrabFood, Shopee).
+
+> Refreshing these: `node scripts/refresh-demo-data.mjs` first (it rolls the seeded
+> personas into the current month — otherwise every month-to-date view screenshots
+> empty), then re-capture the frames you changed.
 
 ---
 
@@ -22,7 +26,9 @@ different question.
 ![Sankey](g-family-sankey.png)
 Income (left) splits into buckets (middle), then into real spending (red) versus what
 stays **Saved / Unspent** (green). Ribbon width ∝ RM. This is the money-flow story in one
-glance — and the exact structure Honey reasons over.
+glance — and the exact structure Honey reasons over. Past twelve landing nodes the tail
+folds into a single **Other (n merchants)** bar, so the bucket labels stay readable as a
+household's vendor list grows.
 
 ### 🟦 Treemap — "what's my budget made of, and what's over?"
 ![Treemap](g-family-treemap.png)
@@ -76,18 +82,15 @@ lifestyle and savings.
 
 ---
 
-## 3. One engine, three personas (this is the scalability story)
+## 3. One engine, three sizes of household (the scalability story)
 
-The same graph model serves very different users with no schema change — the
-strongest single argument that HoneyMoney scales.
+Individual → couple → family. The same graph model, the same three buckets, no schema
+change — one product that grows with the household instead of three that don't talk to
+each other.
 
-### 🏠 Family — The Rahman Household
-Dual income (Aiman + Siti salaries) plus side hustles and rental, shared goals, four
-people. → see all six views in §1 above.
-
-### 🧑‍💻 Personal / Solo — multi-stream freelancer (Aisha)
+### 🧑 Individual — multi-stream freelancer (Aisha)
 ![Solo multi-stream](g-solo-sankey.png)
-A solo creator with **four income streams** — Freelance Design (RM3,200), Online Shop
+A household of one with **five income streams** — Freelance Design (RM3,200), Online Shop
 Shopee (RM1,800), Rental studio (RM1,000), Content YouTube/TikTok — flowing into living,
 business costs, investments (StashAway), and a healthy **Saved/Unspent RM2,243**. Proof
 the model handles gig / multi-income realities.
@@ -96,18 +99,24 @@ the model handles gig / multi-income realities.
 *Income lens on the freelancer:* isolate a single revenue stream (Freelance Design) to
 see exactly what it funds.
 
-### 🏢 Business — Nasi Lemak Sedap Sdn Bhd
-![Business multi-stream](g-business-sankey.png)
-A micro-business: multiple revenue lines (dine-in, catering, delivery) → operating
-buckets (payroll, supplier, rent, SST/tax, owner draw) → where it lands. Same graph
-engine, business vocabulary.
+### 👫 Couple — Nadia & Faiz
+![Couple sankey](g-couple-sankey.png)
+Two salaries plus a weekend side gig fanning into **one shared set of must-paid buckets**
+(Rent & Home RM1,800, Statutory & Tax, Bills, Car) — and, at the bottom of the middle
+column, **Personal — Nadia** and **Personal — Faiz**: a funded private bucket each.
+That pairing *is* the product thesis. Funding transparency where it helps; spending
+autonomy where it doesn't.
 
-![Business budget](g-business-treemap.png)
-*Treemap of the business:* operating-cost composition and status at a glance.
+![Couple people lens](g-couple-lens-person.png)
+*People lens on one partner:* focus Nadia and the graph re-weights to her money.
+**Personal — Faiz** drops out of her view entirely — and in a real (non-demo) household
+the redaction goes further: his bucket keeps its **total** so the plan still balances,
+but loses its vendor line items. Privacy enforced by the graph, not promised in copy.
+See `web/src/lib/privacy.ts`.
 
-![Business income lens](g-business-lens-income.png)
-*Income lens on the business:* focus on the main **Revenue** stream to trace it through
-the operating buckets.
+### 👪 Family — The Rahman Household
+Dual income (Aiman + Siti salaries) plus side hustles and rental, shared goals, four
+people. → see all six views in §1 above.
 
 ---
 

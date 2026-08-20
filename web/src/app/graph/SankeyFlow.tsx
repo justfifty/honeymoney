@@ -29,6 +29,15 @@ const GAP = 12; // vertical gap between nodes in a column
 const TOP = 44;
 const BOT = 24;
 const SAVED_ID = "__saved__";
+const OTHER_ID = "__other__";
+// Past this many landing nodes the Sankey stops being a Sankey and becomes a
+// barcode. The tail vendors render as unlabelled hairlines, and — worse — the
+// GAP under each of them steals height from the shared scale, squeezing every
+// bucket bar in the MIDDLE column below the height its own label needs. So the
+// tail folds into one honest "Other" node: the column total is unchanged, and
+// so is every ribbon width. Real households have far more vendors than the demo
+// personas, so this is a legibility floor, not a demo tweak.
+const MAX_DESTS = 12;
 
 const ALLOC = new Set(["ALLOCATES_FIXED", "ALLOCATES_PCT", "FUNDS"]);
 const AMBER = "#FF7518";
@@ -57,7 +66,7 @@ interface Ribbon {
 
 function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) {
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
-  const tr = (k: string) => translate(lang, k);
+  const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const col = (id: string): number => {
     const k = byId.get(id)?.kind;
@@ -103,8 +112,27 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) 
     .map(([id, v]) => ({ id, label: byId.get(id)?.label ?? id, col: 2, value: v, color: RED }))
     .sort((a, b) => b.value - a.value);
 
+  // Fold the long tail of vendors into a single node (see MAX_DESTS). destOf
+  // records the redirect so the spend ribbons follow their vendor.
+  const destOf = new Map<string, string>();
+  let landing = vendors;
+  if (vendors.length > MAX_DESTS) {
+    const tail = vendors.slice(MAX_DESTS - 1);
+    for (const n of tail) destOf.set(n.id, OTHER_ID);
+    landing = [
+      ...vendors.slice(0, MAX_DESTS - 1),
+      {
+        id: OTHER_ID,
+        label: tr("g.sankey.other", { n: tail.length }),
+        col: 2,
+        value: tail.reduce((s, n) => s + n.value, 0),
+        color: RED,
+      },
+    ];
+  }
+
   const savedTotal = buckets.reduce((s, b) => s + Math.max(0, b.inV - b.spent), 0);
-  const dests = [...vendors];
+  const dests = [...landing];
   if (savedTotal > 0.5) dests.push({ id: SAVED_ID, label: tr("g.sankey.saved"), col: 2, value: savedTotal, color: GREEN });
 
   const columns = [incomes, buckets, dests];
@@ -140,7 +168,15 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) 
     const [src, dst] = k.split(" ");
     links.push({ src, dst, flow, color: AMBER, label: tr("g.sankey.allocation") });
   }
+  // A folded vendor's spend follows it into "Other", and the redirected flows
+  // merge so one bucket never draws two ribbons to the same landing node.
+  const spendMerged = new Map<string, number>();
   for (const [k, flow] of spend) {
+    const [src, dst] = k.split(" ");
+    const key = `${src} ${destOf.get(dst) ?? dst}`;
+    spendMerged.set(key, (spendMerged.get(key) ?? 0) + flow);
+  }
+  for (const [k, flow] of spendMerged) {
     const [src, dst] = k.split(" ");
     links.push({ src, dst, flow, color: RED, label: tr("g.sankey.spend") });
   }

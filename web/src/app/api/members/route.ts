@@ -6,8 +6,8 @@ import { apiError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 
-// Members = the household/business roster the graph can be focused by. It grows
-// (new baby, new hire) and shrinks (child moves out, staff leaves), so it is
+// Members = the household roster the graph can be focused by. It grows (a partner
+// moves in, a new baby) and shrinks (a child moves out), so it is
 // editable. Deleting a member leaves their past transactions intact — PocketBase
 // nulls the relation — so spend history is never lost, just unattributed.
 //

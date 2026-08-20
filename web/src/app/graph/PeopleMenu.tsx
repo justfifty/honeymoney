@@ -7,9 +7,9 @@ import type { FocusOption } from "@/lib/focusView";
 import { t as translate, type Locale } from "@/lib/i18n";
 import AutoCloseDetails from "./AutoCloseDetails";
 
-// People lens + roster management. A household is 4 today, 5 after a new baby;
-// a café is 3 staff today, 8 in December — so the roster is editable inline and
-// the "focus by person" list is always whatever the roster currently is.
+// People lens + roster management. A household is one person today, two after a
+// wedding, four after two kids — so the roster is editable inline and the
+// "focus by person" list is always whatever the roster currently is.
 // Removal is two-step (confirm) because it is destructive; each action shows its
 // own pending state so the menu never feels frozen.
 

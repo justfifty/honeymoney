@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "HoneyMoney — AI Financial Wellness",
     short_name: "HoneyMoney",
-    description: "Funding transparency, spending autonomy — a knowledge-graph money app for personal, family & business.",
+    description: "Funding transparency, spending autonomy — a knowledge-graph money app for individuals, couples & families.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",

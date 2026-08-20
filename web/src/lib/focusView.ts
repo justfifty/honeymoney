@@ -8,7 +8,8 @@
 
 import { pbList, pbStr } from "./pocketbase";
 import { computeAllocations, projectBuckets } from "./projection";
-import { categoryMeta, ROLE_OPTIONS, type MoneyView, type TenantKind, type CategoryMeta } from "./moneyView";
+import { CATEGORY_META, ROLE_OPTIONS, type MoneyView, type CategoryMeta } from "./moneyView";
+import { collapsePrivateVendors, privateBucketIds } from "./privacy";
 import type { GNode } from "./graphView";
 import { dataLabel } from "./dataLabels";
 import type { Locale } from "./i18n";
@@ -96,10 +97,9 @@ export interface FocusedView {
   scope: "structure" | "person"; // person = spend re-weighted to one member
   groups: FocusGroups;
   memberCount: number;
-  tenantKind: TenantKind;
-  tierMeta: Record<number, CategoryMeta>; // persona-aware category names
-  roleOptions: string[]; // roster roles appropriate to the persona
-  personas: Array<{ id: string; name: string; kind: TenantKind }>; // all tenants, for the switcher
+  tierMeta: Record<number, CategoryMeta>; // tier 1|2|3 display names
+  roleOptions: string[]; // roster roles a household can assign
+  personas: Array<{ id: string; name: string }>; // households the viewer may switch between
 }
 
 const KIND_BADGE: Record<string, string> = {
@@ -182,6 +182,7 @@ export async function getFocusedView(
   focus: Focus,
   locale: Locale = "en",
   allowedPersonaIds?: string[],
+  privacy: { viewerMemberId?: string | null; redact?: boolean } = {},
 ): Promise<FocusedView> {
   const dl = (s: string) => dataLabel(locale, s);
   const monthStart = new Date();
@@ -197,15 +198,22 @@ export async function getFocusedView(
     pbList<{ id: string; name: string; kind: string }>("tenants", { sort: "created" }),
   ]);
 
-  const tenant = tenants.find((t) => t.id === tenantId);
-  const tenantKind: TenantKind = tenant?.kind === "business" ? "business" : "household";
   // Only the current tenant + explicitly-allowed personas are exposed — never the
   // full tenant list, which now includes every consumer's private household.
-  const allowed = new Set([tenantId, ...(allowedPersonaIds ?? [])]);
-  const personas = tenants
-    .filter((t) => allowed.has(t.id))
-    .map((t) => ({ id: t.id, name: dl(t.name || t.id), kind: (t.kind === "business" ? "business" : "household") as TenantKind }));
-  const tierMeta = categoryMeta(tenantKind);
+  //
+  // The caller's list is also the running ORDER. The demo switcher is meant to
+  // read individual → couple → family, and sorting by `created` scrambles that
+  // into whatever sequence the seeds happened to run in.
+  const byId = new Map(tenants.map((t) => [t.id, t]));
+  const personas: Array<{ id: string; name: string }> = [];
+  const seen = new Set<string>();
+  for (const id of [...(allowedPersonaIds ?? []), tenantId]) {
+    const t = byId.get(id);
+    if (!t || seen.has(id)) continue;
+    seen.add(id);
+    personas.push({ id, name: dl(t.name || id) });
+  }
+  const tierMeta = CATEGORY_META;
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const labelOf = (id: string) => nodeById.get(id)?.label ?? "Unknown";
 
@@ -226,10 +234,18 @@ export async function getFocusedView(
   const spendTxns = scope === "person" ? txns.filter((t) => t.member === focus.id) : txns;
   const spendByPair = new Map<string, number>();
   const spendByBucket = new Map<string, number>();
+  // Who logged each pair, so the tier-3 collapse below knows whose spend it is.
+  // A pair touched by more than one member is shared, not personal.
+  const memberOfPair = new Map<string, string>();
+  let txnCount = 0;
   for (const t of spendTxns) {
     if (!t.wallet_node || !t.vendor_node) continue;
-    spendByPair.set(`${t.wallet_node} ${t.vendor_node}`, (spendByPair.get(`${t.wallet_node} ${t.vendor_node}`) ?? 0) + Number(t.amount));
+    txnCount += 1;
+    const pair = `${t.wallet_node} ${t.vendor_node}`;
+    spendByPair.set(pair, (spendByPair.get(pair) ?? 0) + Number(t.amount));
     spendByBucket.set(t.wallet_node, (spendByBucket.get(t.wallet_node) ?? 0) + Number(t.amount));
+    const seen = memberOfPair.get(pair);
+    memberOfPair.set(pair, seen === undefined ? (t.member ?? "") : seen === (t.member ?? "") ? seen : "");
   }
 
   const allEdges = buildEdges(nodes, edges, spendByPair);
@@ -294,13 +310,27 @@ export async function getFocusedView(
     .filter((n) => n.kind === "goal")
     .map((n) => ({ id: n.id, label: dl(n.label), target: Number(n.props?.target) || 0, current: Number(n.props?.current) || 0 }));
 
-  const vendorSpend = [...spendByPair.entries()]
-    .map(([pair, amount]) => {
-      const [bucketId, vendorId] = pair.split(" ");
-      return { bucketId, vendorId, vendorLabel: labelOf(vendorId), amount };
-    })
-    .filter((v) => keep.has(v.bucketId) && keep.has(v.vendorId))
-    .sort((a, b) => b.amount - a.amount);
+  const vendorSpend = collapsePrivateVendors(
+    [...spendByPair.entries()]
+      .map(([pair, amount]) => {
+        const [bucketId, vendorId] = pair.split(" ");
+        return {
+          bucketId,
+          vendorId,
+          vendorLabel: labelOf(vendorId),
+          amount,
+          memberId: memberOfPair.get(pair) ?? "",
+        };
+      })
+      .filter((v) => keep.has(v.bucketId) && keep.has(v.vendorId))
+      .sort((a, b) => b.amount - a.amount),
+    {
+      privateIds: privateBucketIds(nodes),
+      viewerMemberId: privacy.viewerMemberId,
+      enabled: Boolean(privacy.redact),
+      isOtherMember: (r) => Boolean(r.memberId) && r.memberId !== privacy.viewerMemberId,
+    },
+  );
 
   const money: MoneyView = {
     incomes,
@@ -310,6 +340,7 @@ export async function getFocusedView(
     totalIncome: incomes.reduce((s, i) => s + i.monthly, 0),
     totalAllocated: buckets.reduce((s, b) => s + b.allocated, 0),
     totalSpent: vendorSpend.reduce((s, v) => s + v.amount, 0),
+    txnCount,
   };
 
   return {
@@ -322,9 +353,8 @@ export async function getFocusedView(
     scope,
     groups,
     memberCount: members.length,
-    tenantKind,
     tierMeta,
-    roleOptions: ROLE_OPTIONS[tenantKind],
+    roleOptions: ROLE_OPTIONS,
     personas,
   };
 }

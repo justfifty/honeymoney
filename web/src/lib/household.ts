@@ -23,7 +23,6 @@ export type AccessRole = "owner" | "adult" | "child" | "viewer";
 export interface Household {
   id: string;
   name: string;
-  kind: "household" | "business";
   baseCurrency: string;
   deletedAt?: string; // set while soft-deleted (pending purge); see lib/account.ts
 }
@@ -101,7 +100,6 @@ async function loadTenant(id: string): Promise<Household | null> {
   return {
     id: t.id,
     name: t.name,
-    kind: t.kind === "business" ? "business" : "household",
     baseCurrency: t.base_currency || "MYR",
     deletedAt: t.deleted_at || undefined,
   };
@@ -327,7 +325,7 @@ export async function acceptInvite(user: SessionUser, rawCode: string): Promise<
 }
 
 // Every household this account can reach (it may have been invited to more than
-// one — e.g. their own, plus the family business).
+// one — e.g. their own, plus a parent's).
 export async function listHouseholdsFor(userId: string): Promise<(Household & { accessRole: AccessRole })[]> {
   const memberships = await pbList<MemberRow>("members", {
     filter: `user = ${pbStr(userId)}`,

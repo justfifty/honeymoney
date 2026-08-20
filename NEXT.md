@@ -293,6 +293,69 @@ guess, and a real mobile layout bug on `/dashboard` is fixed.
 
 ---
 
+## ✅ Shipped — 2026-08-20 (business persona retired → individual · couple · family)
+
+The demo arced personal → family → **business**, which asked judges and first-time
+users to hold two products and two vocabularies at once. The arc is now
+**individual → couple → family**: one product, one 3-bucket model, three sizes of the
+same household. The couple is the commercial wedge (`docs/MARKET_STRATEGY.md` §C) and
+the persona where the tier-3 privacy promise finally has something to demonstrate.
+
+### 👫 The couple persona — the missing tenant `[Scalability][Commercial]`
+- [x] **Fixed: the pivot referenced a household nothing created.** `config.demoPersonaIds`
+      pointed at `cprahman2222222` while the seeds still built only the business tenant,
+      so the switcher's middle slot was dangling.
+      `pocketbase/pb_migrations/1751900016_couple_replaces_business.js` retires
+      `bizsedap2222222` (cascade) and seeds **Nadia & Faiz** — two salaries + a side gig,
+      10 buckets, a shared House Deposit goal, and **a funded private bucket each**.
+- [x] **Seeded relative to today**, three months deep — which also puts the H-Score's
+      90-day window and its 20-txn/30-day confidence gate on real data (41 txns/30d).
+- [x] **Switcher order is the story.** The persona list now renders in `demoPersonaIds`
+      order (was `created`, which scrambled the arc): 🧑 → 👫 → 👪.
+
+### 🕒 Demo data was silently rotting `[Technical]`
+- [x] **Found: family and solo had ZERO transactions this month.** The seeds stamp
+      absolute dates when they first run; by 20 Aug the Rahmans' newest spend was
+      13 July. The public `/graph` was rendering the household as **100% "Saved /
+      Unspent"** with no red spend ribbons at all — on the live site, on the default
+      persona.
+- [x] **`scripts/refresh-demo-data.mjs`** rolls each demo tenant forward by whole
+      months (and its temporal edges with it). Idempotent, scoped hard to the demo
+      persona ids — a real household's dates mean something and are never touched.
+- [x] Wired into `deploy/run-maintenance.ps1 -Task demo` + a daily `HoneyMoney-Demo`
+      task in `install-maintenance-tasks.ps1`, so it cannot rot again.
+
+### 🌊 Sankey stayed readable as vendors grow `[Technical]`
+- [x] **Fixed: the landing column starved the middle one.** All three columns share one
+      scale, so 27 vendors' worth of inter-node gaps squeezed every *bucket* bar below
+      its label threshold — the couple's two private buckets, the whole point of the
+      view, rendered as unlabelled stubs. Past 12 landing nodes the tail now folds into
+      **"Other (n merchants)"**; totals and every ribbon width are unchanged.
+      Matters beyond the demo: a real household has far more vendors than a seed does.
+
+### 🧹 Vocabulary + artefacts
+- [x] Copy swept of business framing: `/guide`, `/gallery`, i18n (6 locales; dead
+      `gallery.biz*` keys removed, `gallery.couple*` added), `PLAN.md` §1.1/§13,
+      `docs/USER_GUIDE.md` Example B, `DISCLAIMER.md`, `DEPLOY.md`, roster placeholder
+      ("Name / staff…" → "Name…"), and a **`partner`** roster role.
+- [x] Graph gallery refreshed: 2 new couple frames + the family and solo Sankeys
+      re-shot (both changed — stale data *and* the fold). `docs/deck/graph_gallery/`
+      README rewritten; the three deleted `g-business-*.png` links are gone.
+- [x] `PLAN.md` §13 reframed: business is **roadmap (P3), narrated not demoed**.
+
+> **Not done — needs a call.** The deck/summary PDFs still show the business persona
+> and pre-pivot screenshots (§7 items 3–4 below). And `hscore` / `sst` / `forecast` /
+> `directory` are built and typechecked but still have **no UI** — the H-Score even has
+> its tables migrated and its adapter written. That is the obvious next build.
+
+> **Live-data drift spotted, left alone:** the solo persona's member is named **"Chua"**
+> (the seeded "Aisha" member was deleted and replaced via the roster UI, so her seeded
+> transactions lost their attribution), and the family has a stray income source named
+> **"HoneyMoney"**. Both are edits made through the app on the live instance, not code
+> bugs — say the word and I'll reseed the persona cleanly.
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:
@@ -440,11 +503,12 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 
 ---
 
-## 7. Next (do now) — **13 days to the 15 Aug application deadline**
+## 7. Next (do now) — **11 days to the 31 Aug artefact gate**
 
-Everything below is ordered by what actually blocks the submission. The app is
-live and the pack is written; the risk now is an **eligibility field** and a set
-of **stale artefacts**, not missing features.
+The 15 Aug application deadline has passed — confirm the portal submission actually
+went in before working anything else. From here the gate is the **31 Aug working
+artefact**. The app is live and the persona arc is now coherent; the risk is a set of
+**stale artefacts** and four **built-but-unsurfaced** modules, not missing engine.
 
 ### 🔴 Blocking the submission
 1. [~] **Chua Kia Wah's MyKad number** — the last eligibility field. Nothing else is
@@ -467,8 +531,14 @@ of **stale artefacts**, not missing features.
    the dashboard header — that layout changed (mobile stacking fix).
 
 ### 🟡 Product — the next build
-6. [ ] **Couples hide/share toggles** (§6.5 #1) — still the recommendation: the biggest
-   differentiator, native to the graph, and the only one on the list nobody else owns.
+6. [~] **Couples hide/share** (§6.5 #1) — the enforcement shipped (`lib/privacy.ts`,
+   wired through `/records`, `/graph` and the money view) and the couple persona
+   demonstrates it. ⬜ Remaining: a **UI toggle** so a user can mark a bucket private
+   themselves, instead of tier 3 being the only way in.
+6b. [ ] **Surface what's already built.** `hscore.ts` + `hscoreData.ts` (+ migrated
+   tables), `forecast.ts`, `sst.ts` and `directory.ts` all typecheck and none is
+   imported by a page. The H-Score is the highest-value of the four and the closest
+   to done.
 7. [ ] **Finish the capture-friction pass** — the three deferred items from 2026-08-02:
    `FlexibleInput` still shows every field at once · a half-entered expense dies on
    navigation · verify buckets are seeded before a first capture can meet them.
@@ -484,8 +554,10 @@ of **stale artefacts**, not missing features.
 10. [ ] **Activate the crons** — set `ACCOUNT_PURGE_SECRET`, run
     `install-maintenance-tasks.ps1` elevated once. Until then deletes never auto-purge
     and nudges don't fire.
-11. [ ] Commit or discard the in-flight static-site work left uncommitted on 2026-08-02
+11. [ ] Commit or discard the in-flight static-site work left uncommitted on 2026-07-27
     (`scripts/build-static-site.mjs`, `deploy/pages/`, `web/src/app/{deck,gallery}/`,
     `.gitignore`, `DEPLOY.md`, `next.config.ts`, `package.json`, `SiteFooter.tsx`).
+    `/gallery` is now load-bearing for the couple story, so this is no longer optional
+    housekeeping — it is unreviewed code on the live site.
 
-_Last updated: 2026-08-02_
+_Last updated: 2026-08-20_

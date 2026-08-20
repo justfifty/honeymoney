@@ -40,7 +40,10 @@ export const config = {
   // demo personas. Real households (every consumer who signs up creates one) are
   // private and must never appear in the public persona switcher. Override with
   // DEMO_PERSONA_IDS (comma-separated) if the seed ids differ.
-  demoPersonaIds: (process.env.DEMO_PERSONA_IDS ?? "hhrahman1111111,bizsedap2222222,psaisha33333333")
+  //
+  // Order matters: this is the order the switcher renders, and it tells the
+  // story — one product at three sizes, individual → couple → family.
+  demoPersonaIds: (process.env.DEMO_PERSONA_IDS ?? "psaisha33333333,cprahman2222222,hhrahman1111111")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),

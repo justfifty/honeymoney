@@ -58,8 +58,9 @@ and a stressed couple reading it at 11pm.
 - **Projection = the insight engine:** `web/src/lib/projection.ts` walks allocations and extrapolates
   spend velocity to month-end → per bucket `on_track | at_risk | over_budget | unfunded`. Good copy
   turns "you spent more on food" into "at this velocity your Savings goal slips ~6 weeks."
-- **Three personas, one engine:** personal (Aisha, solo) · family (Rahman household) · business
-  (café). Content should switch framing by `tenant.kind`, never by a schema change.
+- **Three personas, one engine:** individual (Aisha, solo) · couple (Nadia & Faiz) · family (the
+  Rahmans). Same three buckets and same vocabulary throughout — copy must never imply the product
+  changes shape with the household. A business tier is roadmap only (PLAN.md §13); don't write to it.
 - See `references/finance-frameworks.md` for how the 3-bucket model maps to 50/30/20,
   pay-yourself-first, envelope/zero-based, emergency-fund and debt frameworks — cite these to sound
   credible, and to answer "how is this different from 50/30/20?"

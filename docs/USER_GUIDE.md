@@ -46,12 +46,23 @@ Two ready-made examples ship in `supabase/`. Load them and the dashboard is imme
 
 Seeded spend puts **Groceries running hot early in the month**, so it surfaces as **Over budget** and Honey nudges a gentle rebalance — *without* itemizing either spouse's private wallet. That's the "funding transparency, spending autonomy" story in one screen.
 
-### Example B — a business (`seed_business.sql`) → `BUSINESS_TENANT_ID = 2222…2222`
-**Nasi Lemak Sedap Sdn Bhd**, revenue RM 40,000/month, split into Payroll / Suppliers / Rent & Utilities / Tax Reserve (8%) / Growth Fund / Owner Draw. Seeded supplier spend trends **over budget**.
+### Example B — a couple → `cprahman2222222`
+**Nadia & Faiz**, a dual-income couple in KL. Two salaries (RM 5,200 + RM 4,300) and a
+weekend side gig fan into **one shared set of must-paid buckets** — Rent & Home RM 1,800
+split down the middle, Statutory & Tax, Insurance & Takaful, Bills, Car & Transport —
+plus Emergency Fund and House Deposit in tier 2.
 
-> **Why this matters:** Example B uses the **exact same tables and the same `bucket_projection()` function** as the household — no schema changes. That is the "family first, business next" scalability proof.
+Then the part that makes it a couples product: **Personal — Nadia** and **Personal — Faiz**,
+one funded tier-3 bucket each. The household sees each bucket's **total** so the plan
+still balances; it does not see the other partner's vendors, notes or who logged what.
+That is enforced in `web/src/lib/privacy.ts`, not merely promised in the copy.
 
-To view Example B on the dashboard, set `DEMO_TENANT_ID` to the business id, or call `/api/insight?tenantId=2222…2222`.
+> **Why this matters:** Example B uses the **exact same tables and the same projection
+> walk** as the family — no schema changes, no persona-specific labels. A household that
+> gains a partner gains rows, not a different app.
+
+To view Example B on the dashboard, set `DEMO_TENANT_ID=cprahman2222222`, or open
+`/graph?tenantId=cprahman2222222`.
 
 ---
 
@@ -86,7 +97,8 @@ npm run dev                                  # terminal 2: app → http://localh
 ```
 
 - The database is **PocketBase** — a single free binary; your data lives in `pocketbase/pb_data/` on your own machine and the demo households load automatically. Browse it at `http://127.0.0.1:8090/_/`.
-- Demo tenants: household `hhrahman1111111` (default) · business `bizsedap2222222` (set as `DEMO_TENANT_ID`, or call `/api/insight?tenantId=bizsedap2222222`).
+- Demo tenants: family `hhrahman1111111` (default) · couple `cprahman2222222` · individual `psaisha33333333` (set any as `DEMO_TENANT_ID`, or call `/api/insight?tenantId=…`).
+- Seeded personas age: run `node scripts/refresh-demo-data.mjs` to roll their history into the current month, or every month-to-date view shows an empty month.
 - **Test the AI parse:** add a free `GEMINI_API_KEY`, then `POST /api/receipt` with `{ "imageBase64": "...", "mimeType": "image/jpeg" }` from a logged-in session (the household comes from your session — no `tenantId` in the body).
 - **Check wiring:** `GET /api/health` shows which integrations are configured.
 

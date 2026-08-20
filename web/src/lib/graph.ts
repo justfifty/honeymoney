@@ -342,7 +342,7 @@ export async function setTransactionVoided(
 
 // Create a graph node (income source / bucket / goal / obligation …) with a
 // flexible props bag — the "subject matter" is just props.subject, no schema
-// change. This is how the graph stays flexible across personal/family/business.
+// change. This is how the graph stays flexible across individual/couple/family.
 export async function createGraphNode(
   tenantId: string,
   input: { kind: string; label: string; props?: Record<string, unknown> },

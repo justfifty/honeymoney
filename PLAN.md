@@ -19,7 +19,7 @@
 10. [Step-by-step: how to use the app](#10-step-by-step-how-to-use-the-app)
 11. [Deployment (zero-cost)](#11-deployment-zero-cost)
 12. [Methods: how each subsystem works](#12-methods-how-each-subsystem-works)
-13. [Scalability: household → business](#13-scalability-household--business)
+13. [Scalability: one household, then many; business later](#13-scalability-one-household-then-many-business-later)
 14. [Security, privacy & compliance](#14-security-privacy--compliance)
 15. [Deliverables & competition mapping](#15-deliverables--competition-mapping)
 16. [AI development effort & cost](#16-ai-development-effort--cost-as-of-2026-07-14)
@@ -41,20 +41,24 @@ HoneyMoney does three things differently:
 
 Distribution is **B2B2C**: sold to corporate HR as an employee financial-wellness benefit; companies get anonymized aggregate workforce health data, employees get private household optimization.
 
-### 1.1 One engine, three personas — *personal → family → business*
+### 1.1 One engine, three personas — *individual → couple → family*
 
-HoneyMoney is deliberately built so **the same knowledge-graph engine scales up the org chart** with no schema change — only labels, views, and aggregations differ. This is both the product's north star and the rubric's Scalability argument made literal:
+HoneyMoney is deliberately built so **the same knowledge-graph engine scales up the household** with no schema change — only labels, views, and aggregations differ. This is both the product's north star and the rubric's Scalability argument made literal:
 
-| | **Personal** (1 person) | **Family** (a household) | **Business** (an SME) |
+| | **Individual** (1 person) | **Couple** (two earners) | **Family** (a household) |
 |---|---|---|---|
-| Income | one salary/gig | multiple earners | revenue streams / departments |
-| The 3 tiers | Must-paid · Savings · Spendings | Must-paid · Savings · Spendings | Operating Costs · Reserves & Growth · Owner & Distributions |
-| Roster (`members`) | you | spouses + children | staff, managers, contractors |
-| Subject matters | tags on spend | shared vs private wallets | **departments / cost-centres / projects** |
-| Goal / obligation | a holiday fund | house deposit, car loan | runway, tax reserve, supplier terms |
-| Question it answers | "can I afford this?" | "is our goal still on track?" | "which department is bleeding cash, and what's our runway?" |
+| Income | one salary/gig, or five | two salaries + side gigs | multiple earners + rental/side income |
+| The 3 tiers | Must-paid · Savings · Spendings | identical — and that is the point | identical |
+| Roster (`members`) | you | two adults, equal standing | partners + children + dependants |
+| Subject matters | tags on spend | **shared vs private buckets** | shared, private, and per-child |
+| Goal / obligation | a holiday fund, a studio | house deposit, wedding debt | house deposit, education, Umrah |
+| Question it answers | "can I afford this?" | "are we funding our life fairly — without surveilling each other?" | "is our goal still on track?" |
 
-The tier tables above are **persona-aware in the running app today** (category names and roster roles switch on `tenant.kind`). "Departments" and "flexible subject matters" are the graph's real strength: because every node carries a JSON `props` bag, a *subject* (`Dine-in`, `Catering`, `Marketing`, `School`, `Ramadan`) is a **tag, not a table** — you can slice by any subject matter without a migration.
+The three tiers are **identical across all three** on purpose. A household does not switch products when it gains a partner or a child; it gains rows. Because every node carries a JSON `props` bag, a *subject* (`School`, `Ramadan`, `Honeymoon`) is a **tag, not a table** — you can slice by any subject matter without a migration.
+
+The **couple** is the commercial wedge (see `docs/MARKET_STRATEGY.md`): it is the only cell no incumbent occupies, and it is where the tier-3 privacy promise earns its keep — each partner funds a personal bucket whose **total** the household can see and whose **line items** it cannot (`web/src/lib/privacy.ts`).
+
+> **A business tier is roadmap, not product** (§13, P3). It was briefly a fourth seeded persona and was retired in Aug 2026: two products in one demo asked judges and first-time users to hold two vocabularies at once, and diluted the household story they score first.
 
 ### 1.2 The monitoring layer — *see the money as structure, then focus it*
 
@@ -77,11 +81,11 @@ On top of the graph sits a **visualization gallery** (`/graph`) with six lenses 
 **Monitoring & visualization (built)**
 - `/graph` gallery: six views over one dataset — **Sankey** (income→bucket→spend/saved), **Treemap** (allocation area × status colour × spend fill), **Tree** (household/business → category → bucket → vendor), **Organic** network, **Budget-vs-actual** bars (shared RM scale), **Flow** branch.
 - **Focus lens**: slice every view by income stream, bucket, vendor, category, or **person** (spend re-weighted to that member's transactions); one-click clear; graceful empty state.
-- Persona-aware framing: category names and roster roles switch on `tenant.kind` (household vs business).
+- One vocabulary everywhere: the three tiers and the roster roles are the same for one person, a couple and a family. There is no persona-specific labelling left to keep in sync.
 
 **Three personas (built)**
-- One engine, three seeded personas: **personal** (Aisha, a solo freelancer + shop owner, household-of-one, 5 income streams), **family** (the Rahman household of four), **business** (a café with staff). A header **persona switcher** flips between them.
-- Realistic Malaysian detail: gross salary + **EPF/SOCSO/EIS**, **income tax (PCB)**, **insurance**, itemised **Bills & Subscriptions** (utilities, broadband, TV, AI subscription, device instalments, credit-card penalty), multi-stream income, employer statutory + SST for the business.
+- One engine, three seeded personas: **individual** (Aisha, a freelancer + shop owner, household-of-one, 5 income streams), **couple** (Nadia & Faiz, two salaries + a side gig, a funded private bucket each), **family** (the Rahman household of four). A header **persona switcher** walks the arc.
+- Realistic Malaysian detail: gross salary + **EPF/SOCSO/EIS**, **income tax (PCB)**, **insurance**, itemised **Bills & Subscriptions** (utilities, broadband, TV, AI subscription, device instalments, credit-card penalty), multi-stream income.
 
 **Input, capture & reach (built)**
 - **Flexible in-app input** (`/api/graph` + `FlexibleInput`): add income / bucket / allocation / spend for any person, with a subject-matter tag (`props.subject`) — *the graph is now editable from the UI, no schema change*.
@@ -91,7 +95,7 @@ On top of the graph sits a **visualization gallery** (`/graph`) with six lenses 
 - **Mobile-first + installable PWA** (never forced); **in-app `/guide`** with how-to + privacy + disclaimer (`docs/DISCLAIMER.md`).
 
 **Roster & management (built)**
-- Editable **roster** (`members`): add/remove people inline — a household grows with a newborn, a café with a hire; removing a person keeps their spend (relation nulled), never loses history.
+- Editable **roster** (`members`): add/remove people inline — a household of one becomes two, then four; removing a person keeps their spend (relation nulled), never loses history.
 
 **Business workflow (roadmap — P3)**
 - **Departments** as first-class subject matters: per-department income, expenses, needs, and their own cashflow.
@@ -113,7 +117,7 @@ On top of the graph sits a **visualization gallery** (`/graph`) with six lenses 
 
 | Phase | Window | Outcome |
 |-------|--------|---------|
-| **P1 — MVP vertical slice** ✅ | Jul–Aug 2026 | Telegram → OCR → graph → Honey insight → dashboard. Knowledge-graph engine on local-first PocketBase; household + business seeds. Repo with real history. |
+| **P1 — MVP vertical slice** ✅ | Jul–Aug 2026 | Telegram → OCR → graph → Honey insight → dashboard. Knowledge-graph engine on local-first PocketBase; individual + couple + family seeds. Repo with real history. |
 | **P1.5 — Monitoring layer** ✅ | Jul 2026 | Six-view visualization gallery; **Focus lens** (income/expense/category/person); editable roster; persona-aware categories & roles. |
 | **P1.6 — Reach & realism** ✅ | Jul 2026 | Third persona (solo); realistic Malaysian finance data; flexible in-app input; no-token voice/scan capture; multi-language (EN+BM); multi-currency (9); mobile-first PWA; in-app guide/disclaimer. Competitive research → `docs/MARKET_STRATEGY.md`. |
 | **P2 — Semi-final polish** | Aug–Oct 2026 | **First cut deploy** (Fly PocketBase + Vercel, `pocketbase/Dockerfile` — see `DEPLOY.md`); curated OCR ≥95% on a golden set; refined Honey persona; 3-min live demo; 1 signed corporate LOI; the top-3 differentiators (couples hide/share · round-ups · goal ETA — see `NEXT.md §6.5`). |
@@ -155,7 +159,7 @@ Key principle: **the API routes are the whole backend.** No server to run or pay
 Three concerns are kept separate: **the model (graph)**, **the events (transactions)**, and **time (temporal edges)**.
 
 ### Tables (`supabase/migrations/0001_init_graph.sql`)
-- **`tenants`** — `kind: household | business`, base currency.
+- **`tenants`** — base currency. (`kind` survives in the schema from the retired business persona; nothing reads it.)
 - **`members`** — people in a tenant, linked to `auth.users`.
 - **`nodes`** — `kind: income_source | bucket | wallet | vendor | obligation | goal | asset | member`; flexible `props jsonb`.
 - **`edges`** — typed relations with **flow semantics** promoted to typed columns for math/indexing and **temporal validity**:
@@ -226,7 +230,7 @@ Copy `.env.example` → `web/.env.local`. **Local-first defaults work unchanged.
 | `POCKETBASE_URL` | Local database URL | `http://127.0.0.1:8090` (default) |
 | `POCKETBASE_ADMIN_EMAIL` | Superuser the server authenticates as | `admin@honeymoney.local` (dev default) |
 | `POCKETBASE_ADMIN_PASSWORD` | Its password | `honeymoney-local-dev` (dev default — change for anything shared) |
-| `DEMO_TENANT_ID` | Tenant shown on the dashboard | `hhrahman1111111` (household) or `bizsedap2222222` (business) |
+| `DEMO_TENANT_ID` | Tenant shown on the dashboard | `hhrahman1111111` (family), `cprahman2222222` (couple) or `psaisha33333333` (individual) |
 | `GEMINI_API_KEY` | Vision + text model (optional) | [AI Studio](https://aistudio.google.com/app/apikey) |
 | `GEMINI_MODEL` | Model id | `gemini-2.0-flash` |
 | `TELEGRAM_BOT_TOKEN` | Bot auth (optional) | @BotFather |
@@ -340,9 +344,18 @@ Every chart is hand-rolled SVG (no chart library), deterministic so server and c
 
 ---
 
-## 13. Scalability: household → business
+## 13. Scalability: one household, then many; business later
 
-The **same node/edge engine** serves both — this is the core scalability argument for the rubric. Nothing below is a new core; it is new labels, views, and aggregations over the identical graph.
+**What ships today** is the scalability argument that matters to a consumer product: one
+graph engine serving an individual, a couple and a family with **zero schema change**
+(§1.1). A household that gains a partner or a child gains rows, not a migration and not a
+different app. Multi-tenancy (`tenant_id` + RLS everywhere) is what makes that same engine
+serve every household at once.
+
+**A business tier remains roadmap (P3).** The table below is the design for it, kept
+because the graph genuinely supports it and judges ask — but it is narrated as a
+direction, never demoed as a product. The business persona was retired from the app in
+Aug 2026 (§1.1).
 
 | Concept | Household | Business |
 |---------|-----------|----------|
