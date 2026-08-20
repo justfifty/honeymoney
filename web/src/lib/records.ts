@@ -3,6 +3,7 @@
 // Server-side only (uses the PocketBase superuser client).
 
 import { pbList, pbStr } from "./pocketbase";
+import { redactPrivate, privateBucketIds } from "./privacy";
 
 export interface SpendRecord {
   id: string;
@@ -79,7 +80,13 @@ export async function getSpendRecords(
   tenantId: string,
   from: Date,
   to: Date,
-  opts: { includeVoided?: boolean } = {},
+  opts: {
+    includeVoided?: boolean;
+    /** The member reading the list — their own private spend stays legible. */
+    viewerMemberId?: string | null;
+    /** Enforce the tier-3 promise. Off for the fictional demo personas. */
+    redact?: boolean;
+  } = {},
 ): Promise<SpendRecord[]> {
   const filter =
     `tenant = ${pbStr(tenantId)} && ` +
@@ -96,7 +103,17 @@ export async function getSpendRecords(
     perPage: 500,
   });
 
-  return txns.map((t) => ({
+  // Bucket totals stay intact; only the identifying detail of another member's
+  // private spend is stripped. See lib/privacy.ts for why the total must stay.
+  const privateIds = opts.redact
+    ? privateBucketIds(
+        await pbList<{ id: string; kind: string; props: Record<string, unknown> | null }>("nodes", {
+          filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+        }),
+      )
+    : new Set<string>();
+
+  const rows: SpendRecord[] = txns.map((t) => ({
     id: t.id,
     amount: Number(t.amount),
     direction: (t.direction === "in" ? "in" : "out") as "out" | "in",
@@ -111,6 +128,12 @@ export async function getSpendRecords(
     memberId: t.member ?? null,
     entered: t.raw?.entered ?? null,
   }));
+
+  return redactPrivate(rows, {
+    privateIds,
+    viewerMemberId: opts.viewerMemberId,
+    enabled: Boolean(opts.redact),
+  });
 }
 
 // Monday-based week start (local time).

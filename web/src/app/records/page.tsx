@@ -61,7 +61,7 @@ export default async function RecordsPage({
 
   const params = await searchParams;
   // Signed in → your household. Signed out → the public demo, read-only.
-  const { tenantId, ctx } = await resolveViewTenant();
+  const { tenantId, ctx, isDemo } = await resolveViewTenant();
   if (!tenantId) {
     return <Notice tr={tr} reason={tr("rec.notice.noTenant")} />;
   }
@@ -84,7 +84,11 @@ export default async function RecordsPage({
   try {
     const { from, to } = rangeBounds(range);
     const [records, bucketNodes] = await Promise.all([
-      getSpendRecords(tenantId, from, to, { includeVoided: showVoided }),
+      getSpendRecords(tenantId, from, to, {
+        includeVoided: showVoided,
+        viewerMemberId: ctx?.memberId,
+        redact: !isDemo,
+      }),
       pbList<{ id: string; label: string }>("nodes", {
         filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
         sort: "created",

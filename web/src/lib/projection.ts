@@ -8,6 +8,7 @@ import { isGeminiConfigured } from "./config";
 import { honeyInsight } from "./gemini";
 import { t, type Locale } from "./i18n";
 import { dataLabel } from "./dataLabels";
+import { redactPrivate, privateBucketIds, PRIVATE_LABEL } from "./privacy";
 import type { BucketProjection } from "./types";
 
 interface PBNode {
@@ -36,6 +37,7 @@ interface PBTransaction {
   direction?: string; // "in" = credit/money-in (not spend); anything else = "out"
   wallet_node: string;
   vendor_node: string;
+  member?: string;
   expand?: { vendor_node?: { label: string } };
 }
 
@@ -162,11 +164,14 @@ export interface RecentSpend {
   occurred_at: string;
   vendor: string | null;
   source: string | null;
+  /** True when the vendor was withheld under the tier-3 privacy promise. */
+  isPrivate?: boolean;
 }
 
 export async function getRecentSpend(
   tenantId: string,
   limit = 8,
+  opts: { viewerMemberId?: string | null; redact?: boolean } = {},
 ): Promise<RecentSpend[]> {
   const txns = await pbList<PBTransaction>("transactions", {
     filter: `tenant = ${pbStr(tenantId)}`,
@@ -174,13 +179,35 @@ export async function getRecentSpend(
     expand: "vendor_node",
     perPage: limit,
   });
-  return txns.map((t) => ({
+
+  const privateIds = opts.redact
+    ? privateBucketIds(
+        await pbList<{ id: string; kind: string; props: Record<string, unknown> | null }>("nodes", {
+          filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+        }),
+      )
+    : new Set<string>();
+
+  const rows = txns.map((t) => ({
     id: t.id,
     amount: Number(t.amount),
     currency: t.currency || "MYR",
     occurred_at: t.occurred_at,
     vendor: t.expand?.vendor_node?.label ?? null,
     source: t.source || null,
+    bucketId: t.wallet_node ?? null,
+    memberId: t.member ?? null,
+  }));
+
+  // The amount and the date survive; the vendor becomes "Personal". A partner
+  // still sees that money moved — just not what it bought.
+  return redactPrivate(rows, {
+    privateIds,
+    viewerMemberId: opts.viewerMemberId,
+    enabled: Boolean(opts.redact),
+  }).map(({ bucketId, memberId, ...rest }) => ({
+    ...rest,
+    isPrivate: Boolean(bucketId && privateIds.has(bucketId)) && rest.vendor === PRIVATE_LABEL,
   }));
 }
 
