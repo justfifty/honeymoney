@@ -26,11 +26,14 @@ try {
   $atLogon   = New-ScheduledTaskTrigger -AtLogOn
 
   # Repetition is what turns the task into a watchdog. It has to be attached to a
-  # trigger, and MaxValue means "indefinitely".
+  # trigger, and an OMITTED RepetitionDuration is what means "indefinitely".
+  # [TimeSpan]::MaxValue looks like it should say the same thing but serialises to
+  # P99999999DT23H59M59S, which Task Scheduler rejects outright — the whole
+  # Register-ScheduledTask call then fails, which is how this script sat here for
+  # weeks while the live task was still the old logon-only one.
   foreach ($t in @($atStartup, $atLogon)) {
     $t.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
-      -RepetitionInterval (New-TimeSpan -Minutes 5) `
-      -RepetitionDuration ([TimeSpan]::MaxValue)).Repetition
+      -RepetitionInterval (New-TimeSpan -Minutes 5)).Repetition
   }
 
   $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `

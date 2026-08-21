@@ -479,6 +479,60 @@ the persona where the tier-3 privacy promise finally has something to demonstrat
 > **"HoneyMoney"**. Both are edits made through the app on the live instance, not code
 > bugs — say the word and I'll reseed the persona cleanly.
 
+## ✅ Shipped — 2026-08-21 (uptime: the site now survives a reboot, a crash, and a flat battery)
+
+The site had a watchdog on paper and none in practice. `deploy/install-autostart.ps1`
+was written on 14 Jul to add a boot trigger and a 5-minute self-heal — and had never
+once run successfully. It died on line 33: `[TimeSpan]::MaxValue` serialises to
+`P99999999DT23H59M59S`, which Task Scheduler rejects outright, so
+`Register-ScheduledTask` threw and the *old* logon-only task stayed live. `stack.log`
+had been telling us for six weeks — one start per day, always at sign-in time
+(08:05 · 08:15 · 22:23 · 11:00), never a watchdog tick.
+
+### 🩺 What was actually running `[Technical]`
+- Task `HoneyMoney`: **one** `AtLogOn` trigger · `LogonType Interactive` ·
+  `RunLevel Limited` · **no repetition**. A 3am Windows Update reboot left the site
+  dark at the lock screen until someone signed in; any component that died stayed dead.
+- Hibernate-on-battery after 5h (`HIBERNATEIDLE` DC `0x4650`).
+- Apex still served by the laptop — every response carried `x-powered-by: Next.js`.
+
+### 🔧 Fixed
+- **`install-autostart.ps1`** — an *omitted* `RepetitionDuration` is what means
+  "indefinitely". Task is now `BootTrigger + LogonTrigger`, both `PT5M`, `S4U`,
+  `RunLevel Highest`.
+- **`deploy/install-all.cmd`** — one right-click → Run as administrator installs all
+  four tasks (stack watchdog + Purge/Nudge/Demo). Idempotent.
+- **`deploy/verify-uptime.ps1`** — read-only. Answers "if this laptop dies, what
+  survives?" across three groups: local stack · self-healing · always-on edge.
+- **Hibernate-on-battery → never** (`powercfg`, DC index `0`).
+
+### ✅ Proven, not assumed
+The watchdog was tested by killing `cloudflared` and watching it come back:
+
+```
+cloudflared alive after kill?      False
+cloudflared alive after task run?  True
+11:36:57  cloudflared not running -> starting
+```
+
+### 💸 Free-tier check (it is genuinely $0)
+Tunnel is unmetered; Pages static requests are "free and unlimited"; custom domains
+are free (100/project). The one ceiling: `_worker.js` is **advanced mode**, so every
+request invokes a Function — including assets, via `env.ASSETS.fetch()` — against the
+shared **100,000 requests/day** Workers+Functions free allowance. At ~25 requests per
+page load that is ~4,000 pageviews/day. If it ever binds, a `_routes.json` excluding
+`/_next/static/*` and `/gallery/*` makes those bypass the worker and stop counting.
+
+### ⬜ Still open — the one thing that isn't automatable
+`verify-uptime.ps1` is green everywhere except **APEX FRONTED BY PAGES**. See §7 #12:
+wrangler 4.92 has no `pages domain` command, and the API path needs `Zone:DNS:Edit` to
+replace the tunnel's CNAME on the apex — the local OAuth token has `zone (read)` only.
+Four dashboard clicks. Until then the always-on snapshot exists but fronts nothing, and
+the laptop is still a single point of failure for the *whole* site rather than just
+`/dashboard`.
+
+---
+
 ---
 
 ## 0. The rubric drives everything
@@ -693,18 +747,22 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
    One signed LOI is worth more to the score than any further feature.
 
 ### ⚙️ Ops
-10. [ ] **Activate the crons** — set `ACCOUNT_PURGE_SECRET`, run
-    `install-maintenance-tasks.ps1` elevated once. Until then deletes never auto-purge
-    and nudges don't fire.
+10. [x] ~~Activate the crons~~ — registered 2026-08-21 via `deploy/install-all.cmd`
+    (Purge 03:00 · Nudge 09:00 · Demo 03:30). Still set `ACCOUNT_PURGE_SECRET` in
+    `web/.env.local` or purge/nudge stay safe no-ops.
 11. [x] ~~Commit or discard the in-flight static-site work~~ — committed 2026-08-20
     (`89163e8`) and the Cloudflare Pages project is live at `honeymoney-e84.pages.dev`.
-12. [ ] **Point honeymoney.app at Pages.** The apex still resolves straight to the
-    tunnel, so the always-on snapshot isn't actually fronting the domain yet — the
-    outage problem it was written to solve is still live. Cloudflare → Pages →
-    `honeymoney` → Custom domains → add `honeymoney.app` + `www`. Rollback is removing
-    them and `cloudflared tunnel route dns honeymoney honeymoney.app`.
+12. [ ] **Point honeymoney.app at Pages.** ← the last laptop-dependency. The apex
+    still resolves straight to the tunnel (`verify-uptime.ps1` reports
+    `APEX FRONTED BY PAGES … FAIL`), so the always-on snapshot isn't fronting the
+    domain and the outage problem is still live. Cloudflare → Workers & Pages →
+    `honeymoney` → Custom domains → add `honeymoney.app` + `www`. Dashboard only —
+    wrangler has no `pages domain` command, and the API path needs Zone:DNS:Edit to
+    replace the existing tunnel CNAME. Rollback is removing them and
+    `cloudflared tunnel route dns honeymoney honeymoney.app`.
     ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to a
     public page — the snapshot is point-in-time and does not update itself.
+
 13. [ ] **DOM Cloud** (free tier) as the always-on host: thin server / fat client, ARM
     binary only, `--dir` outside `public_html`, nightly pull-backup via GitHub Actions
     before the first real user, and log in monthly or the site is removed for
