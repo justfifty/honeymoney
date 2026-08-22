@@ -1713,6 +1713,14 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     server is never stopped, so it is safe to run while the site is serving.
     **First run passed 2026-08-23** against `honeymoney_20260823_031659.zip`.
 
+    ✅ **`deploy/setup-r2-backups.mjs` automates everything on the far side of that
+    click**: creates the bucket, writes PocketBase's S3 settings through its API
+    (`forcePathStyle: true` — without it the SDK builds virtual-host URLs R2 does not
+    serve, and uploads fail with a DNS error that names nothing), then takes a real backup
+    and lists it back to prove the pipe works. Run it with no flags first: it reports
+    exactly what is blocking and changes nothing. It also **refuses to configure S3 unless
+    settings encryption is on**, so the ordering trap cannot be tripped by accident.
+
     ⬜ **R2 — the remaining step, and it needs the dashboard.** `wrangler r2 bucket list`
     returns *"Please enable R2 through the Cloudflare Dashboard"* (code 10042): R2 has to be
     switched on for the account first, which is where the payment method is required. Free

@@ -91,3 +91,7 @@ deploy/.cf-dns.token
 # LOSING THIS LOSES THE SETTINGS (SMTP, S3), though not the ledger itself. Keep a
 # copy somewhere that is NOT a HoneyMoney backup — a password manager.
 deploy/.pb-encryption-key
+
+# R2 API credentials used by deploy/setup-r2-backups.mjs to configure PocketBase.
+# Scoped to the backups bucket, but still a credential.
+deploy/.r2-credentials.json
