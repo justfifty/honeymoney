@@ -6,10 +6,17 @@ import { t, type Locale } from "@/lib/i18n";
 import { CURRENCIES, rateFor, toMYR } from "@/lib/format";
 import SpendCapture, { type CaptureAnalysis, type Captured } from "../graph/SpendCapture";
 import type { IncomingAttachment } from "@/lib/attachments";
+import SignPicker from "../record/SignPicker";
+import AttributionPicker from "../record/AttributionPicker";
+import { signOf, MINUS_CATEGORIES, type Category } from "@/lib/recordKind";
+import { defaultVisibility, type Composition, type Visibility } from "@/lib/attribution";
 
 interface BucketOption {
   id: string;
   label: string;
+  /** 1 = must-paid · 2 = savings · 3 = spendings/personal. Drives whether a
+   *  record defaults to private under the Task 6 stance. */
+  tier?: number;
 }
 
 function todayLocal(): string {
@@ -31,10 +38,16 @@ function todayLocal(): string {
 export default function AddTransaction({
   buckets,
   knownVendors = [],
+  members = [],
+  composition = "individual",
   lang,
 }: {
   buckets: BucketOption[];
   knownVendors?: string[];
+  /** Household members, for Task 6 attribution. Empty ⇒ no control renders. */
+  members?: { id: string; label: string }[];
+  /** Household composition — CONTEXT, not a control. See lib/attribution.ts. */
+  composition?: Composition;
   lang: Locale;
 }) {
   const router = useRouter();
@@ -44,7 +57,16 @@ export default function AddTransaction({
   const [ccy, setCcy] = useState("MYR");
   const [when, setWhen] = useState(todayLocal());
   const [bucket, setBucket] = useState(buckets[0]?.id ?? "");
-  const [direction, setDirection] = useState<"out" | "in">("out");
+  // Task 1: the user picks a CATEGORY behind one of two buttons; `direction` is
+  // derived from it rather than being a separate question. Spending is the
+  // overwhelming common case, so that is where the form opens.
+  const [category, setCategory] = useState<Category>(MINUS_CATEGORIES[0]);
+  const direction = signOf(category);
+  // Task 6. Both are remembered defaults in spirit — the common case is one
+  // person logging their own routine spending, and that costs zero extra taps
+  // because the control does not render for a household of one.
+  const [paidBy, setPaidBy] = useState<string | null>(null);
+  const [visibility, setVisibility] = useState<Visibility>("shared");
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
   const [analysis, setAnalysis] = useState<CaptureAnalysis | null>(null);
   const [details, setDetails] = useState(false);
@@ -107,6 +129,13 @@ export default function AddTransaction({
           vendorLabel: vendor,
           amount: base,
           direction,
+          category,
+          paidBy: paidBy ?? undefined,
+          visibility,
+          // True: a human chose this, rather than it being defaulted by a
+          // migration. That distinction is what makes "reclassifying is a user
+          // action" checkable later.
+          attributionAsserted: Boolean(paidBy),
           ...(attachment ? { attachments: [attachment] } : {}),
           occurredAt: when ? new Date(`${when}T12:00:00`).toISOString() : undefined,
           confidence,
@@ -256,6 +285,38 @@ export default function AddTransaction({
         </button>
       </div>
 
+      {/* Task 1: the two buttons, and the categories behind them. Above the
+          bucket row because the sign decides what the bucket choices MEAN — a
+          Savings bucket reached via `+` is a deposit, via `−` a withdrawal. */}
+      <div className="mt-3">
+        <SignPicker category={category} onChange={setCategory} lang={lang} />
+      </div>
+
+      {/* Task 6. Renders nothing at all for a household of one — see
+          AttributionPicker on why a one-option control is furniture. */}
+      <div className="mt-3">
+        <AttributionPicker
+          composition={composition}
+          members={members}
+          paidBy={paidBy}
+          visibility={visibility}
+          onPaidBy={(id) => {
+            setPaidBy(id);
+            // Recompute the default rather than leaving a stale choice: changing
+            // WHO paid changes whether privacy is the sensible default.
+            setVisibility(
+              defaultVisibility({
+                paidBy: id,
+                bucketIsPrivate: buckets.find((b) => b.id === bucket)?.tier === 3,
+                composition,
+              }),
+            );
+          }}
+          onVisibility={setVisibility}
+          lang={lang}
+        />
+      </div>
+
       {/* Which bucket — one tap, not a dropdown. This is the 3-bucket model made
           visible at the moment of filing, and it is where a correction becomes
           the household's own training data. */}
@@ -301,33 +362,6 @@ export default function AddTransaction({
 
         {details && (
           <div className="mt-2 flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-            <div className="flex flex-col gap-1 text-xs text-zinc-500">
-              {tr("dash.add.direction")}
-              <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 dark:border-zinc-700">
-                <button
-                  type="button"
-                  onClick={() => setDirection("out")}
-                  aria-pressed={direction === "out"}
-                  className={
-                    "min-h-11 px-3.5 text-xs font-medium " +
-                    (direction === "out" ? "bg-rose-500 text-white" : "text-zinc-500")
-                  }
-                >
-                  − {tr("dash.add.out")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDirection("in")}
-                  aria-pressed={direction === "in"}
-                  className={
-                    "min-h-11 px-3.5 text-xs font-medium " +
-                    (direction === "in" ? "bg-emerald-600 text-white" : "text-zinc-500")
-                  }
-                >
-                  + {tr("dash.add.in")}
-                </button>
-              </div>
-            </div>
             <label className="flex w-24 flex-col gap-1 text-xs text-zinc-500">
               {tr("g.input.currency")}
               <select value={ccy} onChange={(e) => setCcy(e.target.value)} className={field}>

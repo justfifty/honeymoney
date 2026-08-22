@@ -122,7 +122,9 @@ export async function getBucketProjection(
 // spend per bucket, produce the status-annotated projection. Factored out so the
 // focus lens can pass member-filtered spend through the same math.
 export function projectBuckets(
-  nodes: Array<{ id: string; kind: string; label: string }>,
+  // `props` widened in so the bucket's tier can travel with the projection —
+  // the Record form needs it to default a personal-bucket spend to private.
+  nodes: Array<{ id: string; kind: string; label: string; props?: Record<string, unknown> | null }>,
   allocated: Map<string, number>,
   mtdByBucket: Map<string, number>,
   asOf: Date = new Date(),
@@ -148,6 +150,10 @@ export function projectBuckets(
       return {
         bucket_id: b.id,
         bucket_label: b.label,
+        // Defaults to the private tier when a bucket has no explicit one, which
+        // matches privateBucketIds() — failing toward "personal" is the safe
+        // direction for anything that drives a privacy default.
+        tier: Number(b.props?.bucket) || 3,
         allocated: round(alloc),
         mtd_spend: round(spent),
         projected_spend: round(projectedSpend),

@@ -3,7 +3,9 @@
 // Server-side only (uses the PocketBase superuser client).
 
 import { pbList, pbStr } from "./pocketbase";
-import { redactPrivate, privateBucketIds } from "./privacy";
+import { redactPrivate, privateBucketIds, PRIVATE_TIER } from "./privacy";
+import { deriveKind, type RecordKind } from "./recordKind";
+import { visibleFilter, type Visibility } from "./attribution";
 
 export interface SpendRecord {
   id: string;
@@ -22,6 +24,14 @@ export interface SpendRecord {
   memberId: string | null;
   /** What the user originally typed, if they entered a foreign currency. */
   entered: { amount: number; currency: string; perMYR: number; rateSource: string } | null;
+  /** inflow · outflow · transfer. Derived for records that predate the field. */
+  kind: RecordKind;
+  /** Who paid. Falls back to the legacy `member` field. Null ⇒ the household. */
+  paidBy: string | null;
+  /** private ⇒ only the payer sees it. Absent on old rows ⇒ shared. */
+  visibility: Visibility;
+  /** False ⇒ nobody stated who paid; we defaulted it. */
+  attributionAsserted: boolean;
   /**
    * Stored receipt images, by filename. Fetch them through
    * `/api/attachment/<id>/<filename>` — never by building a PocketBase URL,
@@ -54,6 +64,10 @@ interface PBTxn {
   voided?: boolean;
   member?: string;
   wallet_node?: string;
+  kind?: string | null;
+  paid_by?: string | null;
+  visibility?: string | null;
+  attribution_asserted?: boolean;
   attachments?: string[] | string | null;
   raw?: { entered?: { amount: number; currency: string; perMYR: number; rateSource: string } } | null;
   expand?: { vendor_node?: { label: string }; wallet_node?: { id: string; label: string } };
@@ -103,7 +117,12 @@ export async function getSpendRecords(
     // A voided record still exists — it is simply not counted. Showing it is an
     // explicit choice ("show removed"), because a deleted spend that silently
     // vanishes is exactly the behaviour an audit trail is meant to prevent.
-    (opts.includeVoided ? "" : " && voided != true");
+    (opts.includeVoided ? "" : " && voided != true") +
+    // Task 6's privacy stance, enforced in the QUERY rather than after it. A
+    // hidden row is never fetched, so there is no filtered array anyone can
+    // forget to apply. Old rows have an empty `visibility` and are matched by
+    // `!= 'private'`, so nothing that was visible yesterday disappears today.
+    (opts.redact ? ` && ${visibleFilter(opts.viewerMemberId)}` : "");
 
   const txns = await pbList<PBTxn>("transactions", {
     filter,
@@ -114,13 +133,15 @@ export async function getSpendRecords(
 
   // Bucket totals stay intact; only the identifying detail of another member's
   // private spend is stripped. See lib/privacy.ts for why the total must stay.
-  const privateIds = opts.redact
-    ? privateBucketIds(
-        await pbList<{ id: string; kind: string; props: Record<string, unknown> | null }>("nodes", {
-          filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
-        }),
-      )
-    : new Set<string>();
+  // Fetched unconditionally: the tier map below needs them regardless of
+  // whether redaction is on, and it is one query either way.
+  const bucketNodes = await pbList<{ id: string; kind: string; props: Record<string, unknown> | null }>(
+    "nodes",
+    { filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'` },
+  );
+  const privateIds = opts.redact ? privateBucketIds(bucketNodes) : new Set<string>();
+  const bucketTier = new Map<string, number>();
+  for (const b of bucketNodes) bucketTier.set(b.id, Number(b.props?.bucket) || PRIVATE_TIER);
 
   const rows: SpendRecord[] = txns.map((t) => ({
     id: t.id,
@@ -135,6 +156,16 @@ export async function getSpendRecords(
     bucketId: t.wallet_node ?? null,
     bucketLabel: t.expand?.wallet_node?.label ?? null,
     memberId: t.member ?? null,
+    // `paid_by` is the field named for what it holds; `member` is the older,
+    // ambiguous one and is still read so no history is lost. See lib/attribution.
+    paidBy: t.paid_by || t.member || null,
+    kind: deriveKind({
+      kind: t.kind,
+      direction: t.direction,
+      bucketTier: t.wallet_node ? (bucketTier.get(t.wallet_node) ?? null) : null,
+    }),
+    visibility: (t.visibility === "private" ? "private" : "shared") as Visibility,
+    attributionAsserted: Boolean(t.attribution_asserted),
     entered: t.raw?.entered ?? null,
     // PocketBase returns a multi-file field as an array, but a single-file field
     // as a bare string — normalise, or `.map` over it iterates the characters.

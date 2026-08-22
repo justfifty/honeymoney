@@ -21,6 +21,10 @@ export interface ParsedReceipt {
 export interface BucketProjection {
   bucket_id: string;
   bucket_label: string;
+  /** 1 = must-paid · 2 = savings · 3 = spendings/personal. Surfaced because the
+   *  Record form needs it to default a personal-bucket spend to private
+   *  (Task 6), and it was already known here — just not passed on. */
+  tier: number;
   allocated: number;
   mtd_spend: number;
   projected_spend: number;

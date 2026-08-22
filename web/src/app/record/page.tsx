@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
-import { resolveViewTenant, can } from "@/lib/household";
+import { resolveViewTenant, can, listMembers } from "@/lib/household";
+import type { Composition } from "@/lib/attribution";
 import { getBucketProjection, getRecentSpend } from "@/lib/projection";
-import { pbList, pbStr } from "@/lib/pocketbase";
+import { pbList, pbFirst, pbStr } from "@/lib/pocketbase";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
@@ -34,14 +35,29 @@ export default async function RecordPage() {
 
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
 
-  const [projection, vendorNodes, recent] = await Promise.all([
+  const [projection, vendorNodes, recent, members, tenant] = await Promise.all([
     getBucketProjection(tenantId),
     pbList<{ id: string; label: string }>("nodes", {
       filter: `tenant = ${pbStr(tenantId)} && kind = 'vendor'`,
       perPage: 200,
     }),
     getRecentSpend(tenantId, 6, { viewerMemberId: ctx?.memberId, redact: Boolean(ctx) }),
+    listMembers(tenantId),
+    pbFirst<{ id: string; composition?: string }>("tenants", `id = ${pbStr(tenantId)}`),
   ]);
+
+  // Household composition is CONTEXT, not a control — Task 6 is explicit that it
+  // belongs in settings and is merely SHOWN here. Falls back to the shape of the
+  // household rather than to a hardcoded default: a tenant with three members is
+  // a family whether or not anyone has been to the setting yet.
+  const composition: Composition =
+    tenant?.composition === "couple" || tenant?.composition === "family" || tenant?.composition === "individual"
+      ? tenant.composition
+      : members.length > 2
+        ? "family"
+        : members.length === 2
+          ? "couple"
+          : "individual";
 
   return (
     <main className="mx-auto min-h-full w-full max-w-lg px-4 py-5 sm:px-6">
@@ -55,12 +71,28 @@ export default async function RecordPage() {
       </header>
       <p className="mt-1 text-sm text-zinc-500">{tr("cap.subtitle")}</p>
 
+      {/* Composition as CONTEXT — a statement of who this household is, not a
+          switcher. The old persona control read as something to change per
+          record, which is exactly the confusion Task 6 splits apart. Nothing is
+          shown for a household of one: there is no context to establish. */}
+      {composition !== "individual" && (
+        <p className="mt-1 text-xs text-zinc-400">
+          {tr("rec.comp.label")}: {tr(`rec.comp.${composition}`)}
+        </p>
+      )}
+
       {canWrite ? (
         <div className="mt-4">
           <AddTransaction
             lang={locale}
             knownVendors={vendorNodes.map((v) => v.label)}
-            buckets={projection.map((b) => ({ id: b.bucket_id, label: dataLabel(locale, b.bucket_label) }))}
+            buckets={projection.map((b) => ({
+              id: b.bucket_id,
+              label: dataLabel(locale, b.bucket_label),
+              tier: b.tier,
+            }))}
+            members={members.map((m) => ({ id: m.id, label: m.display_name }))}
+            composition={composition}
           />
         </div>
       ) : (

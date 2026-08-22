@@ -9,6 +9,8 @@ import { pbList, pbFirst, pbCreate, pbUpdate, pbStr, pbUploadFiles } from "./poc
 import { append } from "./ledger";
 import type { ParsedReceipt } from "./types";
 import type { DecodedAttachment } from "./attachments";
+import { kindOf, type Category, type RecordKind } from "./recordKind";
+import type { Visibility } from "./attribution";
 
 export interface Actor {
   id: string;
@@ -172,6 +174,14 @@ export async function addManualTransaction(
     entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
     /** Receipt images, already decoded and size-checked by lib/attachments.ts. */
     attachments?: DecodedAttachment[];
+    /** Task 1: which button and which category the user chose. */
+    category?: Category;
+    /** Task 6: who paid. Falls back to `memberId` for callers not yet updated. */
+    paidBy?: string;
+    /** Task 6: private ⇒ only the payer sees it. Defaults to shared. */
+    visibility?: Visibility;
+    /** True when a human chose the attribution, false when we defaulted it. */
+    attributionAsserted?: boolean;
   },
   actor?: Actor,
 ): Promise<IngestResult> {
@@ -191,6 +201,21 @@ export async function addManualTransaction(
     ...(input.memberId ? { member: input.memberId } : {}),
     amount: input.amount,
     currency: "MYR",
+    // The THREE kinds behind the two buttons. Derived from the category when the
+    // caller supplies one; otherwise inferred from direction, which keeps every
+    // existing caller working unchanged. `+ Savings` becomes a TRANSFER here —
+    // the one inference that stops a savings deposit reading as money leaving
+    // the household.
+    kind: (input.category
+      ? kindOf(input.category)
+      : input.direction === "in"
+        ? "inflow"
+        : "outflow") as RecordKind,
+    ...(input.paidBy || input.memberId ? { paid_by: input.paidBy ?? input.memberId } : {}),
+    visibility: input.visibility ?? "shared",
+    // Absent ⇒ false ⇒ "nobody said this, we defaulted it", which is exactly
+    // what the brief asks migrated attribution to be marked as.
+    attribution_asserted: Boolean(input.attributionAsserted),
     occurred_at: input.occurredAt ?? new Date().toISOString().replace("T", " "),
     source: input.source ?? "manual",
     direction: input.direction === "in" ? "in" : "out",
