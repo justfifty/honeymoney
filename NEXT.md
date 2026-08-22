@@ -747,6 +747,22 @@ and several of the measurements contradicted the brief.**
       vendor became a bucket→vendor flow, and a savings deposit has that shape. Transfers now
       terminate at their goal, and **the choice is stated on the chart**.
 
+### 🌐 Ops — honeymoney.app no longer dies with the laptop `[Technical]`
+- [x] **`verify-uptime.ps1` is fully green, APEX FRONTED BY PAGES included.** The public
+      pages — `/`, `/demo`, `/guide`, `/gallery`, `/deck` — now answer
+      `X-HoneyMoney-Served: edge-snapshot`: Cloudflare serves them without touching this
+      machine. Signed-in routes still need the origin and now degrade to a real offline page
+      instead of a Cloudflare 1033, which to a judge following a link is the difference
+      between "this doesn't exist" and "the demo works, the app is momentarily offline".
+- [x] **Lid-close on mains set to "do nothing"** (it was unset and hidden; idle sleep was
+      already off). On battery it still sleeps, deliberately — a ThinkPad should not run hot
+      in a bag. **Keep it plugged in.**
+- ⚠️ **`origin.honeymoney.app` was deleted along with the other Tunnel records and had to be
+      restored.** The homepage looked perfectly healthy throughout, because Pages was serving
+      it — while every dynamic route had nowhere to go. **A green homepage proves nothing
+      about the app.** Restored with `cloudflared tunnel route dns honeymoney
+      origin.honeymoney.app`.
+
 ### 🌐 Ops — the 24/7 story, re-diagnosed
 - 🛑 **"Four dashboard clicks" was undoable.** The domain and the Pages project were in **two
       different Cloudflare accounts**. See §7 #12 — project rebuilt in the domain's account,
@@ -1596,101 +1612,74 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     `web/.env.local` or purge/nudge stay safe no-ops.
 11. [x] ~~Commit or discard the in-flight static-site work~~ — committed 2026-08-20
     (`89163e8`) and the Cloudflare Pages project is live at `honeymoney-ci3.pages.dev`.
-12. [~] **Point honeymoney.app at Pages** — **the hard part is done; ONE DNS record
-    left, and it needs a human.**
+12. [x] ~~**Point honeymoney.app at Pages**~~ — ✅ **DONE 2026-08-23. The apex is
+    fronted by Cloudflare's edge, and the laptop is no longer a single point of
+    failure for the public site.**
 
-    🛑 **The 2026-08-20 diagnosis was wrong, and re-diagnosing it was the whole
-    problem.** It said "four dashboard clicks". It could never have worked: the
-    **domain and the Pages project were in two different Cloudflare accounts.**
+    `honeymoney.app/` and `/gallery` now answer with
+    `X-HoneyMoney-Served: edge-snapshot` — served from Cloudflare, not from this
+    machine. `/dashboard` and `/record` still reach the origin, which is the
+    design: public pages survive the laptop being off, and the signed-in app
+    degrades to a real offline page instead of a Cloudflare 1033.
 
-    | | account | held |
-    |---|---|---|
-    | `ecb25f751b4e93b49afe473aac4910c6` | **Justfifty1976@gmail.com** | the honeymoney.app zone |
-    | `4606a61d2aca80d0da3d046635f7689c` | Youngpong@gmail.com | the old `honeymoney` Pages project |
+    🛑 **Why this took three days: the 2026-08-20 "four dashboard clicks" was
+    undoable.** The domain and the Pages project were in **two different
+    Cloudflare accounts** — the zone under Justfifty1976, the project under
+    Youngpong — so the Custom domains page the instruction described did not
+    exist in the account being looked at. Rebuilt in the domain's account as
+    `honeymoney-ci3.pages.dev`.
 
-    "Workers & Pages → honeymoney → Custom domains" was unfindable because the
-    project was not in that account — the dashboard there read *"No projects
-    found"*. Three independent confirmations: `wrangler whoami` reported the
-    Youngpong account · `GET /zones` with that token returned **zero zones** ·
-    and the domain account's Workers & Pages page was empty.
+    🛑 **And the records were `Type: Tunnel`, not CNAME.** Cloudflare manages
+    those specially: the Edit dialog only offers a tunnel to point at, and "Add
+    record" refuses with *"An A, AAAA, or CNAME record with that host already
+    exists"* because the Tunnel record occupies the name. **Delete, then add** —
+    editing is not available for that type.
 
-    ✅ **Done 2026-08-23**, all in the Justfifty1976 account:
-    - `wrangler login` re-authenticated to it, and `GET /zones` now returns
-      honeymoney.app (zone `cf765cc7021c47d3e6de209fd3630660`) — the proof the
-      accounts were the problem.
-    - Pages project **`honeymoney`** created there → **`honeymoney-ci3.pages.dev`**.
-    - Snapshot deployed; all five public routes return `X-HoneyMoney-Served:
-      edge-snapshot`.
-    - `honeymoney.app` and `www.honeymoney.app` attached as custom domains.
-    - `CLOUDFLARE_ACCOUNT_ID` (a persistent Windows **User** env var) was pinning
-      the OLD account and made every wrangler call target it regardless of who
-      was logged in. Repointed at the new account, so `npm run site:deploy` works
-      from a fresh shell.
+    ⚠️ **THE MISTAKE THAT NEARLY BROKE THE SIGNED-IN APP, and the lesson.**
+    Deleting the three Tunnel rows took `origin.honeymoney.app` with them. That
+    hostname is not decoration: it is `ORIGIN_HOST` in `deploy/pages/_worker.js`,
+    the address every dynamic route is proxied to. With it gone the apex still
+    looked healthy — the public pages were being served by Pages — while
+    `/dashboard`, `/record` and every API call had nowhere to go. **A green
+    homepage proved nothing about the app.**
+    Restored with `cloudflared tunnel route dns honeymoney origin.honeymoney.app`
+    and verified 200 before moving on.
+    **If you ever rebuild this DNS: the apex and `www` point at Pages; `origin`
+    points at the tunnel; deleting `origin` breaks everything a user logs in for.**
 
-    ⬜ **THE ONE REMAINING STEP — one DNS record, and it is an EDIT, not an add.**
+    ✅ **`www.honeymoney.app` restored** as a proxied CNAME to
+    `honeymoney-ci3.pages.dev` — it was briefly dead between the Tunnel record
+    being deleted and the CNAME being added. Both hostnames now answer
+    `edge-snapshot`.
 
-    Both custom domains sit at `status: pending`, `validation: pending`, method
-    **http**. Cloudflare validates by fetching the apex, which still CNAMEs to the
-    tunnel, so the request lands on the laptop instead of Pages and can never
-    complete. Chicken-and-egg: the domains cannot activate until DNS moves.
+    **The final DNS shape, worth keeping:**
 
-    **Confirmed 2026-08-23: this cannot be automated with the credentials on this
-    machine.** Wrangler's OAuth token carries `zone (read)`, which does NOT
-    include DNS records — a plain `GET /zones/{id}/dns_records` returns
-    `10000 Authentication error`. Cloudflare's OAuth flow does not offer a
-    DNS-edit scope, so no amount of re-login fixes it.
+    | name | type | target | why |
+    |---|---|---|---|
+    | `honeymoney.app` | CNAME (proxied) | `honeymoney-ci3.pages.dev` | public pages from the edge |
+    | `www` | CNAME (proxied) | `honeymoney-ci3.pages.dev` | same |
+    | `origin` | **Tunnel** (proxied) | the `honeymoney` tunnel | **what the worker proxies to — never repoint this** |
 
-    ### By hand — Cloudflare → honeymoney.app → **DNS** → **Records**
+    ✅ **`verify-uptime.ps1` is fully green**, including **APEX FRONTED BY PAGES**
+    for the first time since the item was written.
 
-    ⚠️ **EDIT the existing apex record. Do not ADD a second one** — two records
-    on the same name conflict, and Cloudflare will either refuse it or serve them
-    round-robin, which looks like an intermittent outage.
+    ℹ️ Both custom domains still read `status: pending` in the Pages API. That is
+    Cloudflare's own certificate bookkeeping catching up and does not gate
+    serving — the apex is already answering from the edge. It should clear on its
+    own; if it has not within a day, remove and re-add the domain in the project.
 
-    | field | set it to |
-    |---|---|
-    | Type | `CNAME` |
-    | Name | `@` *(shows as `honeymoney.app`)* |
-    | Target | **`honeymoney-ci3.pages.dev`** |
-    | Proxy status | **Proxied** (orange cloud) |
-    | TTL | Auto |
+    ↩️ **Rollback:** `cloudflared tunnel route dns honeymoney honeymoney.app`
+    puts the apex back on the tunnel.
 
-    Repeat for **`www`** if a record exists. The apex record you are editing
-    currently points at something like `<uuid>.cfargotunnel.com`.
-
-    **Proxied is not optional.** Grey-cloud (DNS-only) sends visitors straight
-    past Cloudflare, Pages never sees the request, and the custom domain stays
-    `pending` forever.
-
-    ⚠️ **DO NOT TOUCH `origin.honeymoney.app`.** That is the hostname the tunnel
-    publishes and the one `deploy/pages/_worker.js` proxies signed-in routes back
-    to (`ORIGIN_HOST`). Repointing it at Pages makes the worker fetch itself and
-    every logged-in page loops until it times out.
-
-    ### Or scripted — `deploy/point-apex-at-pages.mjs`
-
-    Does the same swap with the guardrails built in: it refuses to touch
-    `origin.honeymoney.app`, uses PUT so the apex is never momentarily without a
-    record, and forces `proxied: true`.
-
-    1. Cloudflare → My Profile → API Tokens → **Create Token** → **Edit zone DNS**
-       template → Zone Resources: Include → **Specific zone → honeymoney.app**
-    2. Save the value into `deploy/.cf-dns.token` *(gitignored)*
-    3. `node deploy/point-apex-at-pages.mjs` — dry run, prints the plan, writes nothing
-    4. `node deploy/point-apex-at-pages.mjs --apply`
-    5. Delete `deploy/.cf-dns.token`
-
-    The token is scoped to one zone and one permission, so the worst it can do is
-    edit DNS on this domain.
-
-    ↩️ **Rollback:** remove the two custom domains from the project and
-    `cloudflared tunnel route dns honeymoney honeymoney.app`.
-
-    ⚠️ The old project still exists in the Youngpong account at
-    `honeymoney-e84.pages.dev`. Harmless, but delete it once the apex is green so
-    nobody deploys to the wrong one.
+    ⬜ The old project still exists in the Youngpong account at
+    `honeymoney-e84.pages.dev`. Delete it once `www` is green, so nobody deploys
+    to the wrong one.
 
     ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to
     a public page — the snapshot is point-in-time and does not update itself.
+    `CLOUDFLARE_ACCOUNT_ID` (a Windows **User** env var) now points at the
+    domain's account; a shell opened before 2026-08-23 still carries the old
+    value and will deploy to the wrong account.
 
 13. [ ] **DOM Cloud** (free tier) as the always-on host: thin server / fat client, ARM
     binary only, `--dir` outside `public_html`, nightly pull-backup via GitHub Actions
