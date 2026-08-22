@@ -83,3 +83,11 @@ deploy/pages/dist/
 # Zone:DNS:Edit on honeymoney.app only, and deleted after use — but it is still
 # a credential and must never be committed.
 deploy/.cf-dns.token
+
+# PocketBase settings-encryption key. Without it the S3 credentials configured
+# for backups sit in plaintext inside data.db — which is the file being uploaded
+# to R2, so an unencrypted backup carries the keys to its own bucket.
+#
+# LOSING THIS LOSES THE SETTINGS (SMTP, S3), though not the ledger itself. Keep a
+# copy somewhere that is NOT a HoneyMoney backup — a password manager.
+deploy/.pb-encryption-key

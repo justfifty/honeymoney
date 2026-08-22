@@ -1688,16 +1688,54 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
 
 14. [~] **Back up PocketBase off this machine.** Found 2026-08-22: `pb_data` had **no
     `backups/` directory at all** — the entire ledger existed in exactly one place, on a
-    laptop that is off most of the week. `deploy/backup-pocketbase.ps1` now exists and has
-    taken the first backup (2 MB), pruning to the last 14.
-    ⬜ Remaining, dashboard-only: create an **R2 bucket** + a scoped *Object Read & Write*
-    API token, then PocketBase `/_/` → **Settings → Backups → S3** (endpoint
-    `https://<account-id>.r2.cloudflarestorage.com`, region `auto`, force path-style) and
-    enable auto-backup `0 3 * * *`, keep 14. R2 needs a payment method on file even on the
-    free tier. No `storage/` dir and no file fields, so **R2 file storage is not needed** —
-    backups only.
-    ⬜ Then: launch PocketBase with `--encryptionEnv=PB_ENCRYPTION_KEY`, or the R2 secret sits
-    in plaintext inside `data.db` — which is the very thing being uploaded to R2.
-    ⬜ Then: restore one zip into a throwaway `pb_data`. An untested backup isn't a backup.
+    laptop that is off most of the week. `deploy/backup-pocketbase.ps1` now exists and keeps
+    the last 14. A backup is **2.1 MB**; the live `data.db` is 1.8 MB.
+
+    ✅ **Settings encryption is ON (2026-08-23).** PocketBase starts with
+    `--encryptionEnv=PB_ENCRYPTION_KEY`, the key living in `deploy/.pb-encryption-key`
+    (gitignored) and passed to the child process as an env var rather than on the command
+    line, where anything able to list processes could read it.
+    **This had to come before R2, not after.** The S3 credentials live in PocketBase's
+    settings, settings live in `data.db`, and `data.db` is the file being uploaded — so an
+    unencrypted backup sitting in R2 contains the keys to its own bucket.
+    ⚠️ **Keep a copy of that key somewhere that is NOT a HoneyMoney backup** — a password
+    manager. Losing it loses the settings block (SMTP, S3). It does **not** lose the ledger:
+    the data itself is unencrypted and restores anywhere, which `test-restore.ps1` proves by
+    restoring without the key on purpose.
+    ↩️ To undo: delete the key file and restart PocketBase; it starts unencrypted and says so
+    in `stack.log`. A missing key file never blocks startup — a site up with plaintext
+    settings is a smaller problem than a site that is down.
+
+    ✅ **`deploy/test-restore.ps1` — an untested backup is not a backup.** Extracts the newest
+    zip into a throwaway directory, runs a **second** PocketBase against it on port 8099, and
+    checks the zip opens · `data.db` is present · PocketBase starts against it · the
+    `transactions` collection answers. The live `pb_data` is never touched and the running
+    server is never stopped, so it is safe to run while the site is serving.
+    **First run passed 2026-08-23** against `honeymoney_20260823_031659.zip`.
+
+    ⬜ **R2 — the remaining step, and it needs the dashboard.** `wrangler r2 bucket list`
+    returns *"Please enable R2 through the Cloudflare Dashboard"* (code 10042): R2 has to be
+    switched on for the account first, which is where the payment method is required. Free
+    tier is **10 GB and zero egress** — 14 backups is 30 MB, or **0.3%** of it; a year of
+    dailies is 7.7%.
+      1. Cloudflare (**Justfifty1976** account) → **R2** → enable, then create bucket
+         `honeymoney-backups`.
+      2. R2 → **Manage API tokens** → *Object Read & Write*, scoped to that bucket.
+      3. PocketBase `/_/` → **Settings → Backups → S3**: endpoint
+         `https://ecb25f751b4e93b49afe473aac4910c6.r2.cloudflarestorage.com`, region `auto`,
+         **force path-style**, then auto-backup `0 3 * * *`, keep 14.
+      4. Re-run `deploy\test-restore.ps1` against a zip pulled back **out of R2** — restoring
+         a local file only proves the local file.
+    ℹ️ No `storage/` dir and no PocketBase file fields, so **R2 file storage is not needed** —
+    backups only. Receipt images live in the `transactions.attachments` field inside
+    `data.db`, so they travel in the same zip.
+
+    ⬜ **Not git, deliberately.** `pb_data/` is gitignored and must stay that way: it is real
+    household financial data and the repo link goes to MAIC judges; SQLite is binary and
+    rewrites wholesale, so every backup would add ~2 MB to a history that can never be
+    reclaimed (~770 MB/year); and backups need to be *restorable*, not *versioned*.
+    Google Drive would work but has no S3 API, so it would need rclone or the sync client
+    running **on the laptop** — adding a moving part to the machine whose reliability is the
+    thing being designed away.
 
 _Last updated: 2026-08-22_

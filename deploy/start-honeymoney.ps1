@@ -61,10 +61,36 @@ if (Test-Path $marker) {
 }
 
 # 1) PocketBase on 127.0.0.1:8090 — localhost only, never exposed through the tunnel.
+#
+# --encryptionEnv encrypts the SETTINGS block inside data.db. That matters
+# specifically because of R2: the S3 credentials for off-machine backups live in
+# those settings, and data.db is the file being uploaded. Without this, every
+# backup sitting in the bucket contains the keys to that same bucket.
+#
+# The key is read from deploy/.pb-encryption-key (gitignored) and passed as an
+# environment variable to the child process only — never on the command line,
+# where it would be visible to anything that can list processes.
+#
+# If the key file is missing, PocketBase starts WITHOUT encryption rather than
+# not starting at all. A site that is up with unencrypted settings is a smaller
+# problem than a site that is down, and the log line says which happened.
 if (-not (Listening 8090)) {
-  Note 'PocketBase not listening -> starting'
+  $keyFile = 'C:\2026_honeymoney\deploy\.pb-encryption-key'
+  $pbArgs = @('serve', '--http=127.0.0.1:8090')
+  if (Test-Path $keyFile) {
+    $key = (Get-Content $keyFile -Raw).Trim()
+    if ($key.Length -eq 32) {
+      $env:PB_ENCRYPTION_KEY = $key
+      $pbArgs += '--encryptionEnv=PB_ENCRYPTION_KEY'
+      Note 'PocketBase not listening -> starting (settings encrypted)'
+    } else {
+      Note "PocketBase key file is $($key.Length) chars, expected 32 -> starting WITHOUT encryption"
+    }
+  } else {
+    Note 'PocketBase not listening -> starting (no key file; settings NOT encrypted)'
+  }
   Start-Process -WindowStyle Hidden -WorkingDirectory $pb `
-    -FilePath (Join-Path $pb 'pocketbase.exe') -ArgumentList 'serve','--http=127.0.0.1:8090'
+    -FilePath (Join-Path $pb 'pocketbase.exe') -ArgumentList $pbArgs
   Start-Sleep -Seconds 2
 }
 
