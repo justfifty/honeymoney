@@ -3,17 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface Goal {
-  id: string;
-  name: string;
-  target: number;
-  current: number;
-  category: string;
-  emoji: string;
-  targetDate: string | null;
-  pct: number;
-  remaining: number;
-}
+// The shape comes from lib/goals.ts rather than being restated here. This was a
+// second declaration of the same interface, and it silently went stale the
+// moment progress stopped being one number — a duplicate type is a drift waiting
+// for a reason. `import type` is erased at compile time, so no server-only code
+// follows it into the client bundle.
+import type { Goal } from "@/lib/goals";
 interface Category {
   key: string;
   emoji: string;
@@ -120,7 +115,7 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
       const res = await fetch("/api/goals", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goalId: goal.id, amount: add }),
+        body: JSON.stringify({ goalId: goal.id, manualDelta: add }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn’t add that.");
@@ -153,7 +148,12 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
             </p>
           </div>
         </div>
-        <span className={"text-lg font-bold " + (done ? "text-emerald-600" : "text-amber-600")}>{goal.pct}%</span>
+        {/* pctRaw, not pct. The bar clamps so it cannot draw past its container;
+            the NUMBER must not, because 120% of a goal is an achievement and
+            rounding it to 100% quietly takes it from whoever earned it. */}
+        <span className={"text-lg font-bold " + (done ? "text-emerald-600" : "text-amber-600")}>
+          {goal.pctRaw}%
+        </span>
       </div>
 
       {/* progress bar with 25/50/75 milestone ticks */}
@@ -167,9 +167,31 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
         ))}
       </div>
 
+      {/* The reconciliation line. "RM8,000 tracked + RM2,000 you added manually"
+          is a sentence a household can check against their own ledger; a single
+          RM10,000 is one they have to take on trust. Shown whenever BOTH halves
+          exist — a goal funded entirely one way needs no breakdown. */}
+      {goal.tracked > 0 && goal.manual > 0 && (
+        <p className="mt-2 text-xs text-zinc-500">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{rm(goal.tracked)}</span>{" "}
+          tracked from your records +{" "}
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">{rm(goal.manual)}</span>{" "}
+          you added manually
+        </p>
+      )}
+      {goal.tracked === 0 && goal.manual > 0 && (
+        <p className="mt-2 text-xs text-zinc-500">
+          All {rm(goal.manual)} added manually — no records are linked to this goal yet.
+          {goal.manualMigrated && (
+            <span className="text-zinc-400"> (carried over from before goals tracked records)</span>
+          )}
+        </p>
+      )}
+
       {done ? (
         <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
           🎉 You did it — target reached. You earned this by saving.
+          {goal.pctRaw > 100 && <> You are {goal.pctRaw - 100}% past it.</>}
         </p>
       ) : (
         <p className="mt-2 text-xs text-zinc-500">
@@ -178,25 +200,37 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
         </p>
       )}
 
-      {canWrite && !done && (
-        <div className="mt-3 flex items-center gap-2">
-          <input
-            type="number"
-            inputMode="decimal"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Add RM…"
-            className="w-28 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-          />
-          <button
-            type="button"
-            onClick={contribute}
-            disabled={busy || !(parseFloat(amount) > 0)}
-            className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
-          >
-            {busy ? "…" : "Add"}
-          </button>
-          {err && <span className="text-xs text-red-600">{err}</span>}
+      {/* Adding here is explicitly the MANUAL half, and the control says so.
+          The old label was "Add RM…", which gave a user no way to know their
+          number would sit beside tracked progress and be indistinguishable from
+          it. Note this stays available after the target is reached — passing a
+          goal is a success state, not a reason to disable the controls. */}
+      {canWrite && (
+        <div className="mt-3">
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="RM…"
+              aria-label={`Add savings you made outside the app toward ${goal.name}`}
+              className="w-28 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            />
+            <button
+              type="button"
+              onClick={contribute}
+              disabled={busy || !(parseFloat(amount) > 0)}
+              className="min-h-11 rounded-lg bg-amber-500 px-3 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+            >
+              {busy ? "…" : "Add manually"}
+            </button>
+            {err && <span className="text-xs text-red-600">{err}</span>}
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            For savings that happened outside HoneyMoney. Money you record against this goal is
+            counted automatically.
+          </p>
         </div>
       )}
     </div>

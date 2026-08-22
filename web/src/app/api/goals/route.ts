@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/config";
-import { createGoal, contributeGoal } from "@/lib/goals";
+import { createGoal, adjustGoalManual, updateGoal, deleteGoal } from "@/lib/goals";
 import { apiError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
@@ -29,12 +29,23 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/goals — contribute toward a goal.
+// PATCH /api/goals — edit a goal, or adjust its MANUAL half.
+//
+// The two are separate operations on purpose. Editing a target must not touch
+// progress, and adding a manual adjustment must not look like tracked progress;
+// one endpoint that took "the new numbers" would make both mistakes easy.
 export async function PATCH(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
-  let body: { goalId?: string; amount?: number };
+  let body: {
+    goalId?: string;
+    /** Adjust the manual half by this much. May be negative to correct it. */
+    manualDelta?: number;
+    name?: string;
+    target?: number;
+    targetDate?: string | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -42,7 +53,35 @@ export async function PATCH(request: Request) {
   }
   if (!body.goalId) return NextResponse.json({ error: "goalId is required" }, { status: 400 });
   try {
-    const result = await contributeGoal(body.goalId, Number(body.amount));
+    if (body.manualDelta !== undefined) {
+      const result = await adjustGoalManual(body.goalId, Number(body.manualDelta));
+      return NextResponse.json({ ok: true, ...result });
+    }
+    await updateGoal(body.goalId, {
+      name: body.name,
+      target: body.target,
+      targetDate: body.targetDate,
+    });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return apiError(err);
+  }
+}
+
+// DELETE /api/goals — remove a goal. Its records are UNLINKED, never deleted.
+export async function DELETE(request: Request) {
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: "Database not configured" }, { status: 503 });
+  }
+  let body: { goalId?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  if (!body.goalId) return NextResponse.json({ error: "goalId is required" }, { status: 400 });
+  try {
+    const result = await deleteGoal(body.goalId);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return apiError(err);
