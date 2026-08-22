@@ -1125,30 +1125,64 @@ decisions + one conflict with a standing constraint** `[Technical][Scalability]`
 - *Goals' Dashboard and chart surfaces are built in Task 7 — but design this schema now, because
   the Sankey needs somewhere for savings transfers to terminate.*
 
-**7 · Task 11 — Chart names and explanations: one source, used everywhere** `[Technical][Commercial]`
-- [ ] The Gallery's names and explanations are the strongest writing in the app and exist
-      **only there**, while Dashboard and demo use their own labels. Extract into **one shared
-      chart registry**: stable id, display name, one-line description, the longer "when to use
-      this", icon.
-- [ ] Every surface consumes it — Dashboard, chart switcher, demo showcase, settings,
-      translation catalogue. A chart's name is defined in exactly one place, or they drift
+**7 · Task 11 — Chart names and explanations: one source, used everywhere** — ✅ **done 2026-08-22** `[Technical][Commercial]`
+- [x] **`lib/charts.ts`** — stable id, name, one-line description, the longer "when to use
+      this", icon and gallery shot. `/graph`, `/gallery` and the demo all read from it. The
+      registry deliberately owns names and prose only, not how to draw anything: a registry
+      that also owned layout would drag every chart library into every bundle that merely
+      wants a label.
+- 🛑 **The drift was not the one the brief predicted, and what it hid was worse.** `/graph`
+      did *not* ship untranslated labels — it rendered `mode.<id>` keys correctly, and the
+      `label` field beside them in `MODES` was **dead English nothing had ever read** (a wrong
+      value in it would have looked fine forever). The damage was inside the translations,
+      which nobody had reason to compare side by side:
+      · **zh / zh-Hant named the TREEMAP "树状图" / "樹狀圖" — literally "tree diagram", the
+      name of a different chart in the same switcher.** A Chinese user picking a chart got the
+      wrong one. Now 矩形树图 / 矩形樹圖, the standard terms.
+      · **Tamil had the identical collision** — மரவரைபடம் (tree-diagram) for treemap against
+      மரம் (tree). Now கட்டப் படம்.
+      · **"Organic" was translated by the word, not the meaning, and landed on the FOOD sense
+      in three languages** — 有机布局 · 有機圖 · இயற்கை all read "organic produce". Translated
+      by meaning now (网络图 · 網絡圖 · வலைப் படம் · Rangkaian · नेटवर्क). English keeps
+      "Organic" because the Gallery's wording wins; `charts.ts` records why it is still the
+      weakest name in the set and what a better one would be.
+      **This is what a registry is for: the names only look wrong once something forces them
+      into one list.**
+- [x] Every surface consumes it. A chart's name is defined in exactly one place, or they drift
       apart again within a few releases. **The Gallery's existing names win**; change the
       other surface.
-- [ ] Reconcile the Task 7.4 names (Sankey · Progress Bars · Tree Diagram · Treemap · Node-Link ·
-      Horizontal Bar · Summary Metrics) against the Gallery and **use the Gallery's wording** —
-      those came from the change request, not the Gallery. Report any chart in 7.4 with no
-      Gallery entry, or a Gallery type absent from 7.4, rather than resolving it silently.
-      The *priority order* stands regardless of what they end up being called.
-- [ ] Make the one-line description reachable from every chart header — **most of all on the
-      Sankey**, the default view and the least familiar diagram type to a general audience.
-      A user meeting it cold with no explanation bounces off the app's strongest visualisation.
-- [ ] Registry entries are **translation keys, not literal strings**. Flag descriptions that
-      don't render naturally in BM / Chinese / Tamil instead of shipping a literal translation.
-- [ ] **The demo is missing the Graph Showcase entirely** — reuse the Gallery component and the
-      registry (never a demo-specific copy — that recreates the drift this task exists to fix),
-      all types rendering on the Task 7.5 seed data, explanations included, **works with no
-      login**, **deep-linkable per chart**, chart libraries lazy-loaded per view rather than
-      shipping all seven renderers up front. Test on a 375px phone over mobile data.
+- 🛑 **Reconciled, and it differs in BOTH directions** (written into `charts.ts`, not silently
+      absorbed): `Progress Bars` → the Gallery's **Budget** (it is budget-vs-actual on a shared
+      RM scale, not a progress meter) · `Node-Link Diagram` → the Gallery's **Organic** ·
+      Sankey, Tree, Treemap agree. **`Horizontal Bar Chart` and `Summary Metrics` have no
+      Gallery entry AND no renderer** — 7.4 lists Horizontal Bar separately from Progress Bars,
+      so it is a chart that does not exist yet, and Summary Metrics is arguably a stat row
+      rather than a chart at all. **The Gallery ships a seventh 7.4 omits: `Flow`**, live today
+      at `/graph?mode=flow`. The priority order stands and `CHART_ORDER` follows it.
+- [x] The explanation travels with the chart — a disclosure on `/graph`, **open by default on
+      the Sankey** for exactly the reason the brief gives, and in the showcase caption.
+- [x] Registry entries are **keys, never literal strings** — and they point at the *existing*
+      `mode.*`, `g.caption.*` and `gallery.*.b` keys rather than a new set, which would have
+      been the very drift this task exists to remove.
+- [x] **The demo's missing Graph Showcase** is now `app/GraphShowcase.tsx`, the *same*
+      component `/gallery` uses — not a copy. No login, explanations included, **deep-linkable
+      per chart** via the URL hash (`/demo#chart=treemap`), which survives a reload and needs
+      no server, so it works from the static snapshot with the origin machine off.
+      `replaceState` rather than assigning `location.hash`, or Back would walk the user through
+      every chart they had looked at instead of leaving the page.
+- ⬜ **Live rendering over the demo's own ledger waits on Task 7.5's seed data**, which does not
+      exist yet; the showcase shows the Gallery's figures, which is what survives with no
+      database. The registry is where the live version drops in — the names and explanations
+      already come from one place. *(Lazy-loading per renderer belongs with that, not with
+      static images.)*
+- 🐛 **Two layout bugs, found by measuring at 375px rather than looking.** The demo's column was
+      missing `w-full`: `mx-auto` on a flex item in a **column** parent suppresses cross-axis
+      stretch, so it sized to *fit-content*, any horizontally-scrolling child drove its
+      min-content up, and `max-w-lg` capped the blow-out at exactly **512px** — which is why a
+      375px phone scrolled sideways by 137px regardless of what was actually too wide.
+      `min-w-0` does **not** fix that; the size was never coming from the automatic minimum.
+      **The Dashboard tab was already overflowing to 401px before any of this work existed.**
+      All four demo tabs now measure 375 at 375.
 
 **8 · Task 7 — Dashboard** `[Technical][Relevance]`
 > **Do not start before 5, 1, 6, 8, 9 and 11 have landed.**
