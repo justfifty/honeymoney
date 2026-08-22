@@ -66,6 +66,17 @@ function monthsAgo(d: Date, asOf: Date): number {
 }
 
 export interface HScoreResult extends HScore {
+  /**
+   * Records in the window that no criterion can see, because they have no
+   * bucket. Deliberately a COUNT on the result rather than a field on
+   * ScoreInputs: nothing scores it, so putting it in the inputs would invite a
+   * future criterion to start reading it and change the score by accident.
+   *
+   * It exists because the brief is right that uncategorised records must not
+   * silently vanish — a household that logged forty spends and saw no movement
+   * deserves to know the app could not see them.
+   */
+  unscoredCount: number;
   /** RM/month more into savings that would reach the next band, when that's the lever. */
   savingsGap: number | null;
   /** Deterministic "what moved your score" — never LLM-written. */
@@ -95,6 +106,8 @@ export async function getHScore(
   ]);
 
   const spend = txns.filter((t) => !t.voided && t.direction !== "in");
+  // No bucket ⇒ no tier ⇒ invisible to every criterion. Counted, never scored.
+  const unscoredCount = spend.filter((t) => !t.wallet_node).length;
 
   // ── income ────────────────────────────────────────────────────────────────
   // Gross is what the household declared. Net is gross minus statutory
@@ -217,6 +230,7 @@ export async function getHScore(
     savingsGap: savingsGapToNextBand(inputs, scored.score),
     movement: describeMovement({ ...scored, band: nextState.band }, previous),
     inputs,
+    unscoredCount,
   };
 
   if (opts.persist !== false) {
@@ -279,6 +293,28 @@ interface SnapshotRow {
   created: string;
 }
 
+// Snapshots are stored as JSON keyed by ComponentKey, so renaming a component in
+// code silently orphans every row written before the rename: describeMovement
+// matches by key, finds no previous entry, and reports "what moved" against a
+// component that appears to have sprung into existence. That reads to the user as
+// a real change in their finances when nothing changed at all.
+//
+// `privacyDiscipline` became `personalCap` on 2026-08-22 (Task 8) because the old
+// name described neither what it measures nor what the user does. Old rows are
+// mapped on READ rather than rewritten in place: a snapshot is a record of what
+// was shown on a given day, and editing history to match today's vocabulary is
+// exactly what the audit ledger exists to prevent.
+const LEGACY_COMPONENT_KEYS: Record<string, string> = {
+  privacyDiscipline: "personalCap",
+};
+
+function migrateSubScoreKeys(rows: HScore["subScores"]): HScore["subScores"] {
+  return rows.map((r) => {
+    const renamed = LEGACY_COMPONENT_KEYS[r.key as string];
+    return renamed ? { ...r, key: renamed as typeof r.key } : r;
+  });
+}
+
 /** The most recent snapshot from a PREVIOUS day — today's would compare to itself. */
 async function loadPreviousSnapshot(tenantId: string, asOf: Date): Promise<HScore | null> {
   try {
@@ -294,7 +330,7 @@ async function loadPreviousSnapshot(tenantId: string, asOf: Date): Promise<HScor
       score: Number(row.score),
       rawBand: row.band as HScore["rawBand"],
       band: row.band as HScore["band"],
-      subScores: row.sub_scores ?? [],
+      subScores: migrateSubScoreKeys(row.sub_scores ?? []),
       confidence: { ok: true, missing: [], txns30d: 0 },
     };
   } catch {

@@ -21,6 +21,7 @@ import {
   type ComponentKey,
 } from "@/lib/hscore";
 import { categoryFor } from "@/lib/directory";
+import { EXPLAIN, METHODOLOGY, isThin, leverFor } from "@/lib/hscoreExplain";
 import DirectoryView from "./DirectoryView";
 
 type Tr = (k: string, vars?: Record<string, string | number>) => string;
@@ -100,18 +101,108 @@ function ProvisionalNotice({ hscore, tr }: { hscore: HScore; tr: Tr }) {
 // ── 2. the five bars ────────────────────────────────────────────────────────
 
 function measureLabel(s: SubScore, tr: Tr): string {
-  if (s.key === "privacyDiscipline") return tr("hscore.c.monthsOf3", { n: Math.round(s.measure) });
+  if (s.key === "personalCap") return tr("hscore.c.monthsOf3", { n: Math.round(s.measure) });
   if (s.key === "emergencyBuffer") return tr("hscore.c.months", { n: Math.round(s.measure * 10) / 10 });
   return `${Math.round(s.measure * 100)}%`;
 }
 
-function SubScoreBars({ subScores, tr }: { subScores: SubScore[]; tr: Tr }) {
+const rmShort = (n: number) => `RM${Math.round(n).toLocaleString("en-MY")}`;
+
+// Level two of the tap-through: the sub-score, its weight, the actual figures,
+// and the arithmetic on one line. Level three — the records that produced it — is
+// the link at the bottom, and it is what turns the score from an opinion into
+// something checkable.
+function CriterionDetail({
+  s,
+  inputs,
+  tr,
+}: {
+  s: SubScore;
+  inputs: ScoreInputs;
+  tr: Tr;
+}) {
+  const e = EXPLAIN[s.key];
+  const parts = e.parts(inputs);
+  const lever = leverFor(s, inputs);
+  const NOTE_STYLE: Record<string, string> = {
+    counts: "text-zinc-500",
+    ignored: "text-zinc-400",
+    // Amber, not red: these are things worth knowing about how the number is
+    // built, not errors the user made.
+    caution: "text-amber-700 dark:text-amber-400",
+  };
+
+  return (
+    <div className="mt-2 rounded-xl bg-zinc-50 p-3 dark:bg-zinc-900/60">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+        {tr("hscore.detail.weight", { n: e.weight })}
+      </p>
+
+      {/* The arithmetic, in one line, from the same inputs the ring was scored
+          from. If this ever disagrees with the bar above it, hscoreExplain.ts is
+          wrong — it computes nothing of its own. */}
+      {parts && parts.bottom > 0 && (
+        <p className="mt-1.5 font-mono text-xs text-zinc-700 dark:text-zinc-300">
+          {tr("hscore.detail.arithmetic", {
+            top: rmShort(parts.top),
+            bottom: rmShort(parts.bottom),
+            result: `${Math.round((parts.top / parts.bottom) * 100)}%`,
+          })}
+          {" → "}
+          {s.points}/{s.max}
+        </p>
+      )}
+
+      {e.notes.map((n) => (
+        <p key={n.key} className={`mt-2 text-xs leading-relaxed ${NOTE_STYLE[n.kind]}`}>
+          <span className="font-medium">
+            {tr(`hscore.detail.${n.kind}`)}
+            {" · "}
+          </span>
+          {tr(n.key, { days: METHODOLOGY.windowDays, months: METHODOLOGY.amortiseMonths })}
+        </p>
+      ))}
+
+      {lever && (
+        <p className="mt-3 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+          <span className="font-medium">{tr("hscore.detail.lever")} · </span>
+          {tr(lever.key, lever.vars)}
+        </p>
+      )}
+
+      {/* Level three. A criterion with no records behind it says so rather than
+          offering a link to an empty list — for debt and the buffer that is the
+          finding, not an omission. */}
+      {e.recordsHref ? (
+        <a
+          href={e.recordsHref}
+          className="mt-3 inline-flex min-h-11 items-center text-xs font-medium text-amber-700 hover:underline"
+        >
+          {tr("hscore.detail.records")} →
+        </a>
+      ) : (
+        <p className="mt-3 text-xs italic text-zinc-400">{tr("hscore.detail.noRecords")}</p>
+      )}
+    </div>
+  );
+}
+
+function SubScoreBars({
+  subScores,
+  inputs,
+  tr,
+}: {
+  subScores: SubScore[];
+  inputs: ScoreInputs;
+  tr: Tr;
+}) {
   return (
     <section className="mt-6">
       <h3 className="text-sm font-semibold">{tr("hscore.sub.title")}</h3>
       <ul className="mt-3 space-y-3">
         {subScores.map((s) => {
           const pct = s.max > 0 ? (s.points / s.max) * 100 : 0;
+          const thin = isThin(s.key, inputs);
           return (
             <li key={s.key}>
               <div className="flex items-baseline justify-between gap-2 text-sm">
@@ -121,26 +212,75 @@ function SubScoreBars({ subScores, tr }: { subScores: SubScore[]; tr: Tr }) {
                 </span>
               </div>
               <div
-                className="mt-1.5 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800"
+                className={`mt-1.5 h-2 overflow-hidden rounded-full ${
+                  thin
+                    ? "bg-[repeating-linear-gradient(45deg,#e4e4e7_0_4px,transparent_4px_8px)] dark:bg-[repeating-linear-gradient(45deg,#3f3f46_0_4px,transparent_4px_8px)]"
+                    : "bg-zinc-200 dark:bg-zinc-800"
+                }`}
                 role="meter"
                 aria-valuenow={s.points}
                 aria-valuemin={0}
                 aria-valuemax={s.max}
                 aria-label={tr(`hscore.c.${s.key}`)}
               >
+                {/* A criterion resting on no data is HATCHED and grey, not a
+                    short amber bar. The brief requires "low because we don't
+                    know" to be visually distinct from "low because of your
+                    finances", and colour alone would not survive greyscale — so
+                    the distinction is a texture change as well as a hue. */}
                 <div
-                  className="h-full rounded-full bg-amber-500"
+                  className={`h-full rounded-full ${thin ? "bg-zinc-400/50" : "bg-amber-500"}`}
                   style={{ width: `${pct}%`, transition: "width 600ms ease-out" }}
                 />
               </div>
               <p className="mt-1 text-xs text-zinc-400">
                 {tr(`hscore.c.${s.key}.hint`)} · {measureLabel(s, tr)}
               </p>
+
+              {thin && (
+                <p className="mt-1.5 rounded-lg bg-zinc-100 px-2 py-1.5 text-[11px] leading-relaxed text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  <span className="font-medium">{tr("hscore.thin.badge")} · </span>
+                  {tr("hscore.thin.body")}
+                </p>
+              )}
+
+              {/* <details> rather than a modal: it keeps the tap-through on one
+                  page, works with no JavaScript, and a screen reader announces
+                  it as expandable without any aria wiring of ours. */}
+              <details className="mt-1">
+                <summary className="inline-flex min-h-11 cursor-pointer items-center text-xs font-medium text-amber-700 hover:underline">
+                  {tr("hscore.detail.open")}
+                </summary>
+                <CriterionDetail s={s} inputs={inputs} tr={tr} />
+              </details>
             </li>
           );
         })}
       </ul>
     </section>
+  );
+}
+
+// The weights are ours, so they are shown rather than implied.
+function Methodology({ tr, txns30d }: { tr: Tr; txns30d: number }) {
+  return (
+    <details className="mt-6">
+      <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold hover:underline">
+        {tr("hscore.method.title")}
+      </summary>
+      <div className="mt-2 rounded-xl bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-600 dark:bg-zinc-900/60 dark:text-zinc-300">
+        <p>
+          {tr("hscore.method.body", {
+            days: METHODOLOGY.windowDays,
+            months: METHODOLOGY.amortiseMonths,
+          })}
+        </p>
+        <p className="mt-2 text-zinc-400">
+          {tr("hscore.method.period", { days: METHODOLOGY.windowDays, n: txns30d })}
+        </p>
+        <p className="mt-2 italic text-zinc-400">{tr("hscore.method.opinion")}</p>
+      </div>
+    </details>
   );
 }
 
@@ -381,6 +521,7 @@ export default function HScoreView({
   savingsGap,
   inputs,
   streakMonths,
+  unscoredCount = 0,
   tr,
 }: {
   hscore: HScore;
@@ -389,6 +530,8 @@ export default function HScoreView({
   savingsGap: number | null;
   inputs: ScoreInputs;
   streakMonths: number;
+  /** Records no criterion can see, because they have no bucket. */
+  unscoredCount?: number;
   tr: Tr;
 }) {
   const [category, setCategory] = useState<string | null>(null);
@@ -404,8 +547,30 @@ export default function HScoreView({
       <ScoreRing hscore={hscore} tr={tr} />
       <ProvisionalNotice hscore={hscore} tr={tr} />
 
-      <SubScoreBars subScores={hscore.subScores} tr={tr} />
+      {/* Records the score could not see. The brief: uncategorised and Others
+          must not silently vanish — a household that logged forty spends and
+          saw no movement deserves to know why, with a route to fix it. Placed
+          ABOVE the bars, because it changes how every bar below should be read. */}
+      {unscoredCount > 0 && (
+        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs dark:border-amber-900 dark:bg-amber-950/20">
+          <p className="font-medium text-amber-900 dark:text-amber-200">
+            {tr("hscore.unscored.title", { n: unscoredCount })}
+          </p>
+          <p className="mt-1 leading-relaxed text-amber-800 dark:text-amber-300">
+            {tr("hscore.unscored.body")}
+          </p>
+          <a
+            href="/records"
+            className="mt-2 inline-flex min-h-11 items-center font-medium text-amber-700 hover:underline dark:text-amber-300"
+          >
+            {tr("hscore.unscored.cta")} →
+          </a>
+        </div>
+      )}
+
+      <SubScoreBars subScores={hscore.subScores} inputs={inputs} tr={tr} />
       {hscore.confidence.ok && <WhatMoved moved={movement} tr={tr} />}
+      <Methodology tr={tr} txns30d={hscore.confidence.txns30d} />
 
       {/* Tier engagement only once the score is trustworthy. Firing the Thriving
           stars under a greyed ring that has just said "we don't have enough to

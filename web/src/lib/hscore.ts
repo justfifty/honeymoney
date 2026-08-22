@@ -24,7 +24,7 @@
 
 export type Band = "building" | "steady" | "strong" | "thriving";
 
-export type ComponentKey = "savingsRate" | "essentialBurden" | "debtService" | "emergencyBuffer" | "privacyDiscipline";
+export type ComponentKey = "savingsRate" | "essentialBurden" | "debtService" | "emergencyBuffer" | "personalCap";
 
 export const WINDOW_DAYS = 90;
 export const AMORTISE_MONTHS = 12;
@@ -103,7 +103,7 @@ const CURVES: Record<ComponentKey, { max: number; curve: Curve; higherIsBetter: 
     ],
   },
   // months (of the trailing 3) the user stayed within their OWN privacy cap
-  privacyDiscipline: {
+  personalCap: {
     max: 5,
     higherIsBetter: true,
     curve: [
@@ -192,7 +192,7 @@ export function computeSubScores(i: ScoreInputs): SubScore[] {
     sub("essentialBurden", safeDiv(i.mustPaidMonthly, i.netIncomeMonthly)),
     sub("debtService", safeDiv(i.debtRepaymentsMonthly, i.grossIncomeMonthly)),
     sub("emergencyBuffer", safeDiv(i.liquidSavings, i.mustPaidMonthly), false),
-    sub("privacyDiscipline", monthsWithinCap, false),
+    sub("personalCap", monthsWithinCap, false),
   ];
 }
 

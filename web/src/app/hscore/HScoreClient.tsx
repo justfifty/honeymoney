@@ -17,6 +17,7 @@ export default function HScoreClient({
   savingsGap,
   inputs,
   streakMonths,
+  unscoredCount,
 }: {
   lang: Locale;
   hscore: HScore;
@@ -24,6 +25,7 @@ export default function HScoreClient({
   savingsGap: number | null;
   inputs: ScoreInputs;
   streakMonths: number;
+  unscoredCount?: number;
 }) {
   const tr = useCallback(
     (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars),
@@ -37,6 +39,7 @@ export default function HScoreClient({
       savingsGap={savingsGap}
       inputs={inputs}
       streakMonths={streakMonths}
+      unscoredCount={unscoredCount}
       tr={tr}
     />
   );

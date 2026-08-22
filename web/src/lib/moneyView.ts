@@ -77,7 +77,7 @@ export interface MoneyViewOpts {
 //
 // Tier 3 is where the privacy promise lives: personal money, bounded by the
 // user's OWN cap rather than policed by anyone else (see lib/privacy.ts and the
-// privacyDiscipline component in lib/hscore.ts).
+// personalCap component in lib/hscore.ts).
 
 export interface CategoryMeta {
   label: string;

@@ -26,7 +26,7 @@ export interface CategoryDef {
   /** i18n key for the category name. */
   labelKey: string;
   /** The weakest sub-score that routes a goal here. */
-  addresses: "savingsRate" | "essentialBurden" | "debtService" | "emergencyBuffer" | "privacyDiscipline";
+  addresses: "savingsRate" | "essentialBurden" | "debtService" | "emergencyBuffer" | "personalCap";
 }
 
 /**
@@ -40,7 +40,7 @@ export const CATEGORIES: CategoryDef[] = [
   { key: "unitTrust", labelKey: "dir.cat.unitTrust", addresses: "savingsRate" },
   { key: "debtHelp", labelKey: "dir.cat.debtHelp", addresses: "debtService" },
   { key: "takaful", labelKey: "dir.cat.takaful", addresses: "essentialBurden" },
-  // Deliberately no category for privacyDiscipline: staying inside your own
+  // Deliberately no category for personalCap: staying inside your own
   // cap is a habit, and there is no product that sells it to you. The goal
   // still shows on the H-Score tab; it just has nowhere to route, which is
   // the honest outcome rather than a manufactured one.

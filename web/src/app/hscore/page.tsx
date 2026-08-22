@@ -54,6 +54,7 @@ export default async function HScorePage() {
         savingsGap={result.savingsGap}
         inputs={result.inputs}
         streakMonths={streakMonths}
+        unscoredCount={result.unscoredCount}
       />
     </main>
   );
