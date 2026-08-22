@@ -39,6 +39,44 @@ if (-not (Listening 8090)) {
 }
 
 # 2) Next.js production server on port 3000.
+#
+# A running `next start` holds the build it booted with, so `npm run build`
+# alone changes nothing a visitor sees: the old server keeps serving the old
+# pages. Found the hard way on 2026-08-22 — the site returned 200 throughout and
+# the landing page still rendered a button that had been deleted an hour before.
+#
+# It cannot be fixed from an ordinary shell either. This task runs elevated
+# (RunLevel Highest) and the app inherits that, so a hand-run stop-honeymoney.ps1
+# gets "Access is denied" on every Stop-Process — and says nothing, because the
+# script is SilentlyContinue. A deploy therefore *appears* to succeed.
+#
+# So the restart belongs here, where the privileges already are: if the build on
+# disk is newer than the process serving it, that process is stale.
+function AppProcess {
+  $c = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+  if (-not $c) { return $null }
+  Get-CimInstance Win32_Process -Filter ("ProcessId=" + $c.OwningProcess) -ErrorAction SilentlyContinue
+}
+
+$app     = AppProcess
+$buildId = Join-Path $web '.next\BUILD_ID'
+if ($app -and (Test-Path $buildId)) {
+  $built = (Get-Item $buildId).LastWriteTime
+  # The 60-second settling window matters: `next build` writes BUILD_ID while it
+  # is still emitting chunks, and restarting into a half-written .next serves a
+  # broken app. A deploy is never in such a hurry that a minute costs anything.
+  if ($built -gt $app.CreationDate -and $built -lt (Get-Date).AddSeconds(-60)) {
+    Note ("stale build: server up since {0:HH:mm:ss}, build written {1:HH:mm:ss} -> restarting" -f $app.CreationDate, $built)
+    # The npm.cmd wrapper goes first, or it can outlive the server it launched.
+    $parent = Get-CimInstance Win32_Process -Filter ("ProcessId=" + $app.ParentProcessId) -ErrorAction SilentlyContinue
+    if ($parent -and $parent.Name -match '^(npm|node|cmd)') {
+      Stop-Process -Id $parent.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Stop-Process -Id $app.ProcessId -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+  }
+}
+
 if (-not (Listening 3000)) {
   Note 'app not listening -> starting'
   Start-Process -WindowStyle Hidden -WorkingDirectory $web `
