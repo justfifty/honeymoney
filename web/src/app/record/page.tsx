@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 // scores lives one tab away.
 //
 // The capture component itself is the one the dashboard already used
-// (dashboard/AddTransaction, wrapping graph/SpendCapture): voice, receipt, photo
+// (dashboard/AddTransaction, wrapping graph/SpendCapture): receipt, photo
 // and paste, on-device by default and AI-assisted when a provider is set. Moving
 // it to its own route is a navigation change, not a second implementation.
 export default async function RecordPage() {

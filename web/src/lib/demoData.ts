@@ -55,7 +55,7 @@ export interface DemoBucket {
   ownerId?: string;
 }
 
-export type CaptureSource = "text" | "voice" | "receipt" | "statement";
+export type CaptureSource = "text" | "receipt" | "statement";
 
 export interface DemoTxn {
   id: string;
@@ -184,7 +184,7 @@ interface Plan {
   raya?: { bucket: string; total: number; vendors: string[] };
 }
 
-const SOURCES: CaptureSource[] = ["text", "receipt", "voice", "statement"];
+const SOURCES: CaptureSource[] = ["text", "receipt", "statement"];
 
 function contributor(id: string, name: string): DemoContributor {
   return { id, name, initial: name.slice(0, 1).toUpperCase() };

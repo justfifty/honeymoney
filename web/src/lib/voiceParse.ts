@@ -1,4 +1,10 @@
-// On-device voice parsing — the zero-token path.
+// On-device parsing of a free-text spend — the zero-token path.
+//
+// The module keeps the name `voiceParse` from when speech was one of its
+// callers. Speech was removed on 2026-08-22 (NEXT.md §6.6 Task 3) and this is
+// now purely a TEXT parser, with two live callers: the landing page's try-it
+// box (what a visitor types) and `parseReceiptText` (what tesseract OCRs off a
+// receipt). Nothing here ever touched a microphone — it takes a string.
 //
 // The old parser only ever returned a number for non-English speakers, and the
 // reason was a single character class. `[a-z]` and `[^a-z'&\-\s]` cannot match
@@ -451,21 +457,4 @@ export function parseReceiptText(text: string, knownVendors: string[] = []): Par
   if (occurredAt) confidence += 0.1;
 
   return { vendor, amount, currency, occurredAt, confidence: Math.min(1, confidence) };
-}
-
-// Score an ASR alternative so we can pick the best of the five the engine
-// returns. The old code picked whichever alternative contained a number, with no
-// regard for whether the merchant survived — which actively selected FOR
-// number-only readings. This rewards a transcript that yields both.
-export function scoreAlternative(transcript: string, knownVendors: string[] = []): number {
-  const p = parseVoiceLocal(transcript, knownVendors);
-  let score = 0;
-  if (p.amount !== undefined) score += 2;
-  if (p.vendor) score += 2;
-  // A vendor we actually recognise is a strong signal the ASR heard it right.
-  if (p.vendor && [...KNOWN_VENDORS, ...knownVendors].some((v) => v.toLowerCase() === p.vendor?.toLowerCase())) {
-    score += 3;
-  }
-  if (p.currency) score += 1;
-  return score;
 }

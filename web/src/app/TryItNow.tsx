@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import { parseVoiceLocal } from "@/lib/voiceParse";
 import { symbolOf } from "@/lib/format";
 import { t as translate, type Locale } from "@/lib/i18n";
-import { useDictation } from "./useDictation";
 
 // The three-second hook.
 //
@@ -60,7 +59,6 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
 
   const [text, setText] = useState("");
   const [result, setResult] = useState<Result | null>(null);
-  const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const EXAMPLES = [tr("try.eg1"), tr("try.eg2"), tr("try.eg3")];
@@ -93,20 +91,8 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
 
   function change(value: string) {
     setText(value);
-    setVoiceNote(null);
     run(value);
   }
-
-  const { listening, heard, supported: micOk, toggle: speak } = useDictation({
-    lang,
-    onStart: () => setVoiceNote(tr("try.listening")),
-    onFinal: (transcript) => {
-      setVoiceNote(null);
-      setText(transcript);
-      run(transcript);
-    },
-    onError: (message) => setVoiceNote(message),
-  });
 
   const style = result ? BUCKET_STYLE[result.bucket] : null;
   const sym = result ? symbolOf(result.currency) : "";
@@ -127,29 +113,13 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
         <input
           id="try-it"
           ref={inputRef}
-          value={listening && heard ? heard : text}
+          value={text}
           onChange={(e) => change(e.target.value)}
           placeholder={tr("try.placeholder")}
           autoComplete="off"
           enterKeyHint="done"
           className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-inherit outline-none placeholder:text-zinc-400 sm:text-lg"
         />
-        {micOk && (
-          <button
-            type="button"
-            onClick={speak}
-            aria-pressed={listening}
-            aria-label={listening ? tr("try.stop") : tr("try.speak")}
-            className={
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg transition " +
-              (listening
-                ? "animate-pulse bg-rose-500 text-white"
-                : "bg-amber-100 text-amber-800 hover:bg-amber-200")
-            }
-          >
-            {listening ? "⏹" : "🎤"}
-          </button>
-        )}
       </div>
 
       {/* One tap to a result — the actual three seconds. */}
@@ -169,8 +139,6 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
           </button>
         ))}
       </div>
-
-      {voiceNote && <p className="mt-2 text-[11px] text-amber-700">{voiceNote}</p>}
 
       {/* The payoff. aria-live so it is announced, not just drawn. */}
       <div aria-live="polite">

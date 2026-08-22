@@ -16,6 +16,9 @@
 # next.js
 /.next/
 /out/
+# throwaway builds. next.config.ts reads NEXT_DIST_DIR so a build that only
+# checks a change compiles doesn't overwrite the one honeymoney.app is serving.
+/.next-*/
 
 # production
 /build

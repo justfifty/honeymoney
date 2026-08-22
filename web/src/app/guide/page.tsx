@@ -34,7 +34,7 @@ export default async function GuidePage() {
           <li><b>{tr("guide.howto.1.label")}</b> — {tr("guide.howto.1.body")} <Link className="text-amber-600 hover:underline" href="/graph">/graph</Link> {tr("guide.howto.1.body2")}</li>
           <li><b>{tr("guide.howto.2.label")}</b> — {tr("guide.howto.2.body")} <i>Sankey</i> ({tr("guide.howto.2.sankeyDesc")}), <i>Treemap</i> ({tr("guide.howto.2.treemapDesc")}), <i>Tree</i>, <i>Organic</i> {tr("guide.howto.2.networkLabel")}, <i>Budget</i> {tr("guide.howto.2.barsLabel")}, {tr("guide.howto.2.and")} <i>Flow</i>.</li>
           <li><b>{tr("guide.howto.3.label")}</b> — {tr("guide.howto.3.body")} <b>{tr("guide.howto.3.person")}</b> {tr("guide.howto.3.body2")}</li>
-          <li><b>{tr("guide.howto.4.label")}</b> — <b>➕ {tr("guide.howto.4.addPanel")}</b> {tr("guide.howto.4.body")} <b>{tr("guide.howto.4.type")} 🎤 {tr("guide.howto.4.speak")} 📷 {tr("guide.howto.4.scan")}</b> — {tr("guide.howto.4.body2")}</li>
+          <li><b>{tr("guide.howto.4.label")}</b> — <b>➕ {tr("guide.howto.4.addPanel")}</b> {tr("guide.howto.4.body")} <b>{tr("guide.howto.4.type")} 📷 {tr("guide.howto.4.scan")}</b> — {tr("guide.howto.4.body2")}</li>
           <li><b>{tr("guide.howto.5.label")}</b> — {tr("guide.howto.5.body")} <i>{tr("guide.howto.5.needs")}</i>, <i>{tr("guide.howto.5.savings")}</i> {tr("guide.howto.5.shield")} <i>{tr("guide.howto.5.personal")}</i> {tr("guide.howto.5.body2")} <b>{tr("guide.howto.5.notItemized")}</b>{tr("guide.howto.5.body3")}</li>
         </ol>
       </Section>

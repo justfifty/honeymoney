@@ -2,25 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t as translate, type Locale } from "@/lib/i18n";
-import { parseReceiptText, parseVoiceLocal } from "@/lib/voiceParse";
-import { useDictation } from "../useDictation";
+import { parseReceiptText } from "@/lib/voiceParse";
 
-// Capture a spend by SPEAKING, SCANNING, PHOTOGRAPHING or PASTING.
+// Capture a spend by SCANNING, PHOTOGRAPHING or PASTING.
 //
 // Two tiers, and the app is fully usable on either:
-//   • On-device (default, zero tokens, zero cost): browser Speech Recognition +
-//     tesseract.js OCR, parsed by lib/voiceParse.ts. Works offline, nothing
-//     leaves the machine — the PDPA / data-residency story.
-//   • AI-assisted (when a provider is configured): the transcript or image goes
-//     to /api/voice or /api/receipt, which grounds it in the household's real
-//     graph and can also suggest a bucket, flag a duplicate and spot an anomaly.
+//   • On-device (default, zero tokens, zero cost): tesseract.js OCR, parsed by
+//     lib/voiceParse.ts. Works offline, nothing leaves the machine — the PDPA /
+//     data-residency story.
+//   • AI-assisted (when a provider is configured): the image goes to
+//     /api/receipt, which grounds it in the household's real graph and can also
+//     suggest a bucket, flag a duplicate and spot an anomaly.
 //
 // The AI tier is strictly an enhancement. Every AI failure degrades to the
 // on-device result rather than to an error.
-
-// The speech recogniser (locale map + alternative scoring) lives in
-// ../useDictation so the landing page's try-it box and this component cannot
-// drift apart.
+//
+// There was a fourth way in — SPEAKING, via the browser Speech Recognition API.
+// It was removed on 2026-08-22: the API handles Manglish and BM/English
+// code-switching poorly, and that is a limit of the API rather than something
+// tuning could reach. If voice returns it will be recorded audio handed to the
+// user's own AI key, not this API. See NEXT.md §6.6 Task 3.
 
 // App locale → tesseract traineddata. The old code hardcoded "eng" for every
 // language, so a Malay or Chinese receipt was OCR'd with an English model.
@@ -81,63 +82,6 @@ export default function SpendCapture({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const cameraRef = useRef<HTMLInputElement | null>(null);
   const dropRef = useRef<HTMLDivElement | null>(null);
-
-  // ── Voice ────────────────────────────────────────────────────────────────
-
-  function describe(p: Captured, transcript: string): string {
-    const bits: string[] = [];
-    if (p.vendor) bits.push(`“${p.vendor}”`);
-    if (p.amount) bits.push(`${p.currency ?? "MYR"} ${p.amount}`);
-    if (!bits.length) return tr("cap.heardNothing", { text: transcript });
-    const low = (p.confidence ?? 1) < 0.6 ? ` · ${tr("cap.checkThis")}` : "";
-    return `${tr("cap.heard", { text: transcript })} → ${bits.join(" · ")}${low}`;
-  }
-
-  const finishVoice = useCallback(
-    async (transcript: string) => {
-      if (!transcript.trim()) return;
-      const local = parseVoiceLocal(transcript, knownVendors);
-
-      // Show the on-device result immediately — the user shouldn't wait on a
-      // network round-trip to see their words become a spend.
-      onResult(local);
-
-      if (!aiEnabled) {
-        setStatus(describe(local, transcript));
-        return;
-      }
-
-      setBusy(true);
-      setStatus(tr("cap.thinking"));
-      try {
-        const res = await fetch("/api/voice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript, lang }),
-        });
-        const data = await res.json();
-        if (res.ok && data.parsed) {
-          onResult(data.parsed);
-          setStatus(describe(data.parsed, transcript));
-        } else {
-          setStatus(describe(local, transcript));
-        }
-      } catch {
-        setStatus(describe(local, transcript));
-      } finally {
-        setBusy(false);
-      }
-    },
-    [aiEnabled, knownVendors, lang, onResult, tr],
-  );
-
-  const { listening, heard, supported: supportsVoice, toggle: speak } = useDictation({
-    lang,
-    knownVendors,
-    onStart: () => setStatus(tr("g.cap.listening")),
-    onFinal: (transcript) => void finishVoice(transcript),
-    onError: (message, code) => setStatus(message || tr("g.cap.voiceError", { error: code })),
-  });
 
   // ── Images: file, camera, drag-drop, paste ───────────────────────────────
 
@@ -288,21 +232,6 @@ export default function SpendCapture({
       }`}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={speak}
-          disabled={busy || !supportsVoice}
-          title={supportsVoice ? undefined : tr("g.cap.noVoice")}
-          className={
-            listening
-              ? "flex items-center gap-1 rounded-lg border border-rose-400 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-600 dark:bg-rose-950/40"
-              : btn
-          }
-        >
-          <span className={listening ? "animate-pulse" : ""}>{listening ? "⏹" : "🎤"}</span>{" "}
-          {listening ? tr("cap.stop") : tr("cap.speak")}
-        </button>
-
         <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className={btn}>
           🖼️ {tr("cap.scan")}
         </button>
@@ -340,12 +269,6 @@ export default function SpendCapture({
 
         <span className="text-[10px] text-zinc-400">{tr("cap.pasteHint")}</span>
       </div>
-
-      {listening && heard && (
-        <p className="rounded-lg bg-zinc-100 px-2 py-1 text-[11px] italic text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-          {heard}…
-        </p>
-      )}
 
       {preview && (
         <div className="flex items-center gap-2">

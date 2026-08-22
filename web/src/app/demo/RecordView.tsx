@@ -3,7 +3,7 @@
 // Record — the default landing screen in the real app, and the first thing a
 // visitor should be able to do here without reading anything.
 //
-// Four ways in: type · speak · scan a receipt · photograph a statement. The
+// Three ways in: type · scan a receipt · photograph a statement. The
 // primary action sits above the fold with no scroll, because a capture surface
 // you have to scroll to is a capture surface people stop using by week two.
 //
@@ -111,17 +111,6 @@ function sampleStatement(): Draft {
     bucketId: "",
     recurrence: null,
     imageSha256: "9f86d081884c7d659a2feaa0c55ad015…",
-    parserVersion: PARSER_VERSION,
-  };
-}
-
-function sampleVoice(): Draft {
-  return {
-    source: "voice",
-    vendor: "99 Speedmart",
-    lines: [{ label: "99 Speedmart", amount: 43.6, confidence: 0.82, include: true }],
-    bucketId: "",
-    recurrence: null,
     parserVersion: PARSER_VERSION,
   };
 }
@@ -399,7 +388,6 @@ export default function RecordView({
   }
 
   const ways: { key: CaptureSource; icon: string; make: () => Draft }[] = [
-    { key: "voice", icon: "🎤", make: sampleVoice },
     { key: "receipt", icon: "🧾", make: sampleReceipt },
     { key: "statement", icon: "📄", make: sampleStatement },
   ];
@@ -431,7 +419,7 @@ export default function RecordView({
 
       {flash && <p className="mt-3 rounded-xl bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">{flash}</p>}
 
-      <div className="mt-5 grid grid-cols-3 gap-2">
+      <div className="mt-5 grid grid-cols-2 gap-2">
         {ways.map((w) => (
           <button
             key={w.key}

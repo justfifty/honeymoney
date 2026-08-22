@@ -1,13 +1,13 @@
 ---
 name: expense-capture
 description: >-
-  Design, build and audit every way a daily expense gets into HoneyMoney — type, voice, receipt
+  Design, build and audit every way a daily expense gets into HoneyMoney — type, receipt
   photo / e-wallet screenshot, statement import, Telegram forward — against a hard friction
   budget and the 3-minute time-to-value target (signup → first expense → first Honey insight).
   Covers capture-surface design, AI-parse confirmation UX, confidence & provenance, duplicate
   handling, correction-as-training, offline/zero-token paths, empty states and the habit loop.
   Use whenever touching SpendCapture, AddTransaction, FlexibleInput, StatementImport, the
-  Telegram path, voice/receipt parsing, onboarding, or anything measured in taps-to-logged.
+  Telegram path, text/receipt parsing, onboarding, or anything measured in taps-to-logged.
   Triggers on: "add expense", "capture", "quick add", "voice input", "scan receipt", "OCR",
   "statement import", "Telegram bot", "onboarding", "time to value", "3-minute", "first run",
   "empty state", "too many taps", "logging friction", "habit".
@@ -48,18 +48,24 @@ Any change that increases taps-to-logged or seconds-to-first-insight needs an ex
 - Page-level layout/visual polish → **web-design** skill.
 - The wording of prompts, hints and errors → **finance-content** skill.
 
-## The five capture paths (verified in code)
+## The four capture paths (verified in code)
+
+> **Voice was removed on 2026-08-22** (Task 3 of the 2026-08-22 brief). The browser Speech
+> Recognition API handles Manglish and BM/English code-switching poorly, and that is a limit
+> of the API rather than something tuning could reach. Do not reintroduce it: `npm run
+> check:mic` fails the build if any source file so much as names a speech API. If voice
+> returns, the shape is recorded audio → the user's own AI key (Gemini takes audio natively)
+> on the Task 2 BYO-key rails — not `webkitSpeechRecognition`.
 
 | Path | Surface | Parse | Cost | Best for |
 |---|---|---|---|---|
-| **Type** | `SpendCapture` | none, `confidence = 1` | free | rent, transfers, anything with no artefact |
-| **Voice** | `SpendCapture` | `lib/voiceParse.ts` — **on-device, zero-token**, Unicode-first, isomorphic (browser offline, server fallback) | free | the coffee; hands-busy; the fastest path |
+| **Type** | `SpendCapture` | `lib/voiceParse.ts` — **on-device, zero-token**, Unicode-first, isomorphic (browser offline, server fallback). Named for a caller that no longer exists; it is a text parser. | free | the coffee; rent; transfers; anything with no artefact |
 | **Photo** | `SpendCapture` | `lib/receipt.ts` — agentic PERCEIVE → GROUND → DECIDE → EXPLAIN | 1 vision call | paper receipts, e-wallet screenshots |
 | **Statement** | `StatementImport` | `lib/statement.ts` — PDF **text layer**, exact amounts, reconciles to the printed balance | 1 text call | catching up a whole month |
 | **Telegram** | bot → `ingestReceipt` | as photo | 1 vision call | capture without opening the app at all |
 
-**Most people mix all three of the fast paths across a week** — voice for the coffee, scan for
-the grocery receipt, typing for the rent transfer. Do not push users onto one "correct" path;
+**Most people mix the fast paths across a week** — typing for the coffee, scan for
+the grocery receipt, typing again for the rent transfer. Do not push users onto one "correct" path;
 make all three the same two taps from the same place.
 
 ## Non-negotiable rules
@@ -72,7 +78,7 @@ make all three the same two taps from the same place.
 3. **A correction is training data, not an inconvenience.** When the user overrides a bucket, the
    household's own filing history is what decides next time — the graph grounds the model, not
    the model's imagination.
-4. **Show provenance, always.** `source` (`manual`/`voice`/`photo`/`import`/`telegram`) renders
+4. **Show provenance, always.** `source` (`manual`/`photo`/`import`/`telegram`) renders
    as a chip. A user must be able to see *how* any number got there.
 5. **Confidence gates the UI, not the data.** `parse_confidence = 1` for typed. Below threshold →
    surface the uncertain field highlighted and focused, don't hide the doubt.
@@ -82,7 +88,7 @@ make all three the same two taps from the same place.
 7. **Reconcile and say so.** The importer totals what it found against the balance the bank
    printed and reports a mismatch out loud. Silently dropping three rows out of ninety is worse
    than failing.
-8. **Never block capture on the network or the AI.** Voice parses on-device with zero tokens.
+8. **Never block capture on the network or the AI.** Typed text parses on-device with zero tokens.
    If a provider is down, typing must still work and must say why the clever path is unavailable.
 9. **Never lose a half-entered expense.** A dropped connection, a navigation, a locked phone —
    the draft survives.
@@ -100,7 +106,7 @@ The only sequence that matters. Every step has a budget:
 0:00  Land           → value proposition + ONE primary action           (   0 taps)
 0:15  Try it         → demo data visible, read-only, no signup wall     (   1 tap )
 0:45  Sign up        → email + password, nothing else. Buckets seeded   ( ~4 taps)
-1:15  First capture  → voice/photo/type, pre-filled, confirm            (   2 taps)
+1:15  First capture  → type/photo, pre-filled, confirm                 (   2 taps)
 1:45  It lands       → bucket updates, provenance chip, undo offered
 2:00  First insight  → Honey reads THEIR number, not the demo's
 2:30  The graph      → one tap, sankey, "here's where it went"
@@ -120,7 +126,7 @@ bucket list); the first insight must fire on **one** transaction, not wait for e
 4. **Keep the paths symmetrical.** Anything added to `SpendCapture` reaches the dashboard and the
    graph at once — that's why it's shared. Don't fork behaviour into one caller.
 5. **Verify:** phone viewport, one-handed; a wrong parse corrected; a duplicate; provider down;
-   offline; a non-MYR amount; a non-English voice input (the Unicode path exists because
+   offline; a non-MYR amount; a non-English typed entry (the Unicode path exists because
    `[a-z]` silently broke 星巴克 / ஸ்டார்பக்ஸ் / स्टारबक्स into digits only — never regress it).
 
 ## Reference files

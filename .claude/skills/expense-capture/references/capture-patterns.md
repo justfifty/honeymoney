@@ -13,8 +13,8 @@ Verified against `web/src/app/graph/SpendCapture.tsx`, `dashboard/AddTransaction
 | Manual entry has **high abandonment after week two** — people track diligently, then stop because logging feels like work | Automation isn't a premium feature; it's the retention mechanism |
 | **"If capturing a receipt takes six taps and a login, it will not become a habit"** | ≤ 2 taps, hard budget |
 | Receipts not captured **within 24 hours are probably never logged** | Same-day nudge; make catch-up cheap (statement import) |
-| Successful apps offer **all three** of voice / scan / type — most people use all three in one week | Never force one path; symmetrical affordances |
-| Voice raises logging *frequency* — seconds of speech vs. multiple taps — but **accuracy degrades in noise** | Voice is fastest AND needs the confirmation step; both are true |
+| Successful apps offer **several** of scan / type / import — most people use more than one in a week | Never force one path; symmetrical affordances |
+| Voice raises logging *frequency* — seconds of speech vs. multiple taps — but **accuracy degrades in noise**, and browser ASR cannot hold Manglish | Kept here as research, not as a live path — see §2 |
 | Best pattern = **natural-language parsing + a confirmation step**; avoid rigid command formats and avoid skipping human review | Exactly the `SpendCapture` contract |
 | Fintech activation averages **5%** (vs 54.8% for AI tools); >90% never complete onboarding; top-quartile TTV is **under five minutes** | The 3-minute target is aggressive but not fantasy |
 
@@ -54,7 +54,12 @@ Every AI-assisted path resolves to the same screen:
 
 ---
 
-## 2. Voice — the zero-token path
+## 2. Text — the zero-token path
+
+> **The voice surface was removed on 2026-08-22.** Everything below still governs, because
+> the same parser now serves what the user TYPES and what tesseract OCRs off a receipt. The
+> module keeps the name `voiceParse.ts` from its first caller. `npm run check:mic` fails if
+> any source file names a speech API, so this is not a path to quietly restore.
 
 `lib/voiceParse.ts` runs **on-device**, is **isomorphic** (no `node:` imports, so the browser
 parses offline and the server uses the same code as a provider fallback), and is **Unicode-first**.
@@ -65,15 +70,15 @@ every letter was stripped, the vendor came back `undefined`, and only the ASCII 
 emits survived — the reported "it only recognises numbers" bug. Everything here uses `\p{L}` with
 the `/u` flag and assumes nothing about space-separated words.
 
-**Never reintroduce an ASCII-only character class in this file.** Any test suite touching voice
+**Never reintroduce an ASCII-only character class in this file.** Any test suite touching text
 must include a non-Latin transcript.
 
 Design rules:
 - Push-to-talk, not always-listening. Explicit start, visible listening state, easy cancel.
 - Show the **transcript** alongside the parse. When the parse is wrong the user needs to see
   whether the ASR or the parser failed.
-- Noise degrades accuracy — so voice always lands on the confirmation screen. Never straight-to-save.
-- Zero tokens means voice must keep working when every AI provider is down or unconfigured.
+- A parse is a proposal — every path lands on the confirmation screen. Never straight-to-save.
+- Zero tokens means this parser must keep working when every AI provider is down or unconfigured.
 
 ---
 
@@ -175,7 +180,7 @@ does not hide it and does not refuse to proceed. Confidence changes *presentatio
 the household's filing history and drives the next decision. Say so in the UI once — it converts
 a moment of annoyance into evidence the app is learning.
 
-**Offline / degraded.** Voice works with zero tokens. Typing always works. If a provider is
+**Offline / degraded.** Typing works with zero tokens, parser included. If a provider is
 unconfigured or down, say which capability is unavailable and why — never present a dead button.
 
 **Draft safety.** A half-entered expense survives a navigation, a lost connection, and a locked

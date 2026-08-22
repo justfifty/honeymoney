@@ -12,6 +12,7 @@
     "pb:start": "node ../scripts/start-pocketbase.mjs",
     "check:demo": "npx --yes tsx scripts/check-demo-bands.mts",
     "check:nav": "node scripts/check-nav.mjs",
+    "check:mic": "node scripts/check-no-mic.mjs",
     "site:build": "node ../scripts/build-static-site.mjs",
     "site:preview": "cd ../deploy/pages && wrangler pages dev",
     "site:deploy": "cd ../deploy/pages && wrangler pages deploy"

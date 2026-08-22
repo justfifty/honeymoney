@@ -760,17 +760,61 @@ Decisions are answered.
       rule. Those are footer links, not primary destinations; folding them into Task 5 would
       be scope the brief didn't ask for. Worth a sweep of its own later.
 
-**2 · Task 3 — Remove the Speak function** `[Technical]`
-- [ ] Remove entirely, not behind a flag. Changelog rationale: the Web Speech API handles
-      Manglish and BM/English code-switching poorly — a structural API limit, not tuning.
-- [ ] Mic permission must stop being requested **anywhere**. Verify no prompt fires.
-- [ ] Grep the identifiers **before** deleting: check nothing reads a transcript field,
-      assumes a live mic stream, or branches on a "voice input" mode.
-- [ ] Stored voice flags/transcripts stay put — stop reading them, write no destructive migration.
+**2 · Task 3 — Remove the Speak function** — ✅ **done 2026-08-22** `[Technical]`
+- [x] Removed entirely, not behind a flag. `app/useDictation.ts` (the shared recogniser) and
+      `app/api/voice/route.ts` are deleted; `scoreAlternative` — the speech-alternative ranker,
+      and the only part of `lib/voiceParse.ts` that was about speech — goes with them.
+- [x] **Grepped before deleting, and the brief's "the Record flow" undercounted it.** The mic was
+      on **three** surfaces: the Record flow (`SpendCapture`, shared by `dashboard/AddTransaction`
+      and `graph/FlexibleInput`), the **landing page's try-it box** (`TryItNow`), and the **public
+      demo's Record tab**, which offered a simulated 🎤 Speak. The demo one mattered most: it is
+      a claim to a judge about a feature the product would no longer have.
+- [x] No hidden coupling found. Nothing reads a transcript field, assumes a live stream, or
+      branches on a voice mode.
+- [x] **Nothing to migrate — no record carries a voice flag.** Only `ai_usage` rows carry
+      `meta.source = "voice"`, and those are historical usage rows: left untouched, unread.
+- [x] **Nothing to uninstall either.** The brief asks for dead dependencies, polyfills and type
+      definitions; there were none. Web Speech is a browser built-in and the interface was a
+      local `SpeechRecognitionLike` in the deleted file. `tesseract.js` stays — that is OCR.
+- [x] Copy swept across **all six locales**: 15 dead keys removed, and 38 strings reworded that
+      still *claimed* the app could be spoken to — landing, guide, privacy note and the demo's
+      "the real app uses your microphone and camera". A removed feature that survives in the
+      marketing copy is the same bug wearing different clothes.
+- [x] **Verified by measurement, not assertion** — `npm run check:mic` (new,
+      `web/scripts/check-no-mic.mjs`), three halves: every mic entry point replaced before app
+      code runs so a *call* is recorded (a headless Chrome auto-denies rather than prompting, so
+      watching for a prompt would pass no matter what the page did) · the DOM swept for a mic
+      control by accessible name in all six languages · and no source file naming a speech API,
+      which is what speaks for the signed-in surfaces a logged-out crawler can't open.
+      **10 routes pass; against the shipped code the same script reports 13 findings.**
+- [x] `check:nav` 35/35 and `check:demo` still pass — **H-Score output byte-identical**, all four
+      personas on band.
+- ↩️ **Reversible decision, flag if you disagree:** `/api/voice` was deleted rather than kept.
+      Its only caller was the mic, so it would have shipped as an unreachable authenticated
+      endpoint that spends AI tokens. What it knew — a Malaysian code-switching prompt grounded
+      in the household's buckets and known vendors — is worth reviving for Task 2's BYO-key work;
+      it is in git at `2dd7bd2:web/src/app/api/voice/route.ts`.
+- ⬜ Left deliberately: `lib/voiceParse.ts` keeps its filename and `parseVoiceLocal` its name.
+      It is now purely a *text* parser (the try-it box, and `parseReceiptText` for OCR), and its
+      header says so. Renaming ripples into the skill docs and reads as churn mid-release; it is
+      a clean one-commit follow-up if wanted.
 - ⚠️ *For the record:* this discards the verified voice work shipped 2026-07-14 (Unicode-first
-      parser, 11/11 across en · ms · zh · zh-Hant · ta · hi). The brief's forward path is
-      audio → the user's own key (Gemini takes audio natively) on the Task 2 BYO-key rails.
-      **Not now.**
+      parser, 11/11 across en · ms · zh · zh-Hant · ta · hi). The **parser survives** — it is
+      what the try-it box and receipt OCR run on; only the microphone in front of it is gone.
+      The brief's forward path is audio → the user's own key (Gemini takes audio natively) on
+      the Task 2 BYO-key rails. **Not now.**
+- ⚠️ **`next dev` does not hydrate under headless Chrome here.** Its HMR websocket fails
+      (`ERR_INVALID_HTTP_RESPONSE`) and React never attaches, so *every click a check script
+      sends does nothing* and the page still looks right because it is server-rendered. The
+      first version of `check:mic` reported `/demo` clean for exactly this reason. **Point
+      interaction checks at a production build** — `NEXT_DIST_DIR=.next-check npm run build`
+      then `NEXT_DIST_DIR=.next-check npx next start -p 3010`. `check:nav` is unaffected only
+      because everything it measures is server-rendered. Tasks 4 and 7 will not be so lucky.
+- ⚠️ **`NEXT_DIST_DIR` alone does not isolate a throwaway build.** `tsconfig.json` hardcodes
+      `.next/types/**` and `.next/dev/types/**` in `include`, so a build into `.next-check` still
+      type-checks the *previous* build's route validators and fails on routes you deleted. Clear
+      `.next/types` and `.next/dev/types` first — both are generated, and `next start` never
+      reads them. And `git checkout -- tsconfig.json` afterwards, as §12 already says.
 
 **3 · Task 4 — Viewable attachments** `[Relevance]`
 - [ ] Receipt scans can't currently be opened. Thumbnail in list + detail via PocketBase
@@ -1062,7 +1106,7 @@ Decisions are answered.
 ### Definition of done — the release (5, 3, 4, 1, 6, 7, 8, 9, 10, 11)
 
 - [ ] All four nav destinations reachable at 320px, verified **on resize** as well as fresh load
-- [ ] No microphone permission prompt fires anywhere in the app
+- [x] No microphone permission prompt fires anywhere in the app — `npm run check:mic`
 - [ ] Attachments open, zoom and rotate on both touch and pointer input
 - [ ] Record type is identifiable **in greyscale**
 - [ ] Individual-composition users see no attribution control and gain no extra taps
