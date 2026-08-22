@@ -650,6 +650,121 @@ release in the first place.
 
 ---
 
+## ✅ Shipped — 2026-08-23 (attachments · charts · H-Score · goals · import · record kinds)
+
+Eight of the eleven §6.6 tasks now done, plus two H-Score corrections made on an
+explicit decision rather than as side effects. **Every claim below was measured,
+and several of the measurements contradicted the brief.**
+
+### 📎 Task 4 — attachments, and the half that did not exist `[Relevance]`
+- [x] **The premise was wrong: receipts were never stored.** `receipt_ref` had been a text
+      field since the first migration, commented *"pointer only; never the raw image"*, written
+      by **no line of code** — capture read the numbers off a photo and dropped it. So the
+      viewer needed storage built underneath it first.
+- [x] Real PocketBase file field · thumbnails via `?thumb=` (never client-side) · the client's
+      existing 1600px downscale now kept instead of discarded · full-screen viewer with pinch,
+      double-tap and wheel zoom, rotate, swipe, keyboard, and a retry that actually works.
+- [x] **A receipt IS the vendor and the line items**, so it is exactly what tier-3 redaction
+      hides. `privacy.ts` empties `attachments` on a redacted row AND `/api/attachment` refuses
+      the bytes — the first stops the UI offering it, only the second stops a partner who kept
+      a URL. 404 not 403, so the response cannot confirm a transaction id exists.
+
+### 📊 Task 11 — one chart registry, and three names that were wrong `[Technical]`
+- [x] `lib/charts.ts`; `/graph`, `/gallery` and the demo all read from it.
+- 🛑 **The drift was not the predicted one.** `/graph` translated correctly; its `label` field
+      was dead English nothing read. The damage was inside the translations: **zh/zh-Hant named
+      the TREEMAP "tree diagram"** — the name of a different chart in the same switcher — Tamil
+      had the identical collision, and **"Organic" landed on the FOOD sense** in three languages.
+- [x] The demo's missing Graph Showcase, deep-linkable, same component as the Gallery.
+- 🐛 The demo column lacked `w-full`, so `mx-auto` on a flex item suppressed stretch, it sized
+      to fit-content, and `max-w-lg` capped the blow-out at exactly **512px** — a 375px phone
+      scrolled sideways by 137px regardless of what was too wide. The Dashboard tab was already
+      overflowing before this work.
+
+### 💛 Task 8 — where the H-Score number came from `[Technical][ESG]`
+- [x] Three tap-through levels, the arithmetic on one line, and the records behind it.
+- [x] **`privacyDiscipline` renamed in CODE to `personalCap`** — it never measured privacy; it
+      counts months inside your own spending cap. Snapshots are mapped on READ, so "what moved"
+      cannot invent a change that never happened.
+- [x] A criterion low from **thin data** is hatched and grey, not a short amber bar — it survives
+      greyscale. `debtService` with no declared loans was scoring full marks and reading as
+      *excellent* when it meant *unknown*.
+
+### 🔧 Two H-Score corrections, each on an explicit decision
+- [x] **Saving money used to LOWER your score.** RM500 into Savings moved the live household
+      **81 → 79**; as money-in it changed nothing. Savings could only come from the allocation
+      plan and a transaction could only subtract. Now the plan is a baseline that observed
+      movement adjusts **both ways**: paying in gives **81 → 82**. `max(plan, deposits)` was
+      tried and rejected — a generous plan swallowed the evidence.
+- [x] **The demo and the app disagreed IN SIGN** on the same criterion: one counted a tier-2
+      record as a contribution, the other as a withdrawal. Both now call one function.
+- [x] **Goal progress feeds the emergency buffer**, read all-time rather than through the
+      90-day window — a buffer is a stock, and windowing it would report a three-year house
+      deposit as three months of one. The overlap is accepted and **stated on the criterion**:
+      one transfer moves 50 of the 100 available points.
+
+### 🎯 Task 9 — goal progress you can reconcile `[ESG]`
+- [x] `tracked + manual`, always reported separately. *"RM8,000 tracked + RM2,000 you added
+      manually"* is checkable; RM10,000 is something you have to trust.
+- 🐛 `contributeGoal` **clamped to the target**, so passing a goal was unrepresentable — RM12,000
+      toward a RM10,000 goal displayed as RM10,000.
+- 🐛 **My own migration silently changed nothing** and was recorded as applied. Every household
+      would have seen RM0 against goals they had funded. Caught only by reading the rows back.
+      Progress is interpreted on READ instead; all five live goals verified unchanged.
+
+### 📥 Task 10 — an import that never leaves the device `[Technical][Commercial]`
+- [x] CSV parsed in the browser; only approved rows are POSTed. `check:csv` pins **40 traps**.
+- 🐛 It found a real bug on its first run: textual dates went through `Date.parse`, which reads
+      LOCAL midnight, so in UTC+8 `toISOString()` returned the previous day — a whole statement
+      one day early, every date still plausible, nothing thrown.
+- [x] Date order is **asked, never assumed**; unreadable rows are returned with their problems
+      rather than dropped; `import_batch` makes a batch undoable in one action, voiding not
+      deleting.
+- 🛑 **The import page GATED THE WHOLE FEATURE behind an AI provider** — "never gate import
+      behind it" is exactly what the brief says. And the shipped **PDF path sends statement text
+      to a model**, which Task 10's "nothing from a bank file goes to any model" is written
+      against. Kept, labelled as leaving the device, placed second. **Removing it is a product
+      decision, not a technical one.**
+
+### 🔀 Tasks 1 + 6 — two buttons, three kinds, and who paid `[Technical][Scalability]`
+- [x] **The migration rewrites nothing.** Kinds are derived on read, and `attribution_asserted`
+      defaults to false — which is exactly what "nobody said who paid" means.
+- [x] `+ Savings` produces a **transfer**, not an inflow. Others is two keys, never one.
+- 🐛 The direction toggle was **rose/emerald — red and green**, unreadable to roughly one man in
+      twelve. Now orange and dark grey, which differ in **lightness** so they survive greyscale.
+- [x] **Privacy enforced in the QUERY**, so a hidden row is never fetched. `check:attribution`
+      proves it from both seats.
+- 🛑 **One correction to the brief.** It asks for enforcement "in PocketBase collection rules".
+      `transactions` has NULL API rules and the server authenticates as superuser, so there is no
+      auth record for `paid_by = @request.auth.id` to evaluate; opening the collection to browser
+      sessions would be a **larger** privacy regression than the one it prevents.
+
+### 📈 Task 7 — the part that is done `[Technical][Relevance]`
+- [x] **Every chart survives 0, 1, 2 and 200+ items.** Nothing threw — the suspected "errors on
+      empty" does not happen. Five drew ALL 200 (tree **230KB**, treemap 173KB, network 113KB)
+      and three drew a blank panel at zero. Now 26KB / 22KB / 23KB with an inspectable `Other`.
+- [x] **A saving is no longer drawn as money leaving.** Every transaction with a bucket and a
+      vendor became a bucket→vendor flow, and a savings deposit has that shape. Transfers now
+      terminate at their goal, and **the choice is stated on the chart**.
+
+### 🌐 Ops — the 24/7 story, re-diagnosed
+- 🛑 **"Four dashboard clicks" was undoable.** The domain and the Pages project were in **two
+      different Cloudflare accounts**. See §7 #12 — project rebuilt in the domain's account,
+      snapshot deployed, custom domains attached. **One DNS record left, and it needs a human**:
+      wrangler's OAuth token has `zone (read)`, which does not include DNS records.
+
+### 🩺 Method notes worth keeping
+- ⚠️ **`next dev` does not hydrate under headless Chrome here** — every click a check sends does
+      nothing while the page still looks right. Point interaction checks at a production build.
+- ⚠️ **A JSVM data migration can report success and change nothing.** Schema and data belong in
+      separate files, and where a READ can interpret old data, that beats a write that rewrites it.
+- ⚠️ **Three checks initially tested themselves**, not the code: a harness whose imports were
+      double-wrapped and failed identically everywhere; an assertion that measured its own
+      fixture; and a chart fixture coerced to the wrong prop names. **A check that cannot fail
+      is worse than no check** — it reports success.
+
+---
+
 ## 0. The rubric drives everything
 
 Every submission is scored 1–10 by three independent judges on five weighted criteria:
@@ -977,8 +1092,7 @@ Decisions are answered.
       returns the original when the source is smaller than the thumb. **A fixture that
       cannot fail the test it is in is worse than no test.**
 
-**4 · Tasks 1 + 6 together — record kinds and attribution** — 🛑 **BLOCKED, awaiting two
-decisions + one conflict with a standing constraint** `[Technical][Scalability]`
+**4 · Tasks 1 + 6 together — record kinds and attribution** — ✅ **done 2026-08-23** `[Technical][Scalability]`
 
 > ### 🛑 Findings, measured 2026-08-22 — read before designing anything here
 >
@@ -1071,7 +1185,7 @@ decisions + one conflict with a standing constraint** `[Technical][Scalability]`
 - [ ] Migration: existing records → recording user as source, marked **migrated-default, not
       user-asserted**. Do not backfill a joint-vs-individual guess; reclassifying is a user action.
 
-**5 · Task 8 — H-Score: show where the number came from** `[Technical][ESG]`
+**5 · Task 8 — H-Score: show where the number came from** — ✅ **done 2026-08-22** `[Technical][ESG]`
 > 🛑 **Answered 2026-08-22, from the measurements above.** "Transfers are not income — verify
 > what the current implementation does": **no transaction is ever income.** Income comes only
 > from `income_source` nodes, so the criterion cannot be fooled by a transfer today — but it
@@ -1106,7 +1220,7 @@ decisions + one conflict with a standing constraint** `[Technical][Scalability]`
       No parallel implementation, no rounding drift. If the number ever disagrees between two
       surfaces, users will trust neither.
 
-**6 · Task 9 — Goals under `More`** `[ESG][Commercial]`
+**6 · Task 9 — Goals under `More`** — ✅ **done 2026-08-23** `[ESG][Commercial]`
 - [ ] Name · target amount · target date · progress, all editable.
 - [ ] **Progress derived by default** — the sum of `transfer` records linked to the goal — with
       a **separately labelled** manual adjustment for savings that happened outside the app.
@@ -1184,8 +1298,20 @@ decisions + one conflict with a standing constraint** `[Technical][Scalability]`
       **The Dashboard tab was already overflowing to 401px before any of this work existed.**
       All four demo tabs now measure 375 at 375.
 
-**8 · Task 7 — Dashboard** `[Technical][Relevance]`
-> **Do not start before 5, 1, 6, 8, 9 and 11 have landed.**
+**8 · Task 7 — Dashboard** — 🔶 **part done 2026-08-23** `[Technical][Relevance]`
+> Its blockers have all landed. Done so far: **every chart survives 0 / 1 / 2 / 200+ items**
+> (`check:charts`, now a gate) and **the Sankey consumes the three kinds** — a transfer
+> terminates at its goal instead of drawing as money leaving, proven by `check:attribution`.
+>
+> ⬜ **Still open, and the largest single item in the brief is among them:**
+> **Ask Honey "what if?"** (parse → compute → narrate, the model never doing arithmetic,
+> working with no key, asking for a price rather than guessing one, and the privacy check
+> where partner B must not extract partner A's records) · the **Dashboard rebuild** itself
+> (remove `Add a spend`, edits opening the *same* editor as Record, and the 🛑 that its
+> filter must never write back to Record's default) · **live translation** including chart
+> labels drawn into SVG · **Sankey at 375px** (pick one of the three narrow-width strategies
+> and verify at 320px) · **view instrumentation** so Tree/Treemap/Node-Link get pruned on
+> evidence · **demo seeds** exercising all seven types.
 - [ ] The Dashboard's persona control is a **filter**; Record's is **data entry**. Same shared
       component and label vocabulary so `Partner's` means and looks the same in both — but
       **separate state**. Dashboard adds **All / Household**, the sensible default. Individual
@@ -1278,7 +1404,7 @@ decisions + one conflict with a standing constraint** `[Technical][Scalability]`
         stated plainly (*"based on only 3 weeks of records, so treat this as rough"*), and a
         minimum history below which Honey declines to project at all and says why.
 
-**9 · Task 10 — Import under `More`** `[Technical][Commercial]`
+**9 · Task 10 — Import under `More`** — ✅ **done 2026-08-23** (file/CSV half; photo half defers with Task 2) `[Technical][Commercial]`
 - [ ] **Baseline first:** `<input type="file" multiple>` works everywhere — build that path
       first and make it complete on its own. Then enhance: `webkitdirectory` for folder
       selection, and `showDirectoryPicker` which is **Chromium-only, absent on Firefox and on
@@ -1501,27 +1627,60 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
       was logged in. Repointed at the new account, so `npm run site:deploy` works
       from a fresh shell.
 
-    ⬜ **THE ONE REMAINING STEP.** Both custom domains sit at `status: pending`,
-    `validation: pending`, method **http**. Cloudflare validates by fetching the
-    apex — which still CNAMEs to the tunnel, so the request lands on the laptop
-    instead of Pages and can never complete. The token holds `zone (read)` but
-    not `zone:dns:edit`, so this cannot be automated from here.
+    ⬜ **THE ONE REMAINING STEP — one DNS record, and it is an EDIT, not an add.**
 
-    **Cloudflare → honeymoney.app → DNS → Records:**
-    1. Find the record for **`honeymoney.app`** (name `@`) — a proxied CNAME to
-       `<tunnel-id>.cfargotunnel.com`.
-    2. Change its target to **`honeymoney-ci3.pages.dev`**. Keep it **Proxied**.
-    3. Do the same for **`www`** if it exists.
+    Both custom domains sit at `status: pending`, `validation: pending`, method
+    **http**. Cloudflare validates by fetching the apex, which still CNAMEs to the
+    tunnel, so the request lands on the laptop instead of Pages and can never
+    complete. Chicken-and-egg: the domains cannot activate until DNS moves.
+
+    **Confirmed 2026-08-23: this cannot be automated with the credentials on this
+    machine.** Wrangler's OAuth token carries `zone (read)`, which does NOT
+    include DNS records — a plain `GET /zones/{id}/dns_records` returns
+    `10000 Authentication error`. Cloudflare's OAuth flow does not offer a
+    DNS-edit scope, so no amount of re-login fixes it.
+
+    ### By hand — Cloudflare → honeymoney.app → **DNS** → **Records**
+
+    ⚠️ **EDIT the existing apex record. Do not ADD a second one** — two records
+    on the same name conflict, and Cloudflare will either refuse it or serve them
+    round-robin, which looks like an intermittent outage.
+
+    | field | set it to |
+    |---|---|
+    | Type | `CNAME` |
+    | Name | `@` *(shows as `honeymoney.app`)* |
+    | Target | **`honeymoney-ci3.pages.dev`** |
+    | Proxy status | **Proxied** (orange cloud) |
+    | TTL | Auto |
+
+    Repeat for **`www`** if a record exists. The apex record you are editing
+    currently points at something like `<uuid>.cfargotunnel.com`.
+
+    **Proxied is not optional.** Grey-cloud (DNS-only) sends visitors straight
+    past Cloudflare, Pages never sees the request, and the custom domain stays
+    `pending` forever.
 
     ⚠️ **DO NOT TOUCH `origin.honeymoney.app`.** That is the hostname the tunnel
-    publishes and the one `deploy/pages/_worker.js` proxies dynamic routes back
-    to (`ORIGIN_HOST`). Repointing it would make the worker call itself and every
-    signed-in page would loop.
+    publishes and the one `deploy/pages/_worker.js` proxies signed-in routes back
+    to (`ORIGIN_HOST`). Repointing it at Pages makes the worker fetch itself and
+    every logged-in page loops until it times out.
 
-    Within a minute or two of the change both domains should flip to `active`,
-    and `verify-uptime.ps1`'s **APEX FRONTED BY PAGES** goes green for the first
-    time. Adding the custom domains changed nothing on its own — the live site
-    served normally throughout.
+    ### Or scripted — `deploy/point-apex-at-pages.mjs`
+
+    Does the same swap with the guardrails built in: it refuses to touch
+    `origin.honeymoney.app`, uses PUT so the apex is never momentarily without a
+    record, and forces `proxied: true`.
+
+    1. Cloudflare → My Profile → API Tokens → **Create Token** → **Edit zone DNS**
+       template → Zone Resources: Include → **Specific zone → honeymoney.app**
+    2. Save the value into `deploy/.cf-dns.token` *(gitignored)*
+    3. `node deploy/point-apex-at-pages.mjs` — dry run, prints the plan, writes nothing
+    4. `node deploy/point-apex-at-pages.mjs --apply`
+    5. Delete `deploy/.cf-dns.token`
+
+    The token is scoped to one zone and one permission, so the worst it can do is
+    edit DNS on this domain.
 
     ↩️ **Rollback:** remove the two custom domains from the project and
     `cloudflared tunnel route dns honeymoney honeymoney.app`.
