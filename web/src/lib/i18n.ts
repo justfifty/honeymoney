@@ -892,6 +892,8 @@ const en: Dict = {
   "hscore.unscored.title": "{n} records aren't scored",
   "hscore.unscored.body": "They have no bucket, so no criterion can see them. Giving them one changes your score.",
   "hscore.unscored.cta": "Categorise them",
+  "hscore.feed.buffer.overlap": "Goal progress counts here. Money you record into a goal also raises what you save, so one transfer can move two criteria — they measure different things: what you have, and what you put aside this month.",
+  "hscore.detail.goals": "See your goals",
 };
 
 const ms: Dict = {
@@ -1439,6 +1441,8 @@ const ms: Dict = {
   "hscore.unscored.title": "{n} rekod tidak diberi skor",
   "hscore.unscored.body": "Ia tiada baldi, jadi tiada kriteria boleh melihatnya. Memberikannya satu akan mengubah skor anda.",
   "hscore.unscored.cta": "Kategorikan",
+  "hscore.feed.buffer.overlap": "Kemajuan matlamat dikira di sini. Wang yang anda rekod ke dalam matlamat juga menaikkan simpanan anda, jadi satu pemindahan boleh menggerakkan dua kriteria — kedua-duanya mengukur perkara berbeza: apa yang anda ada, dan apa yang anda ketepikan bulan ini.",
+  "hscore.detail.goals": "Lihat matlamat anda",
 };
 
 // Scaffolded locales — core chrome only; everything else falls back to English.
@@ -1870,6 +1874,8 @@ const zh: Dict = {
   "hscore.unscored.title": "{n} 笔记录未计入评分",
   "hscore.unscored.body": "它们没有归入任何篮子，所以没有标准看得到。归类之后会改变你的分数。",
   "hscore.unscored.cta": "去归类",
+  "hscore.feed.buffer.overlap": "目标进度计入这里。你记入目标的钱同时也会提高你的储蓄，所以一笔转账可以带动两项标准 — 它们衡量的是不同的东西：你拥有多少，和这个月你存下多少。",
+  "hscore.detail.goals": "查看你的目标",
 };
 const ta: Dict = {
   "app.title": "பணம், காட்சிப்படுத்தப்பட்டது",
@@ -2299,6 +2305,8 @@ const ta: Dict = {
   "hscore.unscored.title": "{n} பதிவுகளுக்கு மதிப்பெண் இல்லை",
   "hscore.unscored.body": "அவற்றுக்கு வாளி இல்லை, எனவே எந்த அளவுகோலும் அவற்றைப் பார்க்க முடியாது.",
   "hscore.unscored.cta": "வகைப்படுத்தவும்",
+  "hscore.feed.buffer.overlap": "இலக்கு முன்னேற்றம் இங்கே கணக்கிடப்படுகிறது. ஒரு இலக்கிற்குள் நீங்கள் பதிவு செய்யும் பணம் உங்கள் சேமிப்பையும் உயர்த்தும், எனவே ஒரு பரிமாற்றம் இரண்டு அளவுகோல்களை நகர்த்தும் — அவை வெவ்வேறு விஷயங்களை அளக்கின்றன: உங்களிடம் உள்ளது, இந்த மாதம் நீங்கள் ஒதுக்கியது.",
+  "hscore.detail.goals": "உங்கள் இலக்குகளைப் பார்க்கவும்",
 };
 const hi: Dict = {
   "app.title": "पैसा, दृश्य रूप में",
@@ -2728,6 +2736,8 @@ const hi: Dict = {
   "hscore.unscored.title": "{n} रिकॉर्ड स्कोर में नहीं",
   "hscore.unscored.body": "उनकी कोई बकेट नहीं, इसलिए कोई मानदंड उन्हें नहीं देख सकता।",
   "hscore.unscored.cta": "श्रेणी दें",
+  "hscore.feed.buffer.overlap": "लक्ष्य की प्रगति यहाँ गिनी जाती है। लक्ष्य में दर्ज किया पैसा आपकी बचत भी बढ़ाता है, इसलिए एक ट्रांसफ़र दो मानदंड हिला सकता है — वे अलग चीज़ें मापते हैं: आपके पास क्या है, और इस महीने आपने क्या अलग रखा।",
+  "hscore.detail.goals": "अपने लक्ष्य देखें",
 };
 
 // Traditional Chinese — scaffolded (Traditional conversion of the zh chrome);
@@ -3160,6 +3170,8 @@ const zhHant: Dict = {
   "hscore.unscored.title": "{n} 筆記錄未計入評分",
   "hscore.unscored.body": "它們沒有歸入任何籃子，所以沒有標準看得到。",
   "hscore.unscored.cta": "去歸類",
+  "hscore.feed.buffer.overlap": "目標進度計入這裡。你記入目標的錢同時也會提高你的儲蓄，所以一筆轉帳可以帶動兩項標準 — 它們衡量的是不同的東西：你擁有多少，和這個月你存下多少。",
+  "hscore.detail.goals": "查看你的目標",
 };
 
 const DICTS: Record<Locale, Dict> = { en, ms, zh, "zh-Hant": zhHant, ta, hi };

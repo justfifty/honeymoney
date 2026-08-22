@@ -178,7 +178,7 @@ function CriterionDetail({
           href={e.recordsHref}
           className="mt-3 inline-flex min-h-11 items-center text-xs font-medium text-amber-700 hover:underline"
         >
-          {tr("hscore.detail.records")} →
+          {tr(e.recordsHref === "/goals" ? "hscore.detail.goals" : "hscore.detail.records")} →
         </a>
       ) : (
         <p className="mt-3 text-xs italic text-zinc-400">{tr("hscore.detail.noRecords")}</p>

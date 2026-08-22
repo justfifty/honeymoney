@@ -11,6 +11,7 @@
 import { pbList, pbFirst, pbCreate, pbUpdate, pbStr } from "./pocketbase";
 import { computeAllocations } from "./projection";
 import { privateBucketIds, PRIVATE_TIER } from "./privacy";
+import { goalManual, trackedByGoal } from "./goals";
 import {
   computeHScore,
   assessConfidence,
@@ -180,8 +181,33 @@ export async function getHScore(
   // ── liquid savings ────────────────────────────────────────────────────────
   // Goal balances plus assets explicitly flagged liquid. Property and EPF before
   // 55 must never count toward an emergency buffer you can actually reach.
+  //
+  // Goal progress is DERIVED (tracked records + manual adjustment) and read
+  // through lib/goals.ts, not recomputed here — one answer to "how much is in
+  // this goal", or the buffer and the Goals screen drift apart the way the
+  // savings criterion and the demo did. Until 2026-08-23 this read the raw
+  // `props.current`, which stops updating the moment progress starts coming from
+  // records, so tracked contributions would have been invisible to the score.
+  //
+  // ALL-TIME, deliberately: `goalLinked` is queried without the window filter the
+  // rest of this function uses. The buffer is a STOCK — what you have — and
+  // feeding it 90 days would report a three-year house deposit as three months
+  // of one.
+  //
+  // 🛑 The accepted overlap, decided 2026-08-23: a savings transfer linked to a
+  // goal raises BOTH the savings rate (a flow, 30 pts) and the buffer (a stock,
+  // 20 pts). That is not double-counting a mistake — the two criteria measure
+  // different things, and money genuinely does both — but it does mean one act
+  // can move 50 of the 100 points, so it is written down rather than discovered.
+  const goalLinked = await pbList<{ goal?: string; amount: number; voided?: boolean }>(
+    "transactions",
+    { filter: `tenant = ${pbStr(tenantId)} && goal != ''`, perPage: 1000 },
+  );
+  const trackedPerGoal = trackedByGoal(goalLinked);
   const liquidSavings =
-    nodes.filter((n) => n.kind === "goal").reduce((s, n) => s + (Number(n.props?.current) || 0), 0) +
+    nodes
+      .filter((n) => n.kind === "goal")
+      .reduce((s, n) => s + goalManual(n.props) + (trackedPerGoal.get(n.id) ?? 0), 0) +
     nodes
       .filter((n) => n.kind === "asset" && n.props?.liquid === true)
       .reduce((s, n) => s + (Number(n.props?.value) || 0), 0);

@@ -115,8 +115,13 @@ export const EXPLAIN: Record<ComponentKey, CriterionExplain> = {
     notes: [
       { kind: "counts", key: "hscore.feed.buffer.counts" },
       { kind: "ignored", key: "hscore.feed.buffer.ignored" },
+      // The overlap, stated on the criterion rather than left to be discovered:
+      // one savings transfer linked to a goal moves this AND the savings rate.
+      { kind: "caution", key: "hscore.feed.buffer.overlap" },
     ],
-    recordsHref: null,
+    // Goal-linked records DO feed this now, so the link is real rather than the
+    // "nothing feeds this" note the debt criterion still correctly shows.
+    recordsHref: "/goals",
   },
   personalCap: {
     key: "personalCap",

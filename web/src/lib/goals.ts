@@ -66,6 +66,39 @@ interface GoalNode {
 
 const round = (v: number) => Math.round(v * 100) / 100;
 
+/**
+ * The manual half of a goal's progress, legacy-aware.
+ *
+ * Exported because H-Score's emergency buffer reads goal progress too, and there
+ * must be exactly ONE answer to "how much is in this goal" — a second derivation
+ * living in hscoreData.ts is how the savings criterion and the demo ended up
+ * disagreeing in sign. See the note in lib/hscore.ts.
+ */
+export function goalManual(props: Record<string, unknown> | null): number {
+  const explicit = props?.manual_adjustment;
+  return round(Number(explicit !== undefined ? explicit : props?.current) || 0);
+}
+
+/**
+ * Sum linked records per goal id. Voided rows are excluded: a voided transfer is
+ * money that did not move, and counting it would be the ledger disagreeing with
+ * itself.
+ *
+ * Callers must pass ALL-TIME records, not a window. Goal progress is a stock —
+ * what you have — and feeding it only the last 90 days would quietly report a
+ * three-year house deposit as three months of it.
+ */
+export function trackedByGoal(
+  rows: { goal?: string; amount: number; voided?: boolean }[],
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const t of rows) {
+    if (!t.goal || t.voided) continue;
+    out.set(t.goal, (out.get(t.goal) ?? 0) + Number(t.amount));
+  }
+  return out;
+}
+
 function mapGoal(n: GoalNode, trackedById: Map<string, number>): Goal {
   const target = Number(n.props?.target) || 0;
   // Legacy `props.current` is READ as the manual figure when no explicit
@@ -79,9 +112,7 @@ function mapGoal(n: GoalNode, trackedById: Map<string, number>): Goal {
   // It is also exactly right on the merits: `current` only ever held a number a
   // human typed, which is precisely what the manual half means.
   const explicitManual = n.props?.manual_adjustment;
-  const manual = round(
-    Number(explicitManual !== undefined ? explicitManual : n.props?.current) || 0,
-  );
+  const manual = goalManual(n.props);
   const tracked = round(trackedById.get(n.id) ?? 0);
   const current = round(tracked + manual);
   const category = String(n.props?.category ?? "custom");
@@ -126,11 +157,7 @@ export async function listGoals(tenantId: string): Promise<Goal[]> {
     }),
   ]);
 
-  const trackedById = new Map<string, number>();
-  for (const t of linked) {
-    if (!t.goal || t.voided) continue;
-    trackedById.set(t.goal, (trackedById.get(t.goal) ?? 0) + Number(t.amount));
-  }
+  const trackedById = trackedByGoal(linked);
 
   // Sorted by RAW percentage so a goal at 120% sorts above one at exactly 100,
   // rather than the two being tied by a cap that exists only for the bar.
