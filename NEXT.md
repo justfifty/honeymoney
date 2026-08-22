@@ -597,7 +597,7 @@ release in the first place.
 - [x] Production build, stack restarted, and the Cloudflare Pages snapshot re-cut — the
       snapshot is point-in-time and both the landing page and `/demo` changed.
 - [x] Verified **on the live site**, not just locally: `check:mic` 10/10 and `check:nav` 35/35
-      against `https://honeymoney.app`, and the edge snapshot at `honeymoney-e84.pages.dev`
+      against `https://honeymoney.app`, and the edge snapshot at `honeymoney-ci3.pages.dev`
       returns `X-HoneyMoney-Served: edge-snapshot` with the mic gone from it too.
 - [x] H-Score output **byte-identical**: `check:demo` reports all four personas on band,
       0 drift over 365 days.
@@ -1469,59 +1469,66 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     (Purge 03:00 · Nudge 09:00 · Demo 03:30). Still set `ACCOUNT_PURGE_SECRET` in
     `web/.env.local` or purge/nudge stay safe no-ops.
 11. [x] ~~Commit or discard the in-flight static-site work~~ — committed 2026-08-20
-    (`89163e8`) and the Cloudflare Pages project is live at `honeymoney-e84.pages.dev`.
-12. [ ] **Point honeymoney.app at Pages** — 🛑 **RE-DIAGNOSED 2026-08-23. It was
-    never four dashboard clicks, and this item has been wrong since 2026-08-20.**
+    (`89163e8`) and the Cloudflare Pages project is live at `honeymoney-ci3.pages.dev`.
+12. [~] **Point honeymoney.app at Pages** — **the hard part is done; ONE DNS record
+    left, and it needs a human.**
 
-    **The domain and the Pages project are in two different Cloudflare accounts.**
+    🛑 **The 2026-08-20 diagnosis was wrong, and re-diagnosing it was the whole
+    problem.** It said "four dashboard clicks". It could never have worked: the
+    **domain and the Pages project were in two different Cloudflare accounts.**
 
-    | | account | holds |
+    | | account | held |
     |---|---|---|
-    | `ecb25f751b4e93b49afe473aac4910c6` | **Justfifty1976@gmail.com** | the **honeymoney.app zone** |
-    | `4606a61d2aca80d0da3d046635f7689c` | **Youngpong@gmail.com** | the **`honeymoney` Pages project** (`honeymoney-e84.pages.dev`) |
+    | `ecb25f751b4e93b49afe473aac4910c6` | **Justfifty1976@gmail.com** | the honeymoney.app zone |
+    | `4606a61d2aca80d0da3d046635f7689c` | Youngpong@gmail.com | the old `honeymoney` Pages project |
 
-    Verified three ways: `wrangler whoami` reports the Youngpong account and
-    `wrangler pages project list` shows `honeymoney` there · a `GET /zones` with
-    that token returns **zero zones**, so it cannot see honeymoney.app at all ·
-    and the dashboard for `ecb25f75…` → **Workers & Pages** reads *"No projects
-    found. You have not created any projects yet."*
+    "Workers & Pages → honeymoney → Custom domains" was unfindable because the
+    project was not in that account — the dashboard there read *"No projects
+    found"*. Three independent confirmations: `wrangler whoami` reported the
+    Youngpong account · `GET /zones` with that token returned **zero zones** ·
+    and the domain account's Workers & Pages page was empty.
 
-    That is why "Workers & Pages → honeymoney → Custom domains" was never
-    findable. The instruction was not being followed incorrectly — **the project
-    is not in that account**, so the page it describes does not exist there.
+    ✅ **Done 2026-08-23**, all in the Justfifty1976 account:
+    - `wrangler login` re-authenticated to it, and `GET /zones` now returns
+      honeymoney.app (zone `cf765cc7021c47d3e6de209fd3630660`) — the proof the
+      accounts were the problem.
+    - Pages project **`honeymoney`** created there → **`honeymoney-ci3.pages.dev`**.
+    - Snapshot deployed; all five public routes return `X-HoneyMoney-Served:
+      edge-snapshot`.
+    - `honeymoney.app` and `www.honeymoney.app` attached as custom domains.
+    - `CLOUDFLARE_ACCOUNT_ID` (a persistent Windows **User** env var) was pinning
+      the OLD account and made every wrangler call target it regardless of who
+      was logged in. Repointed at the new account, so `npm run site:deploy` works
+      from a fresh shell.
 
-    ⚠️ **Do NOT click "Create application"** in the Justfifty1976 account. A new
-    empty Pages project would take the name and serve nothing, and the real
-    snapshot would still be in the other account.
+    ⬜ **THE ONE REMAINING STEP.** Both custom domains sit at `status: pending`,
+    `validation: pending`, method **http**. Cloudflare validates by fetching the
+    apex — which still CNAMEs to the tunnel, so the request lands on the laptop
+    instead of Pages and can never complete. The token holds `zone (read)` but
+    not `zone:dns:edit`, so this cannot be automated from here.
 
-    **Option A — move the Pages project to the domain's account (recommended).**
-    One account then owns the whole public surface, and `npm run site:deploy`
-    keeps working with no special cases.
-      1. `npx wrangler logout && npx wrangler login` — sign in as
-         **Justfifty1976@gmail.com** (this is the one step that needs a human;
-         it opens a browser for OAuth).
-      2. `npx wrangler pages project create honeymoney --production-branch main`
-      3. `npm run site:build && npm run site:deploy`
-      4. Dashboard → Workers & Pages → honeymoney → **Custom domains** → add
-         `honeymoney.app` and `www`. This now works, because the zone is in the
-         same account.
-      ⬜ Cost: the project gets a **new `*.pages.dev` subdomain**, so every
-      reference to `honeymoney-e84.pages.dev` needs updating — this file,
-      `deploy/verify-uptime.ps1`, and any deck artefact that names it.
+    **Cloudflare → honeymoney.app → DNS → Records:**
+    1. Find the record for **`honeymoney.app`** (name `@`) — a proxied CNAME to
+       `<tunnel-id>.cfargotunnel.com`.
+    2. Change its target to **`honeymoney-ci3.pages.dev`**. Keep it **Proxied**.
+    3. Do the same for **`www`** if it exists.
 
-    **Option B — leave it split and verify by DNS.** Pages custom domains do work
-    cross-account: add `honeymoney.app` to the project in the Youngpong account,
-    Cloudflare returns a CNAME target, and that CNAME replaces the apex tunnel
-    record in the Justfifty1976 account. Fewer moving parts today, two accounts
-    to reason about forever, and certificate issuance across accounts is the
-    fiddly part. Only worth it if moving the project is somehow blocked.
+    ⚠️ **DO NOT TOUCH `origin.honeymoney.app`.** That is the hostname the tunnel
+    publishes and the one `deploy/pages/_worker.js` proxies dynamic routes back
+    to (`ORIGIN_HOST`). Repointing it would make the worker call itself and every
+    signed-in page would loop.
 
-    Rollback for either: remove the custom domains and
+    Within a minute or two of the change both domains should flip to `active`,
+    and `verify-uptime.ps1`'s **APEX FRONTED BY PAGES** goes green for the first
+    time. Adding the custom domains changed nothing on its own — the live site
+    served normally throughout.
+
+    ↩️ **Rollback:** remove the two custom domains from the project and
     `cloudflared tunnel route dns honeymoney honeymoney.app`.
 
-    ⚠️ Still true and unrelated to the above: **Pages custom domains are not on
-    the zone's `Workers Routes` page.** That page maps URL patterns to standalone
-    Workers and will always be empty here.
+    ⚠️ The old project still exists in the Youngpong account at
+    `honeymoney-e84.pages.dev`. Harmless, but delete it once the apex is green so
+    nobody deploys to the wrong one.
 
     ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to
     a public page — the snapshot is point-in-time and does not update itself.

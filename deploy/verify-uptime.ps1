@@ -43,7 +43,7 @@ Check 'APEX FRONTED BY PAGES' ($apex -eq 'edge-snapshot') `
   "honeymoney.app/gallery served by: $apex  (want 'edge-snapshot'; 'origin' = laptop-dependent)"
 $dash = Served 'https://honeymoney.app/dashboard'
 Check 'app routes reach the live origin' ($dash -eq 'origin') "/dashboard served by: $dash"
-$pages = Served 'https://honeymoney-e84.pages.dev/gallery'
+$pages = Served 'https://honeymoney-ci3.pages.dev/gallery'
 Check 'Pages snapshot deployed + healthy' ($pages -eq 'edge-snapshot') "pages.dev/gallery served by: $pages"
 
 Write-Host "`nThe honest test: stop-honeymoney.ps1, then reload /, /guide, /gallery, /deck." -ForegroundColor Yellow
