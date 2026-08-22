@@ -15,10 +15,20 @@ import { usePathname } from "next/navigation";
 // fifth tab would be dead space on every screen for everyone who signed up — it
 // lives on the public route and is reachable from More.
 //
-// Hidden on the marketing landing and auth pages so those stay focused, and on
-// routes that carry their own navigation (see ChromeGate). On desktop the header
-// nav takes over — this is md:hidden.
-const HIDE_ON = new Set(["/", "/login", "/signup", "/join"]);
+// On desktop the header nav takes over — this is md:hidden, and HeaderNav is
+// `hidden md:flex`, so exactly one of the two carries the four at any width.
+// Routes with their own navigation are excluded upstream by ChromeGate.
+//
+// This bar used to hide itself on "/", /login, /signup and /join to keep the
+// marketing and auth pages focused. That is what made the four destinations
+// vanish below 768px on those routes: the header nav is hidden there, so the
+// only remaining route into the app was the hamburger — and More is already the
+// overflow menu. Focus is not worth losing navigation over, so the bar now
+// renders everywhere the header nav would have.
+//
+// To put the marketing landing back the way it was, the change is one line:
+//   const HIDE_ON = new Set(["/", "/login", "/signup", "/join"]);
+// and an early `if (HIDE_ON.has(pathname)) return null;` below.
 
 export interface BottomNavLabels {
   record: string;
@@ -29,7 +39,6 @@ export interface BottomNavLabels {
 
 export default function BottomNav({ labels }: { labels: BottomNavLabels }) {
   const pathname = usePathname();
-  if (HIDE_ON.has(pathname)) return null;
 
   const active = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
@@ -74,16 +83,30 @@ function Tab({
   return (
     <Link
       href={href}
+      // The label is hidden below 360px, so the link carries it either way —
+      // a screen reader must never be left with four unnamed icons.
+      aria-label={label}
       aria-current={on ? "page" : undefined}
       className={
-        "flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium " +
-        (on ? "text-amber-600 dark:text-amber-400" : "text-zinc-500 dark:text-zinc-400")
+        // min-h-14 is 56px: comfortably past the 44px minimum touch target, and
+        // it survives the label being hidden at 320px without the row collapsing.
+        "relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] " +
+        "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amber-500 " +
+        (on
+          ? "font-semibold text-amber-600 dark:text-amber-400"
+          : "font-medium text-zinc-500 dark:text-zinc-400")
       }
     >
-      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden="true">
+      {/* Active state is a bar plus weight, not hue alone — the tab has to be
+          identifiable in greyscale and by anyone who can't separate amber from
+          grey. Same reasoning as the +/- glyphs on records. */}
+      {on && <span className="absolute inset-x-2.5 top-0 h-0.5 rounded-b-full bg-amber-500" aria-hidden="true" />}
+      <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden="true">
         {children}
       </svg>
-      {label}
+      {/* Degrade rather than disappear: at 320px there is no room for four
+          labels in a script like Tamil, so the icons stand alone. */}
+      <span className="max-w-full truncate max-[359px]:hidden">{label}</span>
     </Link>
   );
 }

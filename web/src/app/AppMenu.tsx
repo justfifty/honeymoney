@@ -16,10 +16,13 @@ export interface AppMenuLabels {
   iosGuide?: IosGuideStrings; // translated Add-to-Home-Screen steps
 }
 
-// The hamburger menu, shown at every size. On phones it's the *only* way to
-// reach Dashboard/Records/Graph/Guide (the header's inline links are `hidden
-// md:flex`); on desktop it sits alongside the inline nav and is the home for the
-// menu-specific actions — AI Setup, Account, and Install.
+// The hamburger menu, shown at every size. Its home is the menu-specific
+// actions — Goals, Learn, AI Setup, Account, Install.
+//
+// It also repeats the four primary destinations, which is convenience and must
+// stay only that: they are carried by HeaderNav above md and BottomNav below it,
+// and this menu is never their only route. If a change ever leaves them
+// reachable *only* from here, that is the bug Task 5 fixed coming back.
 export default function AppMenu({
   items,
   labels,

@@ -713,18 +713,52 @@ Decisions are answered.
 
 ### The order
 
-**1 · Task 5 — Primary nav must stay visible at all widths** `[Relevance]`
-- [ ] Record · Dashboard · H-Score · More vanish as the window narrows — highest-severity
-      item in the brief, because it breaks the app at exactly the phone width most users
-      are on.
-- [ ] **Diagnose before fixing.** Name the cause (breakpoint utility · overflowing no-wrap
-      flex · broken overflow menu · fixed-width logo eating the space) before touching it.
-- [ ] Reachable at 320px. None of the four may ever collapse into an overflow menu —
-      `More` *is* the overflow menu. Icon-only + accessible label at narrow widths.
-- [ ] 44×44px targets · active state distinct by more than colour · safe-area insets ·
-      `<nav>` + `aria-current="page"` · visible keyboard focus.
-- [ ] Verify at 320 / 375 / 768 / 1024 / 1440 **and on mid-session resize**, not just fresh load.
-- 🛑 A bottom tab bar at narrow widths reaches a thumb far better. Report cost, don't implement.
+**1 · Task 5 — Primary nav must stay visible at all widths** — ✅ **done 2026-08-22** `[Relevance]`
+- [x] **Diagnosed before fixing.** It was the brief's first candidate, but only on four
+      routes. `HeaderNav` is `hidden md:flex`, so the four links leave the header below
+      768px on *every* route; `BottomNav` is `md:hidden` and picks them up — except it
+      returned `null` on `/`, `/login`, `/signup` and `/join` to keep those pages
+      "focused". On those four routes below 768px the only remaining way in was the
+      hamburger, and the brief is explicit that More is already the overflow menu.
+      Not an overflowing flex row, and **not a layout overflow at all** — see the
+      measurement note below.
+- [x] `BottomNav`'s `HIDE_ON` removed, so the bar renders wherever the header nav would
+      have. `/demo` stays excluded via `ChromeGate` — it ships its own tab bar, and two
+      fixed bars stack with the global one swallowing the demo's taps.
+      ↩️ **Reversible decision:** this puts a tab bar on the marketing landing and the auth
+      pages, which previously had none. To restore that, the one-line revert is written
+      into the comment at the top of `web/src/app/BottomNav.tsx`.
+- [x] Icon-only below 360px (`max-[359px]:hidden`) with `aria-label` on the link, so four
+      labels in Tamil can't force the row to overflow and a screen reader never meets four
+      unnamed icons. Labels return at 360px+.
+- [x] Active state is now **a top bar plus font weight**, not hue alone — it was
+      colour-only, which the measurement below caught on every app route.
+- [x] Touch targets: tabs 56px; header nav links raised to 44px (they were 20px, and
+      768px is iPad portrait — a touch device reading the "desktop" header). Header height
+      is unchanged, `md:py-1.5` giving back what the taller links take.
+- [x] Visible keyboard focus on both bars — verified by dispatching real Tab keys and
+      reading back `outline: 2px solid rgb(255,117,24)` on the focused tab.
+- [x] Safe-area insets and `<nav>` + `aria-current="page"` were already correct.
+- [x] **Verified at 320 / 375 / 768 / 1024 / 1440 and across mid-session resize** —
+      `npm run check:nav` (new, `web/scripts/check-nav.mjs`), which measures boxes rather
+      than counting selectors, because a nav item pushed off-viewport or 20px tall passes a
+      naive check and still fails the user. **7 routes × 5 widths, 35/35 pass**, plus five
+      resizes with no reload. Against the shipped code the same script fails every narrow
+      row. `/demo` is out of its scope by design — its tabs are component state, not links;
+      checked by eye at 320px instead.
+      ⚠️ **Chrome's `--window-size` clamps to 500px on Windows**, so a headless screenshot
+      at 320px is a *crop of a 500px render* and every element looks clipped. That artifact
+      reads exactly like a page-wide overflow bug and cost an hour. Emulate the viewport
+      over CDP (`Emulation.setDeviceMetricsOverride`) instead — Node 22's built-in
+      `WebSocket` is enough, no Playwright needed.
+- 🛑 **Reported, not implemented — the brief's assumption is out of date.** It asks whether
+      to consider a bottom tab bar at narrow widths. **One already exists**, shipped
+      2026-08-21; the four tabs have been in the thumb zone since then. The bug was never
+      the absence of a bottom bar, only that it hid itself on four routes. No cost estimate
+      needed — there is nothing to build.
+- ⬜ Left alone deliberately: `SiteFooter`'s secondary link row is 16px tall, under the 44px
+      rule. Those are footer links, not primary destinations; folding them into Task 5 would
+      be scope the brief didn't ask for. Worth a sweep of its own later.
 
 **2 · Task 3 — Remove the Speak function** `[Technical]`
 - [ ] Remove entirely, not behind a flag. Changelog rationale: the Web Speech API handles
