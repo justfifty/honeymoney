@@ -1326,6 +1326,20 @@ Decisions are answered.
 > (`check:charts`, now a gate) and **the Sankey consumes the three kinds** — a transfer
 > terminates at its goal instead of drawing as money leaving, proven by `check:attribution`.
 >
+> ✅ **Sankey at 375px — done 2026-08-23, and it was a real bug on the live site.**
+> `min-width: 680px` on a 375px phone dragged the WHOLE PAGE to 738px — header, nav and
+> all scrolling sideways — because `<main>` lacked `w-full` and grew to fit rather than
+> letting the chart container clip. The brief's first-choice strategy is taken, split
+> across the two mechanisms that can actually deliver it: **layout in CSS**
+> (`min-w-0 sm:min-w-[680px]`), because it has to be right in the server-rendered HTML or
+> the first paint overflows; **aggregation in JS**, because folding twelve bands to six is
+> a re-render rather than a layout shift and can safely follow hydration.
+> Two approaches were tried and rejected first: a ResizeObserver on the chart's own box fed
+> back on itself (it measured the element `minWidth` was inflating, so the box always
+> reported ≥640 and the floor never came off), and a JS-only width arrived after the page
+> had already jumped. **Verified 320 / 375 / 768: the page is now exactly the viewport
+> width at each.**
+>
 > ⬜ **Still open, and the largest single item in the brief is among them:**
 > **Ask Honey "what if?"** (parse → compute → narrate, the model never doing arithmetic,
 > working with no key, asking for a price rather than guessing one, and the privacy check

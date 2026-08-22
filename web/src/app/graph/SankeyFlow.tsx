@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
@@ -65,7 +65,7 @@ interface Ribbon {
   label: string;
 }
 
-function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) {
+function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale, boxWidth = 900) {
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
 
@@ -82,7 +82,9 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) 
   const vendorFlow = new Map<string, number>();
   for (const e of edges) vendorFlow.set(e.dst, (vendorFlow.get(e.dst) ?? 0) + e.flow);
 
-  const cap = limitFor("sankey", 900);
+  // The real measured width, so a phone folds the long tail far harder than a
+  // laptop does — six bands instead of twelve.
+  const cap = limitFor("sankey", boxWidth);
   const thirdCol = nodes.filter((n) => n.kind !== "income_source" && n.kind !== "bucket");
   const fold = topNWithOther(thirdCol, cap, (n) => vendorFlow.get(n.id) ?? 0);
 
@@ -319,7 +321,51 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) 
 
 export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: { nodes: SankNode[]; edges: SankEdge[]; ccy?: string; lang?: Locale }) {
   const [focus, setFocus] = useState<string | null>(null);
-  const { placed, ribbons } = useMemo(() => build(nodes, edges, ccy, lang), [nodes, edges, ccy, lang]);
+
+  // ── NARROW WIDTHS ────────────────────────────────────────────────────────
+  //
+  // The brief singles this out — "Sankey at 375px is the risk to design for" —
+  // and offers three strategies in preference order. The first is taken,
+  // **aggregate harder at narrow widths**, split across two mechanisms because
+  // they solve different halves and only one of them can wait for hydration:
+  //
+  //   LAYOUT is CSS (`min-w-0 sm:min-w-[680px]` on the svg below). It has to be
+  //     right in the server-rendered HTML — a JS-applied width lands after
+  //     hydration, so the first paint on a phone overflows and the page jumps.
+  //     THE BUG THIS FIXED: `min-width: 680px` on a 375px phone dragged the whole
+  //     page to 738px, header and nav scrolling sideways with it, because <main>
+  //     lacked `w-full` and grew to fit rather than letting the chart container
+  //     clip. Measured at 320/375/768 before and after; the page is now exactly
+  //     the viewport width at all three.
+  //
+  //   DATA is JS (below). Folding twelve bands to six is a re-render, not a
+  //     layout shift, so it can safely arrive after hydration — and it is what
+  //     actually makes the chart readable. Scrolling alone never was: a user is
+  //     not helped by being able to pan across slivers they still cannot read.
+  //
+  // matchMedia on the VIEWPORT, deliberately not a ResizeObserver on the chart's
+  // own box. The observer was tried first and fed back on itself — it measured
+  // the element `minWidth` was inflating, so the box always reported ≥640 and the
+  // floor never came off. The viewport cannot be affected by what the chart does,
+  // which is the whole property required.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  // Starts false so the first client render matches the server's, then updates —
+  // the standard way to avoid a hydration mismatch while still adapting.
+  const boxWidth = narrow ? 375 : 900;
+
+  const { placed, ribbons } = useMemo(
+    () => build(nodes, edges, ccy, lang, boxWidth),
+    [nodes, edges, ccy, lang, boxWidth],
+  );
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const tr = (k: string) => translate(lang, k);
 
@@ -337,8 +383,26 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
   const labelFits = (h: number) => h >= 13;
 
   return (
-    <>
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 680 }} role="img" aria-label="Sankey money flow: income to buckets to spending and savings">
+    <div>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      /* The 680px floor is applied in CSS at the `sm` breakpoint, NOT from JS.
+         Two reasons, both learned the hard way here:
+           • it must be right in the SERVER-rendered HTML. A JS-applied width
+             arrives after hydration, so the first paint on a phone overflows and
+             the page jumps — and on this page the overflow itself inflated the
+             layout viewport (innerWidth read 688 inside a 375px device), so the
+             measurement was downstream of the bug it was meant to fix.
+           • a ResizeObserver on the chart's own box fed back on itself: it
+             measured the element `minWidth` was inflating, so the box always
+             reported ≥640 and the floor never came off.
+         CSS has neither problem: the breakpoint resolves before paint and cannot
+         be influenced by what the chart does. Below `sm` the diagram simply
+         scales down inside its viewBox. */
+      className="w-full min-w-0 sm:min-w-[680px]" 
+      role="img"
+      aria-label="Sankey money flow: income to buckets to spending and savings"
+    >
       {/* column captions */}
       <text x={64} y={26} fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.income")}</text>
       <text x={W / 2} y={26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.buckets")}</text>
@@ -393,6 +457,6 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
         {tr("g.sankey.transferNote")}
       </p>
     )}
-    </>
+    </div>
   );
 }

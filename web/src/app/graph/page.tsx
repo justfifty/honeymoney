@@ -132,8 +132,16 @@ export default async function GraphPage({
   const personaIcon = (name: string) =>
     /solo|freelance|individual/i.test(name) ? "🧑" : /couple|partner/i.test(name) ? "👫" : "👪";
 
+  // `w-full min-w-0` on <main> below is load-bearing, not tidying. It is a flex
+  // item of the body column, and `mx-auto` suppresses cross-axis stretch — so
+  // without a definite width it sizes to fit-content, takes the min-content width
+  // of its widest child, and the Sankey's `min-width: 680px` dragged the WHOLE
+  // PAGE to 738px on a 375px phone: header, nav and all scrolled sideways. The
+  // chart container's own `overflow-x-auto` never got a chance to clip, because
+  // the box it would have clipped inside grew instead. Measured at 320/375/768
+  // before and after. Same bug as the demo column in DemoApp.
   return (
-    <main className="mx-auto min-h-full max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
+    <main className="mx-auto min-h-full w-full min-w-0 max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">🕸️ {tr("app.title")}</h1>
