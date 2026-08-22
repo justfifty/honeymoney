@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { isDatabaseConfigured, config } from "@/lib/config";
 import { type GNode } from "@/lib/graphView";
+import { CHARTS, CHART_LIST, chartFromParam, type ChartId } from "@/lib/charts";
 import { getFocusedView, parseFocus, focusToParam } from "@/lib/focusView";
 import NetworkGraph from "./NetworkGraph";
 import SankeyFlow from "./SankeyFlow";
@@ -45,24 +46,11 @@ const KIND_BADGE: Record<string, string> = {
   wallet: "👛",
 };
 
-type Mode = "sankey" | "treemap" | "tree" | "organic" | "bars" | "flow";
-const MODES: { key: Mode; label: string; icon: string }[] = [
-  { key: "sankey", label: "Sankey", icon: "🌊" },
-  { key: "treemap", label: "Treemap", icon: "🟦" },
-  { key: "tree", label: "Tree", icon: "🌳" },
-  { key: "organic", label: "Organic", icon: "🕸️" },
-  { key: "bars", label: "Budget", icon: "📊" },
-  { key: "flow", label: "Flow", icon: "⇄" },
-];
-
-const CAPTION: Record<Mode, string> = {
-  sankey: "g.caption.sankey",
-  treemap: "g.caption.treemap",
-  tree: "g.caption.tree",
-  organic: "g.caption.organic",
-  bars: "g.caption.bars",
-  flow: "g.caption.flow",
-};
+// Names, order and captions come from lib/charts.ts — see Task 11. The array
+// that used to live here also carried a `label` field that nothing ever read
+// (the switcher renders `mode.<id>`), which is precisely how a duplicate goes
+// unnoticed: a wrong value in it would have looked fine forever.
+type Mode = ChartId;
 
 function columnOf(n: GNode): keyof typeof COL_X {
   if (n.kind === "income_source") return "income";
@@ -105,7 +93,7 @@ export default async function GraphPage({
     : config.demoPersonaIds;
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
   const canManageGraph = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
-  const mode: Mode = MODES.some((m) => m.key === params.mode) ? (params.mode as Mode) : "sankey";
+  const mode: Mode = chartFromParam(params.mode);
   const focus = parseFocus(params.focus);
   const focusParam = focusToParam(focus);
   const lang = await getLocale();
@@ -250,17 +238,19 @@ export default async function GraphPage({
 
       {/* view switcher */}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {MODES.map((m) => (
+        {CHART_LIST.map((c) => (
           <Link
-            key={m.key}
-            href={`/graph?tenantId=${tenantId}&mode=${m.key}${sticky}`}
+            key={c.id}
+            href={`/graph?tenantId=${tenantId}&mode=${c.id}${sticky}`}
+            title={tr(c.oneLineKey)}
+            aria-current={mode === c.id ? "true" : undefined}
             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-              mode === m.key
+              mode === c.id
                 ? "border-amber-500 bg-amber-500 text-white"
                 : "border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
             }`}
           >
-            {m.icon} {tr(`mode.${m.key}`)}
+            {c.icon} {tr(c.nameKey)}
           </Link>
         ))}
       </div>
@@ -427,7 +417,22 @@ export default async function GraphPage({
       </div>
 
       {/* per-mode caption + legend */}
-      <p className="mt-3 max-w-3xl text-xs text-zinc-500">{tr(CAPTION[mode])}</p>
+      {/* The one-line explanation, reachable from the chart itself rather than
+          only from the Gallery. The brief singles the Sankey out: it is the
+          default view and the least familiar diagram type to a general
+          audience, and a user meeting it cold with no explanation bounces off
+          the app's strongest visualisation. `open` on the Sankey for that
+          reason; the rest are a tap away. */}
+      <details className="mt-3 max-w-3xl" open={mode === "sankey"}>
+        <summary className="cursor-pointer text-xs font-medium text-amber-700 hover:underline">
+          {tr("chart.explainOpen")}
+        </summary>
+        <p className="mt-1.5 text-xs leading-relaxed text-zinc-500">{tr(CHARTS[mode].oneLineKey)}</p>
+        <p className="mt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+          {tr("chart.whenToUse")}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500">{tr(CHARTS[mode].whenToUseKey)}</p>
+      </details>
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
         {(mode === "treemap" || mode === "tree" || mode === "bars") && (
           <>

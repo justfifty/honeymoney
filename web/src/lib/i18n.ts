@@ -852,6 +852,10 @@ const en: Dict = {
   "att.altOf": "Receipt photo for {what}",
   "att.hint": "Pinch or double-tap to zoom · drag to move · Esc to close",
   "cap.attachFailed": "the photo did not attach",
+  "chart.whenToUse": "When to use this",
+  "chart.explainOpen": "What is this chart?",
+  "demo.graph.title": "The graph, six ways",
+  "demo.graph.body": "The same household, drawn six different ways. Each answers a different question — tap one to see what it is for.",
 };
 
 const ms: Dict = {
@@ -875,7 +879,7 @@ const ms: Dict = {
   "mode.sankey": "Sankey",
   "mode.treemap": "Peta Pokok",
   "mode.tree": "Pokok",
-  "mode.organic": "Organik",
+  "mode.organic": "Rangkaian",
   "mode.bars": "Bajet",
   "mode.flow": "Aliran",
   "add.title": "Tambah ke graf",
@@ -1358,6 +1362,10 @@ const ms: Dict = {
   "att.altOf": "Foto resit untuk {what}",
   "att.hint": "Cubit atau ketik dua kali untuk zum · seret untuk gerak · Esc untuk tutup",
   "cap.attachFailed": "foto tidak dilampirkan",
+  "chart.whenToUse": "Bila hendak guna ini",
+  "chart.explainOpen": "Apakah carta ini?",
+  "demo.graph.title": "Graf itu, enam cara",
+  "demo.graph.body": "Isi rumah yang sama, dilukis enam cara berbeza. Setiap satu menjawab soalan berbeza — ketik satu untuk lihat kegunaannya.",
 };
 
 // Scaffolded locales — core chrome only; everything else falls back to English.
@@ -1380,9 +1388,9 @@ const zh: Dict = {
   "stat.spentMtd": "已花费（本月至今）",
   "stat.unallocated": "未分配",
   "mode.sankey": "桑基图",
-  "mode.treemap": "树状图",
+  "mode.treemap": "矩形树图",
   "mode.tree": "树形",
-  "mode.organic": "有机布局",
+  "mode.organic": "网络图",
   "mode.bars": "预算",
   "mode.flow": "流向",
   "add.title": "添加到图表",
@@ -1748,6 +1756,10 @@ const zh: Dict = {
   "att.altOf": "{what} 的收据照片",
   "att.hint": "双指或双击缩放 · 拖动移动 · Esc 关闭",
   "cap.attachFailed": "照片未能附加",
+  "chart.whenToUse": "何时使用",
+  "chart.explainOpen": "这是什么图？",
+  "demo.graph.title": "同一张图，六种画法",
+  "demo.graph.body": "同一个家庭，六种不同的画法。每一种回答不同的问题 — 点一下看看它的用途。",
 };
 const ta: Dict = {
   "app.title": "பணம், காட்சிப்படுத்தப்பட்டது",
@@ -1768,9 +1780,9 @@ const ta: Dict = {
   "stat.spentMtd": "செலவு (மாஇ)",
   "stat.unallocated": "ஒதுக்கப்படாதது",
   "mode.sankey": "Sankey",
-  "mode.treemap": "மரவரைபடம்",
+  "mode.treemap": "கட்டப் படம்",
   "mode.tree": "மரம்",
-  "mode.organic": "இயற்கை",
+  "mode.organic": "வலைப் படம்",
   "mode.bars": "பட்ஜெட்",
   "mode.flow": "ஓட்டம்",
   "add.title": "வரைபடத்தில் சேர்",
@@ -2136,6 +2148,10 @@ const ta: Dict = {
   "att.altOf": "{what} இன் ரசீது புகைப்படம்",
   "att.hint": "பெரிதாக்க கிள்ளவும் அல்லது இருமுறை தட்டவும் · நகர்த்த இழுக்கவும் · மூட Esc",
   "cap.attachFailed": "புகைப்படம் இணைக்கப்படவில்லை",
+  "chart.whenToUse": "இதை எப்போது பயன்படுத்துவது",
+  "chart.explainOpen": "இது என்ன வரைபடம்?",
+  "demo.graph.title": "ஒரே வரைபடம், ஆறு வழிகள்",
+  "demo.graph.body": "ஒரே குடும்பம், ஆறு வெவ்வேறு வழிகளில். ஒவ்வொன்றும் வெவ்வேறு கேள்விக்குப் பதிலளிக்கிறது — எதற்கானது என்று பார்க்க ஒன்றைத் தட்டவும்.",
 };
 const hi: Dict = {
   "app.title": "पैसा, दृश्य रूप में",
@@ -2158,7 +2174,7 @@ const hi: Dict = {
   "mode.sankey": "Sankey",
   "mode.treemap": "ट्रीमैप",
   "mode.tree": "ट्री",
-  "mode.organic": "ऑर्गेनिक",
+  "mode.organic": "नेटवर्क",
   "mode.bars": "बजट",
   "mode.flow": "फ़्लो",
   "add.title": "ग्राफ़ में जोड़ें",
@@ -2524,6 +2540,10 @@ const hi: Dict = {
   "att.altOf": "{what} की रसीद की तस्वीर",
   "att.hint": "ज़ूम के लिए पिंच या डबल-टैप · हिलाने के लिए खींचें · बंद करने को Esc",
   "cap.attachFailed": "तस्वीर संलग्न नहीं हुई",
+  "chart.whenToUse": "इसे कब इस्तेमाल करें",
+  "chart.explainOpen": "यह चार्ट क्या है?",
+  "demo.graph.title": "एक ही ग्राफ़, छह तरीके",
+  "demo.graph.body": "एक ही परिवार, छह अलग तरीकों से बनाया गया। हर एक अलग सवाल का जवाब देता है — किसी एक पर टैप कर देखें वह किस काम आता है।",
 };
 
 // Traditional Chinese — scaffolded (Traditional conversion of the zh chrome);
@@ -2547,9 +2567,9 @@ const zhHant: Dict = {
   "stat.spentMtd": "本月累計支出",
   "stat.unallocated": "未分配",
   "mode.sankey": "桑基圖",
-  "mode.treemap": "樹狀圖",
+  "mode.treemap": "矩形樹圖",
   "mode.tree": "樹狀結構",
-  "mode.organic": "有機圖",
+  "mode.organic": "網絡圖",
   "mode.bars": "預算",
   "mode.flow": "流向",
   "add.title": "新增至圖譜",
@@ -2915,6 +2935,10 @@ const zhHant: Dict = {
   "att.altOf": "{what} 的收據照片",
   "att.hint": "雙指或點兩下縮放 · 拖曳移動 · Esc 關閉",
   "cap.attachFailed": "照片未能附加",
+  "chart.whenToUse": "何時使用",
+  "chart.explainOpen": "這是什麼圖？",
+  "demo.graph.title": "同一張圖，六種畫法",
+  "demo.graph.body": "同一個家庭，六種不同的畫法。每一種回答不同的問題 — 點一下看看它的用途。",
 };
 
 const DICTS: Record<Locale, Dict> = { en, ms, zh, "zh-Hant": zhHant, ta, hi };

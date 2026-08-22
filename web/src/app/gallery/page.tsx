@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
+import { CHART_LIST } from "@/lib/charts";
 import Logo from "../Logo";
 
 export const metadata = {
@@ -15,14 +16,11 @@ export const metadata = {
 // live, data-backed version of the same thing — needs the origin.
 type Shot = { img: string; k: string };
 
-const SIX: Shot[] = [
-  { img: "g-family-sankey.png", k: "sankey" },
-  { img: "g-family-treemap.png", k: "treemap" },
-  { img: "g-family-tree.png", k: "tree" },
-  { img: "g-family-organic.png", k: "organic" },
-  { img: "g-family-bars.png", k: "bars" },
-  { img: "g-family-flow.png", k: "flow" },
-];
+// The six chart figures come from lib/charts.ts, in the registry's order, so the
+// Gallery cannot fall out of step with /graph or the demo — which is the whole
+// point of Task 11. The lens and persona groups below are NOT charts and keep
+// their own keys.
+const SIX: Shot[] = CHART_LIST.map((c) => ({ img: c.shot, k: c.id }));
 
 const LENSES: Shot[] = [
   { img: "g-family-lens-person.png", k: "person" },

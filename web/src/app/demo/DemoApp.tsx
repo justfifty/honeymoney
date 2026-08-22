@@ -27,6 +27,7 @@ import { describeMovement, savingsGapToNextBand } from "@/lib/hscore";
 import HScoreView from "../hscore/HScoreView";
 import DashboardView from "./DashboardView";
 import RecordView from "./RecordView";
+import GraphShowcase from "../GraphShowcase";
 
 type Tab = "record" | "dashboard" | "hscore" | "more";
 
@@ -111,8 +112,17 @@ export default function DemoApp({ lang }: { lang: Locale }) {
   const resetPersona = useCallback(() => setEdits((e) => ({ ...e, [active]: undefined })), [active]);
   const dirty = Boolean(edit && (edit.added.length || edit.removed.size));
 
+  // `w-full` below is a fix, not a style nit. `mx-auto` on a flex item in a
+  // COLUMN parent suppresses cross-axis stretch, so this column was sized to
+  // fit-content — which takes the max of its min-content width, and any
+  // horizontally-scrolling child drives that up. max-w-lg then capped the
+  // blow-out at exactly 512px, which is why a 375px phone scrolled sideways by
+  // 137px regardless of what was actually too wide. `w-full` gives it a definite
+  // width to resolve against, and max-w-lg goes back to being a cap rather than
+  // a target. min-w-0 alone does NOT fix it — the size was never coming from the
+  // automatic minimum.
   return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-lg flex-col px-4 pb-24 pt-4">
+    <div className="mx-auto flex min-h-[100dvh] w-full min-w-0 max-w-lg flex-col px-4 pb-24 pt-4">
       {/* ── persona switcher ─────────────────────────────────────────────── */}
       <header>
         <div className="flex items-baseline justify-between gap-2">
@@ -165,7 +175,16 @@ export default function DemoApp({ lang }: { lang: Locale }) {
         )}
       </header>
 
-      <main className="mt-5 flex-1">
+      {/* `min-w-0` is load-bearing. This <main> is a flex item of the column
+          layout above, so its min-width defaults to `auto` — the min-content
+          width of whatever is inside it. Any horizontally-scrolling child (the
+          chart switcher, a wide table) then cannot be narrower than its own
+          contents, and drags the whole document sideways instead of scrolling
+          within itself. The Dashboard tab was already doing this at 375px
+          before the Graph Showcase existed; the showcase only made it obvious.
+          min-w-0 on the child does nothing while the flex ITEM refuses to
+          shrink — it has to go here. */}
+      <main className="mt-5 min-w-0 flex-1">
         {tab === "record" && (
           <RecordView persona={live} onAdd={addTxn} tr={tr} />
         )}
@@ -182,7 +201,7 @@ export default function DemoApp({ lang }: { lang: Locale }) {
             tr={tr}
           />
         )}
-        {tab === "more" && <More tr={tr} />}
+        {tab === "more" && <More tr={tr} lang={lang} />}
       </main>
 
       {/* ── bottom tabs. No horizontal swipe: it collides with chart pan and
@@ -217,7 +236,13 @@ export default function DemoApp({ lang }: { lang: Locale }) {
   );
 }
 
-function More({ tr }: { tr: (k: string, v?: Record<string, string | number>) => string }) {
+function More({
+  tr,
+  lang,
+}: {
+  tr: (k: string, v?: Record<string, string | number>) => string;
+  lang: Locale;
+}) {
   const items: { key: string; href?: string }[] = [
     { key: "guide", href: "/guide" },
     { key: "gallery", href: "/gallery" },
@@ -241,6 +266,11 @@ function More({ tr }: { tr: (k: string, v?: Record<string, string | number>) => 
           </li>
         ))}
       </ul>
+      {/* The Graph Showcase the demo was missing entirely. Same component the
+          Gallery uses, same registry — a visitor can see all six views and read
+          what each is for without an account, and link to one directly. */}
+      <GraphShowcase lang={lang} headingKey="demo.graph.title" bodyKey="demo.graph.body" />
+
       <p className="mt-6 text-xs leading-relaxed text-zinc-400">{tr("demo.more.privacy")}</p>
     </div>
   );
