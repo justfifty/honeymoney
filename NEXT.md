@@ -1470,22 +1470,61 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     `web/.env.local` or purge/nudge stay safe no-ops.
 11. [x] ~~Commit or discard the in-flight static-site work~~ — committed 2026-08-20
     (`89163e8`) and the Cloudflare Pages project is live at `honeymoney-e84.pages.dev`.
-12. [ ] **Point honeymoney.app at Pages.** ← the last laptop-dependency. The apex
-    still resolves straight to the tunnel (`verify-uptime.ps1` reports
-    `APEX FRONTED BY PAGES … FAIL`), so the always-on snapshot isn't fronting the
-    domain and the outage problem is still live. Cloudflare → Workers & Pages →
-    `honeymoney` → Custom domains → add `honeymoney.app` + `www`. Dashboard only —
-    wrangler has no `pages domain` command, and the API path needs Zone:DNS:Edit to
-    replace the existing tunnel CNAME. Rollback is removing them and
+12. [ ] **Point honeymoney.app at Pages** — 🛑 **RE-DIAGNOSED 2026-08-23. It was
+    never four dashboard clicks, and this item has been wrong since 2026-08-20.**
+
+    **The domain and the Pages project are in two different Cloudflare accounts.**
+
+    | | account | holds |
+    |---|---|---|
+    | `ecb25f751b4e93b49afe473aac4910c6` | **Justfifty1976@gmail.com** | the **honeymoney.app zone** |
+    | `4606a61d2aca80d0da3d046635f7689c` | **Youngpong@gmail.com** | the **`honeymoney` Pages project** (`honeymoney-e84.pages.dev`) |
+
+    Verified three ways: `wrangler whoami` reports the Youngpong account and
+    `wrangler pages project list` shows `honeymoney` there · a `GET /zones` with
+    that token returns **zero zones**, so it cannot see honeymoney.app at all ·
+    and the dashboard for `ecb25f75…` → **Workers & Pages** reads *"No projects
+    found. You have not created any projects yet."*
+
+    That is why "Workers & Pages → honeymoney → Custom domains" was never
+    findable. The instruction was not being followed incorrectly — **the project
+    is not in that account**, so the page it describes does not exist there.
+
+    ⚠️ **Do NOT click "Create application"** in the Justfifty1976 account. A new
+    empty Pages project would take the name and serve nothing, and the real
+    snapshot would still be in the other account.
+
+    **Option A — move the Pages project to the domain's account (recommended).**
+    One account then owns the whole public surface, and `npm run site:deploy`
+    keeps working with no special cases.
+      1. `npx wrangler logout && npx wrangler login` — sign in as
+         **Justfifty1976@gmail.com** (this is the one step that needs a human;
+         it opens a browser for OAuth).
+      2. `npx wrangler pages project create honeymoney --production-branch main`
+      3. `npm run site:build && npm run site:deploy`
+      4. Dashboard → Workers & Pages → honeymoney → **Custom domains** → add
+         `honeymoney.app` and `www`. This now works, because the zone is in the
+         same account.
+      ⬜ Cost: the project gets a **new `*.pages.dev` subdomain**, so every
+      reference to `honeymoney-e84.pages.dev` needs updating — this file,
+      `deploy/verify-uptime.ps1`, and any deck artefact that names it.
+
+    **Option B — leave it split and verify by DNS.** Pages custom domains do work
+    cross-account: add `honeymoney.app` to the project in the Youngpong account,
+    Cloudflare returns a CNAME target, and that CNAME replaces the apex tunnel
+    record in the Justfifty1976 account. Fewer moving parts today, two accounts
+    to reason about forever, and certificate issuance across accounts is the
+    fiddly part. Only worth it if moving the project is somehow blocked.
+
+    Rollback for either: remove the custom domains and
     `cloudflared tunnel route dns honeymoney honeymoney.app`.
-    ⚠️ **Not the `Workers Routes` page** inside the honeymoney.app zone — that maps URL
-    patterns to standalone Workers and will always be empty here. Leave the zone
-    (**Back to Domains**) and open **Compute (Workers & Pages) → honeymoney → Custom domains**.
-    Re-confirmed still FAIL on 2026-08-22: `honeymoney.app/gallery` returns no
-    `X-HoneyMoney-Served` header (tunnel), while `honeymoney-e84.pages.dev/gallery` returns
-    `edge-snapshot` — so Pages is healthy and only the apex is unpointed.
-    ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to a
-    public page — the snapshot is point-in-time and does not update itself.
+
+    ⚠️ Still true and unrelated to the above: **Pages custom domains are not on
+    the zone's `Workers Routes` page.** That page maps URL patterns to standalone
+    Workers and will always be empty here.
+
+    ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to
+    a public page — the snapshot is point-in-time and does not update itself.
 
 13. [ ] **DOM Cloud** (free tier) as the always-on host: thin server / fat client, ARM
     binary only, `--dir` outside `public_html`, nightly pull-backup via GitHub Actions
