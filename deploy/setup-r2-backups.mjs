@@ -36,6 +36,7 @@
 // start-honeymoney.ps1 and deploy/.pb-encryption-key.
 
 import { readFileSync, existsSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -69,17 +70,41 @@ function env(file) {
 
 const web = env(join(ROOT, "web", ".env.local"));
 
+const TOKEN_FILE = join(
+  process.env.APPDATA ?? "",
+  "xdg.config",
+  ".wrangler",
+  "config",
+  "default.toml",
+);
+
 function cfToken() {
-  const p = join(
-    process.env.APPDATA ?? "",
-    "xdg.config",
-    ".wrangler",
-    "config",
-    "default.toml",
-  );
-  if (!existsSync(p)) return "";
-  const m = readFileSync(p, "utf8").match(/oauth_token\s*=\s*"([^"]+)"/);
+  if (!existsSync(TOKEN_FILE)) return "";
+  const m = readFileSync(TOKEN_FILE, "utf8").match(/oauth_token\s*=\s*"([^"]+)"/);
   return m ? m[1] : "";
+}
+
+/**
+ * Wrangler's OAuth token expires roughly hourly and refreshes LAZILY — only when
+ * wrangler itself runs. Reading the file directly therefore hands back a stale
+ * token whenever nothing has used wrangler recently, and the API answers
+ * `10000 Authentication error`, which reads like a permissions problem and is
+ * not one. Seen exactly that here: the same check passed, then failed nine
+ * minutes later with the token six minutes expired.
+ *
+ * So make wrangler do something harmless, which forces a refresh, then re-read.
+ */
+function refreshCfToken() {
+  try {
+    execSync("npx wrangler whoami", {
+      cwd: join(ROOT, "deploy", "pages"),
+      stdio: "ignore",
+      env: { ...process.env, CLOUDFLARE_ACCOUNT_ID: ACCOUNT },
+    });
+  } catch {
+    /* even a failure usually refreshes the token on the way past */
+  }
+  return cfToken();
 }
 
 console.log("\nHoneyMoney → Cloudflare R2 backups");
@@ -103,11 +128,22 @@ const TOKEN = cfToken();
 if (!TOKEN) bad("no Cloudflare token found — run: npx wrangler login");
 
 let r2Ready = false;
+let TOKEN_LIVE = TOKEN;
 if (TOKEN) {
-  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/r2/buckets`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-  });
-  const body = await res.json().catch(() => ({}));
+  const listBuckets = async (tok) => {
+    const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/r2/buckets`, {
+      headers: { Authorization: `Bearer ${tok}` },
+    });
+    return res.json().catch(() => ({}));
+  };
+
+  let body = await listBuckets(TOKEN);
+  // A 10000 here is far more often an expired token than a missing permission,
+  // so refresh once and retry before believing it.
+  if (!body.success && body.errors?.[0]?.code === 10000) {
+    TOKEN_LIVE = refreshCfToken();
+    if (TOKEN_LIVE && TOKEN_LIVE !== TOKEN) body = await listBuckets(TOKEN_LIVE);
+  }
   if (body.success) {
     r2Ready = true;
     const names = (body.result?.buckets ?? []).map((b) => b.name);
@@ -194,7 +230,7 @@ console.log("\napplying");
 // 1. bucket
 const mk = await fetch(`https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/r2/buckets`, {
   method: "POST",
-  headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+  headers: { Authorization: `Bearer ${TOKEN_LIVE}`, "Content-Type": "application/json" },
   body: JSON.stringify({ name: BUCKET, locationHint: "apac" }),
 });
 const mkBody = await mk.json().catch(() => ({}));

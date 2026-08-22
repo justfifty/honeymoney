@@ -757,6 +757,13 @@ and several of the measurements contradicted the brief.**
 - [x] **Lid-close on mains set to "do nothing"** (it was unset and hidden; idle sleep was
       already off). On battery it still sleeps, deliberately — a ThinkPad should not run hot
       in a bag. **Keep it plugged in.**
+- [x] **Backups are off this machine.** PocketBase uploads to Cloudflare R2 nightly, keeping
+      14, and a zip pulled back OUT of R2 has been restored and verified — see §7 #14.
+- ⚠️ **The encryption key is now required to OPEN a backup, not merely to read its settings.**
+      An earlier note claimed otherwise; measured, PocketBase refuses to start without it
+      (`invalid settings db data or missing encryption key`). Keep `deploy/.pb-encryption-key`
+      in a password manager — not in a backup, and not only on the machine the backups exist
+      to survive.
 - ⚠️ **`origin.honeymoney.app` was deleted along with the other Tunnel records and had to be
       restored.** The homepage looked perfectly healthy throughout, because Pages was serving
       it — while every dynamic route had nowhere to go. **A green homepage proves nothing
@@ -1686,59 +1693,71 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     before the first real user, and log in monthly or the site is removed for
     inactivity.
 
-14. [~] **Back up PocketBase off this machine.** Found 2026-08-22: `pb_data` had **no
-    `backups/` directory at all** — the entire ledger existed in exactly one place, on a
-    laptop that is off most of the week. `deploy/backup-pocketbase.ps1` now exists and keeps
-    the last 14. A backup is **2.1 MB**; the live `data.db` is 1.8 MB.
+14. [x] ~~**Back up PocketBase off this machine.**~~ — ✅ **DONE 2026-08-23. The ledger
+    now exists in more than one place, and a backup pulled back out of R2 has been
+    restored and verified.**
 
-    ✅ **Settings encryption is ON (2026-08-23).** PocketBase starts with
-    `--encryptionEnv=PB_ENCRYPTION_KEY`, the key living in `deploy/.pb-encryption-key`
-    (gitignored) and passed to the child process as an env var rather than on the command
-    line, where anything able to list processes could read it.
-    **This had to come before R2, not after.** The S3 credentials live in PocketBase's
-    settings, settings live in `data.db`, and `data.db` is the file being uploaded — so an
-    unencrypted backup sitting in R2 contains the keys to its own bucket.
-    ⚠️ **Keep a copy of that key somewhere that is NOT a HoneyMoney backup** — a password
-    manager. Losing it loses the settings block (SMTP, S3). It does **not** lose the ledger:
-    the data itself is unencrypted and restores anywhere, which `test-restore.ps1` proves by
-    restoring without the key on purpose.
-    ↩️ To undo: delete the key file and restart PocketBase; it starts unencrypted and says so
-    in `stack.log`. A missing key file never blocks startup — a site up with plaintext
-    settings is a smaller problem than a site that is down.
+    Found 2026-08-22: `pb_data` had **no `backups/` directory at all** — the entire ledger
+    existed in exactly one place, on a laptop that is off most of the week.
 
-    ✅ **`deploy/test-restore.ps1` — an untested backup is not a backup.** Extracts the newest
-    zip into a throwaway directory, runs a **second** PocketBase against it on port 8099, and
-    checks the zip opens · `data.db` is present · PocketBase starts against it · the
-    `transactions` collection answers. The live `pb_data` is never touched and the running
-    server is never stopped, so it is safe to run while the site is serving.
-    **First run passed 2026-08-23** against `honeymoney_20260823_031659.zip`.
+    ✅ **PocketBase uploads to Cloudflare R2**, nightly `0 3 * * *`, keeping 14. Bucket
+    `honeymoney-backups` in the Justfifty1976 account. Configured by
+    `deploy/setup-r2-backups.mjs`, which also took a real backup **and listed it back from
+    R2** — a configured backup target that has never been written to is a guess.
+    ✅ **Round-trip proven**: the zip was downloaded out of R2 with `wrangler r2 object get`
+    and restored by `deploy/test-restore.ps1`. Restoring a local file only ever proved the
+    local file.
 
-    ✅ **`deploy/setup-r2-backups.mjs` automates everything on the far side of that
-    click**: creates the bucket, writes PocketBase's S3 settings through its API
-    (`forcePathStyle: true` — without it the SDK builds virtual-host URLs R2 does not
-    serve, and uploads fail with a DNS error that names nothing), then takes a real backup
-    and lists it back to prove the pipe works. Run it with no flags first: it reports
-    exactly what is blocking and changes nothing. It also **refuses to configure S3 unless
-    settings encryption is on**, so the ordering trap cannot be tripped by accident.
+    🛑 **THE ENCRYPTION KEY IS NOW AS CRITICAL AS THE BACKUPS THEMSELVES, and an earlier
+    version of this item said the opposite.** It claimed a backup would restore without the
+    key and merely lose the settings block. **Measured 2026-08-23 — it does not start at
+    all:**
 
-    ⬜ **R2 — the remaining step, and it needs the dashboard.** `wrangler r2 bucket list`
-    returns *"Please enable R2 through the Cloudflare Dashboard"* (code 10042): R2 has to be
-    switched on for the account first, which is where the payment method is required. Free
-    tier is **10 GB and zero egress** — 14 backups is 30 MB, or **0.3%** of it; a year of
-    dailies is 7.7%.
-      1. Cloudflare (**Justfifty1976** account) → **R2** → enable, then create bucket
-         `honeymoney-backups`.
-      2. R2 → **Manage API tokens** → *Object Read & Write*, scoped to that bucket.
-      3. PocketBase `/_/` → **Settings → Backups → S3**: endpoint
-         `https://ecb25f751b4e93b49afe473aac4910c6.r2.cloudflarestorage.com`, region `auto`,
-         **force path-style**, then auto-backup `0 3 * * *`, keep 14.
-      4. Re-run `deploy\test-restore.ps1` against a zip pulled back **out of R2** — restoring
-         a local file only proves the local file.
-    ℹ️ No `storage/` dir and no PocketBase file fields, so **R2 file storage is not needed** —
-    backups only. Receipt images live in the `transactions.attachments` field inside
-    `data.db`, so they travel in the same zip.
+        invalid settings db data or missing encryption key ""
 
-    ⬜ **Not git, deliberately.** `pb_data/` is gitignored and must stay that way: it is real
+    Verified both ways against the same R2 zip: without the key PocketBase exits
+    immediately; with it, it starts and the ledger reads. So `deploy/.pb-encryption-key` is
+    not a convenience protecting SMTP and S3 fields — **it is required to open any backup
+    taken since encryption was switched on.**
+    ⬜ **Put that key in a password manager.** Not in a HoneyMoney backup (it would be
+    encrypting itself) and not only on this laptop (the machine the backups exist to survive).
+    **A perfect backup you cannot open is not a backup.**
+
+    ✅ Settings encryption itself is on — PocketBase starts with
+    `--encryptionEnv=PB_ENCRYPTION_KEY`, the key passed as an env var rather than on the
+    command line where anything able to list processes could read it. **This had to come
+    before R2**: the S3 credentials live in settings, settings live in `data.db`, and
+    `data.db` is the file being uploaded, so an unencrypted backup would carry the keys to
+    its own bucket. `setup-r2-backups.mjs` refuses to configure S3 unless encryption is on,
+    so the ordering cannot be tripped later by someone in a hurry.
+
+    ### 🛑 The capacity limit, and why it is the retention multiplier rather than the ledger
+
+    Measured today: 9 households, 241 records, `data.db` 1.8 MB, `storage/` **empty** — no
+    receipts uploaded yet. The ledger is negligible. **Receipt images are what grows**, and
+    every backup is a FULL copy:
+
+    | | |
+    |---|---|
+    | R2 free tier | 10 GB, zero egress |
+    | Retention | **14 full copies** |
+    | ⇒ max live data | ~**700 MB** |
+    | at ~250 KB/receipt (1600px q0.85) | ~**2,800 receipts across all households** |
+
+    That 14× is the real constraint. Enormous headroom today; worth handling before there
+    are real users rather than after.
+
+    ⬜ **Do not warn or quota users — engineer it away.** A storage message is a poor first
+    impression for a product whose pitch is logging spend without friction. Three cheaper
+    levers, in order:
+      1. **Retention shape** — 7 daily + 4 weekly is ~11 copies with better coverage than 14
+         dailies, and buys back headroom immediately.
+      2. **Age out receipt IMAGES at 12–18 months, keep the records forever.** Nobody audits
+         a two-year-old kopi receipt, and the ledger stays complete.
+      3. **Size check in `verify-uptime.ps1`** so 50% of R2 is discovered on a Tuesday rather
+         than 100% during a demo.
+
+    ⬜ **Not git, deliberately.** `pb_data/` is gitignored and must stay so: it is real
     household financial data and the repo link goes to MAIC judges; SQLite is binary and
     rewrites wholesale, so every backup would add ~2 MB to a history that can never be
     reclaimed (~770 MB/year); and backups need to be *restorable*, not *versioned*.

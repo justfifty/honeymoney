@@ -17,10 +17,19 @@
 #   3. /api/health answers                         — it is really running
 #   4. the collections exist and carry rows        — the LEDGER survived, not just the file
 #
-# Note on encryption: settings are encrypted with PB_ENCRYPTION_KEY, so a restore
-# on a machine without that key starts fine and reads all data, but loses the
-# settings block (SMTP, S3). That is the intended trade — see start-honeymoney.ps1.
-# The ledger itself is not encrypted and restores anywhere.
+# ⚠️ ENCRYPTION IS NOT OPTIONAL FOR A RESTORE, and an earlier version of this
+# comment said otherwise. Measured 2026-08-23 against a backup pulled back out of
+# R2: PocketBase started WITHOUT the key exits immediately with
+#
+#     invalid settings db data or missing encryption key ""
+#
+# It does not start with the settings blank — it does not start at all. So
+# `deploy/.pb-encryption-key` is not a convenience protecting the SMTP and S3
+# fields; it is **required to open any backup taken while encryption was on.**
+#
+# Which makes the key exactly as critical as the backups themselves. Keep a copy
+# somewhere that is NOT a HoneyMoney backup and NOT this machine — a password
+# manager. A perfect backup you cannot open is not a backup.
 
 param(
   [string]$Zip = "",
@@ -64,13 +73,25 @@ try {
     Say "data.db is $([math]::Round((Get-Item $db).Length/1MB,2)) MB"
   }
 
-  # A second PocketBase, on its own port, against the restored copy. No
-  # encryption key passed on purpose: this proves the LEDGER restores on a
-  # machine that has only the zip, which is the situation a restore actually
-  # happens in.
+  # A second PocketBase, on its own port, against the restored copy.
+  #
+  # The key IS passed when available, because without it PocketBase will not
+  # start at all against an encrypted backup. Testing without it does not prove
+  # the ledger is portable — it only proves the key is missing, which is a
+  # different and much less interesting fact.
+  $pbArgs = @('serve', "--http=127.0.0.1:$Port", "--dir=$dataDir")
+  $keyFile = 'C:\2026_honeymoney\deploy\.pb-encryption-key'
+  if (Test-Path $keyFile) {
+    $env:PB_ENCRYPTION_KEY = (Get-Content $keyFile -Raw).Trim()
+    $pbArgs += '--encryptionEnv=PB_ENCRYPTION_KEY'
+    Say "using the encryption key (required for backups taken since 2026-08-23)"
+  } else {
+    Say "no encryption key found - a backup taken with encryption on will NOT open" $false
+  }
+
   $proc = Start-Process -PassThru -WindowStyle Hidden -WorkingDirectory $pb `
     -FilePath (Join-Path $pb 'pocketbase.exe') `
-    -ArgumentList 'serve', "--http=127.0.0.1:$Port", "--dir=$dataDir"
+    -ArgumentList $pbArgs
 
   $up = $false
   foreach ($i in 1..30) {
