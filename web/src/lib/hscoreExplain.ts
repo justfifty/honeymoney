@@ -19,12 +19,13 @@
 // which is worse than either: a criterion low because of how the data model
 // works, where the household did everything right and the score punished them.
 //
-//   1. RECORDING SAVINGS LOWERS THE SAVINGS RATE. `savingsMonthly` is
-//      `max(0, savingsAllocated − savingsWithdrawn)`, where the allocated half
-//      comes only from allocation EDGES (the plan) and the withdrawn half is
-//      TRANSACTIONS against a tier-2 bucket. One RM500 record on Savings moved
-//      the live score 81 → 79. The same record as a credit changed nothing. A
-//      transaction can only ever reduce this criterion, never raise it.
+//   1. RECORDING SAVINGS LOWERED THE SAVINGS RATE — FIXED 2026-08-23. Savings
+//      could only come from allocation EDGES (the plan) and a transaction could
+//      only subtract from it, so one RM500 record on Savings moved the live
+//      score 81 → 79 and the same record as a credit changed nothing at all.
+//      `savingsMonthlyFrom` in hscore.ts now lets observed movement adjust the
+//      plan in BOTH directions: paying in raises the score (81 → 82), taking
+//      out still lowers it (81 → 79). No demo persona moved.
 //   2. NO TRANSACTION IS EVER INCOME. Income is summed from `income_source`
 //      nodes' declared monthly amounts. A salary credit recorded as a
 //      transaction does not appear. This is also why a transfer cannot be
@@ -34,10 +35,11 @@
 //      scores as zero debt, which flatters the score.
 //   4. THE SCORE IS HOUSEHOLD-WIDE. Nothing here filters by member.
 //
-// None of these are fixed here. Task 8 is a display task; fixing 1 and 2 changes
-// H-Score computation, which the brief reserves for a deliberate decision. They
-// are SHOWN instead, which is the honest interim: a user who saved RM500 and
-// watched their score fall deserves to be told why.
+// Finding 1 was fixed on 2026-08-23 as its own commit, after an explicit
+// decision — the brief reserves changes to H-Score computation for exactly that.
+// Findings 2, 3 and 4 stand and are SHOWN rather than silently worked around: a
+// user whose salary credit does not register deserves to be told that income is
+// declared rather than observed, not left to infer it.
 
 import type { ComponentKey, ScoreInputs, SubScore } from "./hscore";
 import { WINDOW_DAYS, AMORTISE_MONTHS, MIN_TXNS_30D } from "./hscore";

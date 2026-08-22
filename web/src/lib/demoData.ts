@@ -29,6 +29,7 @@ import {
   applyHysteresis,
   bandFor,
   MIN_TXNS_30D,
+  savingsMonthlyFrom,
   type Band,
   type HScore,
   type ScoreInputs,
@@ -518,7 +519,16 @@ export function scoreFor(persona: DemoPersona, asOf: Date = new Date()): DemoSco
   const inputs: ScoreInputs = {
     netIncomeMonthly: persona.netMonthly,
     grossIncomeMonthly: persona.grossMonthly,
-    savingsMonthly: monthlyInto(persona.ledger, months, byTier(2)),
+    // The demo's ledger has no direction: a record against a tier-2 bucket IS a
+    // contribution here, which is why this reads as deposits with no plan and no
+    // withdrawals. Routed through the SAME function the real app uses so the two
+    // cannot drift apart again — they previously disagreed in sign, the demo
+    // counting a tier-2 record as money saved and the app as money withdrawn.
+    savingsMonthly: savingsMonthlyFrom({
+      allocatedMonthly: 0,
+      depositsMonthly: monthlyInto(persona.ledger, months, byTier(2)),
+      withdrawalsMonthly: 0,
+    }),
     // Must-paid excludes the loan repayments, which are scored separately as
     // DSR — counting a car loan in both would punish it twice.
     mustPaidMonthly: monthlyInto(

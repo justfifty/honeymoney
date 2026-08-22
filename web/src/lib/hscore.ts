@@ -288,6 +288,55 @@ export function monthlyEquivalent(
   return Math.round((total / months) * 100) / 100;
 }
 
+// ── Savings: the one place the figure is decided ────────────────────────────
+//
+// Added 2026-08-23, as its own change rather than folded into the Record-model
+// work, so the effect on real scores is visible in one diff.
+//
+// THE BUG THIS FIXES, measured on the live household before the change:
+// recording that you saved money LOWERED your score. One RM500 record on the
+// Savings bucket moved it 81 → 79. The same record as money-in changed nothing
+// at all. Savings could only ever come from the allocation PLAN, and a
+// transaction could only subtract from it, so the act of logging a deposit was
+// either neutral or actively harmful.
+//
+// AND the demo disagreed with the app, in sign. lib/demoData.ts counted a
+// tier-2 record as a CONTRIBUTION (positive); lib/hscoreData.ts counted it as a
+// WITHDRAWAL (negative). Two parallel implementations of the same criterion
+// reaching opposite conclusions is exactly the failure Task 8 names — "if the
+// number ever disagrees between two surfaces, users will trust neither" — so
+// both now call this, with their own data.
+//
+// The plan is a baseline that observed movement ADJUSTS, in both directions.
+// That symmetry is the fix. Withdrawals have always been subtracted from the
+// plan — a household with a RM1,375 allocation that records a RM500 raid scores
+// RM875 — so deposits have to be added to it on the same terms, or the ledger
+// is only ever allowed to make the number worse.
+//
+// `max(plan, deposits)` was tried first and rejected: it lets a generous plan
+// swallow real evidence, so for the live household (plan RM1,375/month) logging
+// a RM500 deposit changed the score by nothing at all. That is not "recording
+// savings raises your score", it is only "recording savings no longer lowers
+// it" — half a fix, and the half that is invisible to the user.
+//
+// 🛑 THE OPEN RISK, stated rather than hidden: a household whose allocation edge
+// represents the SAME money they also record as a transfer is counted twice.
+// That cannot happen today because there is no way to log a savings deposit at
+// all — which is the bug — but Task 1's `+ Savings` and Task 9's goal-linked
+// transfers both create the path. Whichever lands first must decide whether an
+// allocation edge is a standing instruction that records fulfil, or a separate
+// intention they add to. Do not let that decision be made by accident here.
+export function savingsMonthlyFrom(i: {
+  /** What allocation edges route into savings buckets — the intent. */
+  allocatedMonthly: number;
+  /** Observed money IN to a savings bucket. */
+  depositsMonthly: number;
+  /** Observed money OUT of a savings bucket. */
+  withdrawalsMonthly: number;
+}): number {
+  return Math.max(0, i.allocatedMonthly + i.depositsMonthly - i.withdrawalsMonthly);
+}
+
 // ── "What moved your score" ─────────────────────────────────────────────────
 // Deterministic on purpose. An LLM writing this sentence could hallucinate a
 // financial claim; a template over the largest sub-score delta cannot. This is

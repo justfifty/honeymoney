@@ -19,6 +19,7 @@ import {
   describeMovement,
   savingsGapToNextBand,
   WINDOW_DAYS,
+  savingsMonthlyFrom,
   type HScore,
   type ScoreInputs,
   type BandState,
@@ -146,12 +147,26 @@ export async function getHScore(
   const mustPaidMonthly = monthlyEquivalent(toAmortisable(inTier(MUST_PAID_TIER)), asOf);
 
   // ── savings ───────────────────────────────────────────────────────────────
-  // What the allocation edges route into tier 2, less anything spent back out of
-  // it. Money that was moved and then withdrawn was never actually saved.
+  // The plan (allocation edges), what was actually paid IN, and what was taken
+  // back OUT. Until 2026-08-23 only the first two of those existed and deposits
+  // were invisible, so recording a saving lowered the score — see
+  // savingsMonthlyFrom in lib/hscore.ts for the measurement and the reasoning.
   const allocated = computeAllocations(nodes, edges);
   const savingsAllocated = bucketsOfTier(SAVINGS_TIER).reduce((s, id) => s + (allocated.get(id) ?? 0), 0);
+
+  // `spend` excludes money-in rows, so deposits are read from the full txn list.
+  const savingsBucketIds = new Set(bucketsOfTier(SAVINGS_TIER));
+  const intoSavings = txns.filter(
+    (t) => !t.voided && t.direction === "in" && t.wallet_node && savingsBucketIds.has(t.wallet_node),
+  );
+  const savingsDeposits = monthlyEquivalent(toAmortisable(intoSavings), asOf);
   const savingsWithdrawn = monthlyEquivalent(toAmortisable(inTier(SAVINGS_TIER)), asOf);
-  const savingsMonthly = Math.max(0, savingsAllocated - savingsWithdrawn);
+
+  const savingsMonthly = savingsMonthlyFrom({
+    allocatedMonthly: savingsAllocated,
+    depositsMonthly: savingsDeposits,
+    withdrawalsMonthly: savingsWithdrawn,
+  });
 
   // ── debt service ──────────────────────────────────────────────────────────
   // Obligation nodes (loans) carry their monthly repayment. A stated commitment,
