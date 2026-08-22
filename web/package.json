@@ -17,6 +17,7 @@
     "check:csv": "npx --yes tsx scripts/check-csv.mts",
     "check:import": "npx --yes tsx --env-file=.env.local scripts/check-import.mts",
     "check:attribution": "npx --yes tsx --env-file=.env.local scripts/check-attribution.mts",
+    "check:charts": "npx --yes tsx scripts/check-charts.mts",
     "site:build": "node ../scripts/build-static-site.mjs",
     "site:preview": "cd ../deploy/pages && wrangler pages dev",
     "site:deploy": "cd ../deploy/pages && wrangler pages deploy"

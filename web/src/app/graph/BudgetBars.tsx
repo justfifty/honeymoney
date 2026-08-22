@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
+import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
+import ChartEmpty from "./ChartEmpty";
 
 // Budget vs Actual — one shared RM scale across every bucket, so bar lengths are
 // directly comparable (unlike the dashboard's per-bucket % bars). Each row shows
@@ -43,7 +45,35 @@ function niceTicks(max: number, count = 4): number[] {
 export default function BudgetBars({ rows, ccy = "MYR" }: { rows: BarRow[]; ccy?: string }) {
   const [hover, setHover] = useState<string | null>(null);
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
-  const data = useMemo(() => rows.slice().sort((a, b) => b.allocated - a.allocated), [rows]);
+  // Top N by allocation, with the rest folded into one inspectable row rather
+  // than 200 unreadable ones. See lib/chartData.ts for why the cap exists and
+  // why it sorts by value.
+  const data = useMemo(() => {
+    const { shown, other } = topNWithOther(rows, limitFor("bars", 900), (r) => r.allocated);
+    const sorted = shown.slice().sort((a, b) => b.allocated - a.allocated);
+    if (!other) return sorted;
+    return [
+      ...sorted,
+      {
+        id: "__other__",
+        label: otherLabel(other.count),
+        tier: 3,
+        allocated: other.value,
+        projected: other.items.reduce((s, r) => s + r.projected, 0),
+        status: "on_track" as const,
+      },
+    ];
+  }, [rows]);
+
+  if (!rows.length) {
+    return (
+      <ChartEmpty
+        title="Nothing to compare yet"
+        body="Budget versus actual needs at least one bucket with money in it."
+        cta="Record a spend"
+      />
+    );
+  }
 
   const max = Math.max(...data.map((r) => Math.max(r.allocated, r.projected)), 1);
   const ticks = niceTicks(max);

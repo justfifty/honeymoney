@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { limitFor } from "@/lib/chartData";
 
 // Force-directed node-link view of the knowledge graph (classic KG look).
 // Dependency-free: a small deterministic force simulation (golden-angle seed,
@@ -105,9 +106,49 @@ function simulate(nodes: NetNode[], edges: NetEdge[]) {
   return { x, y, idx };
 }
 
+/**
+ * Keep the most CONNECTED nodes. In a knowledge graph the interesting nodes are
+ * the ones with edges — an isolated vendor with a single link tells nobody
+ * anything — and a force-directed layout becomes a hairball long before it runs
+ * out of pixels, which is the honest reason this is the weakest of the three
+ * hierarchy views.
+ *
+ * Applied BEFORE the simulation, which is O(n²) per tick: capping afterwards
+ * would still pay the full cost and then throw the result away.
+ */
+function capByDegree(nodes: NetNode[], edges: NetEdge[], cap: number) {
+  if (nodes.length <= cap + 1) return { shownNodes: nodes, shownEdges: edges };
+  const deg = new Map<string, number>();
+  for (const e of edges) {
+    deg.set(e.src, (deg.get(e.src) ?? 0) + 1);
+    deg.set(e.dst, (deg.get(e.dst) ?? 0) + 1);
+  }
+  const keep = new Set(
+    [...nodes].sort((a, b) => (deg.get(b.id) ?? 0) - (deg.get(a.id) ?? 0)).slice(0, cap).map((n) => n.id),
+  );
+  return {
+    shownNodes: nodes.filter((n) => keep.has(n.id)),
+    // An edge to a dropped node would draw a line into empty space.
+    shownEdges: edges.filter((e) => keep.has(e.src) && keep.has(e.dst)),
+  };
+}
+
 export default function NetworkGraph({ nodes, edges }: { nodes: NetNode[]; edges: NetEdge[] }) {
   const [focus, setFocus] = useState<string | null>(null);
-  const { x, y, idx } = useMemo(() => simulate(nodes, edges), [nodes, edges]);
+
+  // Capped BEFORE the force simulation, not after. A node-link diagram becomes a
+  // hairball long before it runs out of pixels — which is the honest reason it
+  // is the weakest of the three hierarchy views — and the simulation is O(n²)
+  // per tick, so drawing 200 nodes costs both legibility and a visible pause.
+  //
+  // Kept by DEGREE: in a knowledge graph the interesting nodes are the connected
+  // ones, and an isolated vendor with a single edge tells nobody anything.
+  const { shownNodes, shownEdges } = useMemo(
+    () => capByDegree(nodes, edges, limitFor("organic", 900)),
+    [nodes, edges],
+  );
+
+  const { x, y, idx } = useMemo(() => simulate(shownNodes, shownEdges), [shownNodes, shownEdges]);
 
   const degree = useMemo(() => {
     const d = new Map<string, number>();

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
+import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
+import ChartEmpty from "./ChartEmpty";
 
 // Tidy hierarchical "tree branch": Household → spending tier → bucket → vendor.
 // A genuine tree (single parent per node), laid out left→right with the classic
@@ -74,17 +76,59 @@ export default function TreeGraph({
 
   const { root, width, height, parentOf } = useMemo(() => {
     const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
+
+    // A tree caps at BOTH levels, which is why it was the worst offender at 200
+    // items: 20 buckets each with 20 vendors is 400 nodes, and the depth makes
+    // every one of them narrow. Buckets are capped first, then each bucket's own
+    // vendor list, so one busy bucket cannot crowd out the rest.
+    const cap = limitFor("tree", 900);
+    const bucketFold = topNWithOther(buckets, cap, (b) => b.allocated);
+    const shownBuckets = bucketFold.other
+      ? [
+          ...bucketFold.shown,
+          {
+            ...bucketFold.shown[0],
+            id: "__other__",
+            label: otherLabel(bucketFold.other.count),
+            allocated: bucketFold.other.value,
+            projected: bucketFold.other.items.reduce((s, b) => s + b.projected, 0),
+          },
+        ]
+      : bucketFold.shown;
+    const shownIds = new Set(shownBuckets.map((b) => b.id));
+
     const vendorsByBucket = new Map<string, TreeVendor[]>();
     for (const v of vendors) {
+      if (!shownIds.has(v.bucketId)) continue;
       (vendorsByBucket.get(v.bucketId) ?? vendorsByBucket.set(v.bucketId, []).get(v.bucketId)!).push(v);
     }
-    for (const arr of vendorsByBucket.values()) arr.sort((a, b) => b.amount - a.amount);
+    for (const [bucketId, arr] of vendorsByBucket) {
+      arr.sort((a, b) => b.amount - a.amount);
+      const fold = topNWithOther(arr, 6, (v) => v.amount);
+      vendorsByBucket.set(
+        bucketId,
+        fold.other
+          ? [
+              ...fold.shown,
+              {
+                bucketId,
+                vendorId: `${bucketId}__other`,
+                vendorLabel: otherLabel(fold.other.count),
+                amount: fold.other.value,
+              },
+            ]
+          : fold.shown,
+      );
+    }
 
     const tiers = [1, 2, 3]
-      .filter((t) => buckets.some((b) => b.tier === t))
+      .filter((t) => shownBuckets.some((b) => b.tier === t))
       .map((t) => {
         const meta = tierMeta[t] ?? DEFAULT_TIER_META[t];
-        const kids = buckets
+        // shownBuckets, not buckets. The cap above did nothing while this still
+        // walked the raw list — a half-applied fold that reduced the vendor
+        // level and left 200 buckets untouched.
+        const kids = shownBuckets
           .filter((b) => b.tier === t)
           .sort((a, b) => b.allocated - a.allocated)
           .map<TNode>((b) => ({
@@ -154,6 +198,7 @@ export default function TreeGraph({
     return { root, width, height, parentOf };
   }, [rootLabel, buckets, vendors, tierMeta, ccy]);
 
+
   const flat = useMemo(() => {
     const out: TNode[] = [];
     const walk = (n: TNode) => {
@@ -185,6 +230,21 @@ export default function TreeGraph({
 
   const xOf = (depth: number) => MARGIN_X + depth * COL_W;
 
+  // After EVERY hook, not merely after the first. The first placement sat above a
+  // second useMemo, which changes the hook count between renders — React treats
+  // that as a different component. The second attempt landed inside a .map()
+  // callback, because the LAST `return (` in the file is a nested one. Both were
+  // caught by eslint rather than by looking.
+  if (!buckets.length) {
+    return (
+      <ChartEmpty
+        title="Nothing to trace yet"
+        body="The tree follows a cost back to the bucket it came from. It needs at least one bucket."
+        cta="Record a spend"
+      />
+    );
+  }
+
   return (
     <svg viewBox={`0 0 ${width} ${height}`} width="100%" style={{ minWidth: 640 }} role="img" aria-label="Spending tree: household to tier to bucket to vendor">
       {/* links */}
@@ -212,7 +272,7 @@ export default function TreeGraph({
       {flat.map((n) => {
         const x = xOf(n.depth);
         const active = onPath(n.id);
-        return (
+  return (
           <g
             key={n.id}
             opacity={active ? 1 : 0.28}

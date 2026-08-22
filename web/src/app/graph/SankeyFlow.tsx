@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { t as translate, type Locale } from "@/lib/i18n";
+import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
 
 // Sankey money-flow: Income → Buckets → where it lands (Spending vs Saved).
 // Node height ∝ RM throughput, ribbon width ∝ RM flow. Everything is derived
@@ -67,6 +68,93 @@ interface Ribbon {
 function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale) {
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
+
+  // Cap the THIRD column before anything else. A Sankey's readability is set by
+  // its thinnest band, and the vendor column is where the long tail lives — a
+  // household with 200 merchants gets 200 slivers a pixel high, none of them
+  // labelled, which is worse than not drawing them. Income sources and buckets
+  // are left alone: households have a handful of each by construction, and they
+  // are the structure the diagram exists to show.
+  //
+  // Ranked by the flow reaching each node, so the merchants that survive are the
+  // ones actually carrying money.
+  const byIdRaw = new Map(nodes.map((n) => [n.id, n]));
+  const vendorFlow = new Map<string, number>();
+  for (const e of edges) vendorFlow.set(e.dst, (vendorFlow.get(e.dst) ?? 0) + e.flow);
+
+  const cap = limitFor("sankey", 900);
+  const thirdCol = nodes.filter((n) => n.kind !== "income_source" && n.kind !== "bucket");
+  const fold = topNWithOther(thirdCol, cap, (n) => vendorFlow.get(n.id) ?? 0);
+
+  // Buckets are capped too, at a more generous limit. A household has a handful
+  // by construction — the seeded one has thirteen — but they are user-created and
+  // nothing stops a household making sixty, at which point the middle column is
+  // as unreadable as the vendor column was. Folding is the same operation; only
+  // the threshold differs, because the middle column is the STRUCTURE the
+  // diagram exists to show and deserves more room before it is summarised.
+  const bucketFlow = new Map<string, number>();
+  for (const e of edges) {
+    bucketFlow.set(e.dst, (bucketFlow.get(e.dst) ?? 0) + e.flow);
+    bucketFlow.set(e.src, (bucketFlow.get(e.src) ?? 0) + e.flow);
+  }
+  const bucketCol = nodes.filter((n) => n.kind === "bucket");
+  const bucketFold = topNWithOther(bucketCol, cap * 2, (n) => bucketFlow.get(n.id) ?? 0);
+
+  let workingNodes = nodes;
+  let workingEdges = edges;
+  if (fold.other || bucketFold.other) {
+    const dropped = new Set([
+      ...(fold.other?.items ?? []).map((n) => n.id),
+      ...(bucketFold.other?.items ?? []).map((n) => n.id),
+    ]);
+    const OTHER_ID = "__sankey_other__";
+    workingNodes = [
+      ...nodes.filter((n) => !dropped.has(n.id)),
+      ...(fold.other ? [{ id: OTHER_ID, kind: "vendor", label: otherLabel(fold.other.count) }] : []),
+      ...(bucketFold.other
+        ? [{ id: "__sankey_other_bucket__", kind: "bucket", label: otherLabel(bucketFold.other.count) }]
+        : []),
+    ];
+    // Edges to folded nodes are REPOINTED at the aggregate rather than dropped,
+    // so every ringgit still lands somewhere and the diagram continues to
+    // balance. A Sankey that silently loses flow is worse than a cluttered one:
+    // it shows money disappearing.
+    const BUCKET_OTHER = "__sankey_other_bucket__";
+    const aggregateOf = (id: string) => {
+      const kind = byIdRaw.get(id)?.kind;
+      return kind === "bucket" ? BUCKET_OTHER : OTHER_ID;
+    };
+    // BOTH ends are repointed, not just the destination: a folded bucket is the
+    // SOURCE of its spending edges as well as the target of its allocations, and
+    // rewriting only one end would leave edges dangling into a node that is no
+    // longer drawn.
+    const merged = new Map<string, number>();
+    workingEdges = [];
+    for (const e of edges) {
+      const srcGone = dropped.has(e.src);
+      const dstGone = dropped.has(e.dst);
+      if (!srcGone && !dstGone) {
+        workingEdges.push(e);
+        continue;
+      }
+      const src = srcGone ? aggregateOf(e.src) : e.src;
+      const dst = dstGone ? aggregateOf(e.dst) : e.dst;
+      // A flow whose two ends both folded into the same node would be a loop —
+      // money leaving a box and arriving back in it — so it is dropped rather
+      // than drawn as a meaningless self-edge.
+      if (src === dst) continue;
+      const key = `${src}|${dst}|${e.rel}`;
+      merged.set(key, (merged.get(key) ?? 0) + e.flow);
+    }
+    for (const [key, flow] of merged) {
+      const [src, dst, rel] = key.split("|");
+      workingEdges.push({ src, dst, rel, flow });
+    }
+  }
+
+  nodes = workingNodes;
+  edges = workingEdges;
+
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const col = (id: string): number => {
     const k = byId.get(id)?.kind;

@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
+import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
+import ChartEmpty from "./ChartEmpty";
 
 // Squarified treemap of buckets: cell AREA ∝ monthly allocation (where the plan
 // commits money), cell COLOR ∝ status, and a solid fill rising from the baseline
@@ -99,13 +101,31 @@ export default function Treemap({ cells, ccy = "MYR" }: { cells: TreemapCell[]; 
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
 
   const rects = useMemo(() => {
-    const total = cells.reduce((s, c) => s + Math.max(c.allocated, 0), 0) || 1;
+    // Fold the long tail first: a treemap of 200 cells is 200 slivers, none of
+    // them legible, and the squarify pass below gets more expensive with each.
+    const { shown, other } = topNWithOther(
+      cells.filter((c) => c.allocated > 0),
+      limitFor("treemap", 900),
+      (c) => c.allocated,
+    );
+    const withOther = other
+      ? [...shown, { ...shown[0], id: "__other__", label: otherLabel(other.count), allocated: other.value }]
+      : shown;
+    const total = withOther.reduce((s, c) => s + Math.max(c.allocated, 0), 0) || 1;
     const scale = (W * H) / total;
-    const items = cells
-      .filter((c) => c.allocated > 0)
-      .map((c) => ({ cell: c, area: Math.max(c.allocated, 0) * scale }));
+    const items = withOther.map((c) => ({ cell: c, area: Math.max(c.allocated, 0) * scale }));
     return squarify(items);
   }, [cells]);
+
+  if (!cells.length) {
+    return (
+      <ChartEmpty
+        title="No budget to draw yet"
+        body="A treemap shows what your budget is made of. It needs at least one bucket with an allocation."
+        cta="Record a spend"
+      />
+    );
+  }
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 640 }} role="img" aria-label="Budget treemap: bucket allocation and spend health">
