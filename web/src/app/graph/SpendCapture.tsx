@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { parseReceiptText } from "@/lib/voiceParse";
+import { MAX_EDGE, JPEG_QUALITY, safeName, type IncomingAttachment } from "@/lib/attachments";
 
 // Capture a spend by SCANNING, PHOTOGRAPHING or PASTING.
 //
@@ -42,6 +43,15 @@ export interface Captured {
   bucketNodeId?: string;
   note?: string;
   confidence?: number;
+  /**
+   * The image itself, downscaled and ready to store. Until 2026-08-22 this was
+   * read for its numbers and then dropped on the floor — the app has never kept
+   * a receipt, which is why Task 4's "attachments can't be opened" turned out to
+   * be "there are no attachments". Carried on the SAME object as the parse so
+   * the picture and the figures it produced cannot be separated by a caller that
+   * forgets one of them.
+   */
+  attachment?: IncomingAttachment;
 }
 
 export interface CaptureAnalysis {
@@ -85,7 +95,7 @@ export default function SpendCapture({
 
   // ── Images: file, camera, drag-drop, paste ───────────────────────────────
 
-  async function scanOnDevice(file: File) {
+  async function scanOnDevice(file: File, attachment?: IncomingAttachment) {
     setStatus(tr("g.cap.scanning", { pct: 0 }));
     try {
       const { recognize } = await import("tesseract.js");
@@ -106,7 +116,7 @@ export default function SpendCapture({
       }
 
       const parsed = parseReceiptText(data.text || "", knownVendors);
-      onResult(parsed);
+      onResult({ ...parsed, attachment });
       setStatus(
         parsed.amount || parsed.vendor
           ? tr("g.cap.readResult", {
@@ -116,6 +126,9 @@ export default function SpendCapture({
           : tr("g.cap.readFail"),
       );
     } catch {
+      // OCR failed, but the photo is still worth keeping: the user can read it
+      // themselves and type the amount, which is strictly better than losing it.
+      if (attachment) onResult({ attachment });
       setStatus(tr("g.cap.scanFail"));
     }
   }
@@ -137,12 +150,26 @@ export default function SpendCapture({
       setPreview(URL.createObjectURL(file));
       onAnalysis?.(null);
 
+      // Downscale ONCE, up front, and use the same bytes for both jobs: what is
+      // sent to the reader and what is stored. Preparing twice would re-encode
+      // the image a second time for no gain, and preparing only inside the AI
+      // branch — which is what this did — is why the on-device path stored
+      // nothing at all.
+      let attachment: IncomingAttachment | undefined;
+      try {
+        const { base64, mimeType } = await prepareImage(file);
+        attachment = { name: safeName(file.name, mimeType), type: mimeType, dataBase64: base64 };
+      } catch {
+        // An image we cannot re-encode is one we should not store either; the
+        // parse below still runs on the original file.
+      }
+
       // Try the AI reader first — it's the only path that gets currency, date
       // and a confidence score, and it can reason about the household.
-      if (aiEnabled) {
+      if (aiEnabled && attachment) {
         setStatus(tr("cap.reading"));
         try {
-          const { base64, mimeType } = await prepareImage(file);
+          const { dataBase64: base64, type: mimeType } = attachment;
           const res = await fetch("/api/receipt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -159,6 +186,7 @@ export default function SpendCapture({
               occurredAt: e.occurredAt || undefined,
               bucketNodeId: data.analysis?.bucket?.nodeId,
               confidence: e.confidence,
+              attachment,
             });
             onAnalysis?.(data.analysis ?? null);
             // When the receipt printed a breakdown, show it so the user can see
@@ -187,7 +215,7 @@ export default function SpendCapture({
         }
       }
 
-      await scanOnDevice(file);
+      await scanOnDevice(file, attachment);
       setBusy(false);
     },
     [aiEnabled, onAnalysis, onResult, tr],
@@ -304,8 +332,9 @@ export default function SpendCapture({
 // spent seconds uploading megapixels the vision model never looks at. Receipt
 // text is legible well below 1600px on the long edge; anything more is upload
 // time and tokens spent on nothing.
-const MAX_EDGE = 1600;
-const JPEG_QUALITY = 0.85;
+// MAX_EDGE and JPEG_QUALITY live in lib/attachments.ts, where the API's size
+// limit and the PocketBase field's maxSize are defined alongside them — three
+// numbers that must agree, and did not when they were spelled out separately.
 const SKIP_RESIZE_BELOW = 1_500_000; // already small — don't re-encode and lose detail
 
 async function prepareImage(file: File): Promise<{ base64: string; mimeType: string }> {

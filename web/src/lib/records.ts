@@ -22,6 +22,14 @@ export interface SpendRecord {
   memberId: string | null;
   /** What the user originally typed, if they entered a foreign currency. */
   entered: { amount: number; currency: string; perMYR: number; rateSource: string } | null;
+  /**
+   * Stored receipt images, by filename. Fetch them through
+   * `/api/attachment/<id>/<filename>` — never by building a PocketBase URL,
+   * which will 401: `transactions` is superuser-only and the token stays on the
+   * server. Empty on a redacted row, because the image is the detail redaction
+   * exists to hide.
+   */
+  attachments: string[];
 }
 
 export type Period = "day" | "week" | "month";
@@ -46,6 +54,7 @@ interface PBTxn {
   voided?: boolean;
   member?: string;
   wallet_node?: string;
+  attachments?: string[] | string | null;
   raw?: { entered?: { amount: number; currency: string; perMYR: number; rateSource: string } } | null;
   expand?: { vendor_node?: { label: string }; wallet_node?: { id: string; label: string } };
 }
@@ -127,6 +136,13 @@ export async function getSpendRecords(
     bucketLabel: t.expand?.wallet_node?.label ?? null,
     memberId: t.member ?? null,
     entered: t.raw?.entered ?? null,
+    // PocketBase returns a multi-file field as an array, but a single-file field
+    // as a bare string — normalise, or `.map` over it iterates the characters.
+    attachments: Array.isArray(t.attachments)
+      ? t.attachments
+      : t.attachments
+        ? [t.attachments]
+        : [],
   }));
 
   return redactPrivate(rows, {

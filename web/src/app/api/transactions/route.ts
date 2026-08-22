@@ -3,6 +3,7 @@ import { isDatabaseConfigured } from "@/lib/config";
 import { addManualTransaction } from "@/lib/graph";
 import { AuthError, requirePermission } from "@/lib/household";
 import { apiError } from "@/lib/apiError";
+import { decodeAttachments, type IncomingAttachment } from "@/lib/attachments";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
       note?: string;
       confidence?: number;
       entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
+      attachments?: IncomingAttachment[];
     };
     try {
       body = await request.json();
@@ -48,9 +50,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "amount must be a positive number" }, { status: 400 });
     }
 
+    // A 400 rather than a 500: an oversized photo is the user's to fix, and this
+    // message is shown to them verbatim.
+    let attachments;
+    try {
+      attachments = decodeAttachments(body.attachments);
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Invalid attachment" },
+        { status: 400 },
+      );
+    }
+
     const stored = await addManualTransaction(
       ctx.tenant.id,
       {
+        attachments,
         vendorLabel: body.vendorLabel.trim(),
         amount,
         direction: body.direction === "in" ? "in" : "out",

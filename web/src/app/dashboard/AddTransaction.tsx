@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { t, type Locale } from "@/lib/i18n";
 import { CURRENCIES, rateFor, toMYR } from "@/lib/format";
 import SpendCapture, { type CaptureAnalysis, type Captured } from "../graph/SpendCapture";
+import type { IncomingAttachment } from "@/lib/attachments";
 
 interface BucketOption {
   id: string;
@@ -54,6 +55,8 @@ export default function AddTransaction({
   const [lastSaved, setLastSaved] = useState<{ id: string; text: string } | null>(null);
   const [undoing, setUndoing] = useState(false);
 
+  const [attachment, setAttachment] = useState<IncomingAttachment | null>(null);
+
   const amountRef = useRef<HTMLInputElement | null>(null);
 
   function applyCapture(c: Captured) {
@@ -78,6 +81,11 @@ export default function AddTransaction({
       }
     }
     setConfidence(c.confidence);
+    // The picture rides with the draft until the user commits it. Capture never
+    // saves on its own — the AI proposes, the human commits — so an image that
+    // uploaded itself the moment the shutter closed would break that invariant
+    // and leave orphaned files behind every abandoned capture.
+    if (c.attachment) setAttachment(c.attachment);
     setMsg(null);
     setLastSaved(null);
   }
@@ -99,6 +107,7 @@ export default function AddTransaction({
           vendorLabel: vendor,
           amount: base,
           direction,
+          ...(attachment ? { attachments: [attachment] } : {}),
           occurredAt: when ? new Date(`${when}T12:00:00`).toISOString() : undefined,
           confidence,
           ...(ccy !== "MYR"
@@ -121,10 +130,19 @@ export default function AddTransaction({
         vendor,
         label: data.stored.walletLabel,
       });
-      setMsg({ ok: true, text });
+      // The spend saved. If its photo did not, say so rather than letting the
+      // user believe a receipt is attached that is not there — they can still
+      // re-attach it by editing, but only if they know.
+      setMsg(
+        data.stored.attachmentError
+          ? { ok: true, text: `${text} · ${tr("cap.attachFailed")}` }
+          : { ok: true, text },
+      );
       if (data.stored.transactionId) setLastSaved({ id: data.stored.transactionId, text });
       setVendor("");
       setAmount("");
+      // Cleared, or the next spend silently carries this one's receipt.
+      setAttachment(null);
       setConfidence(undefined);
       setAnalysis(null);
       setWhen(todayLocal());

@@ -74,16 +74,28 @@ export interface Redactable {
   memberId?: string | null;
   vendor?: string | null;
   note?: string;
+  /** Filenames of stored receipt images. Redaction empties this — see below. */
+  attachments?: string[];
 }
 
 /**
  * Strip the identifying detail from another member's private-bucket rows while
  * leaving the amount, date and bucket intact — so totals still reconcile.
+ *
+ * `attachments` is emptied rather than kept, because a receipt image IS the
+ * vendor and the line items: showing a thumbnail of it beside the word
+ * "Personal" would hand back in one glance everything the other three fields
+ * are being cleared to protect. The bytes are refused separately and
+ * server-side by /api/attachment — emptying the array here is what stops the
+ * UI offering a link the user would only be denied on, not the access control
+ * itself. Both are required; neither substitutes for the other.
  */
 export function redactPrivate<T extends Redactable>(rows: T[], opts: RedactOpts): T[] {
   if (!opts.enabled) return rows;
   return rows.map((r) =>
-    isRedacted(r, opts) ? { ...r, vendor: PRIVATE_LABEL, note: "", memberId: null } : r,
+    isRedacted(r, opts)
+      ? { ...r, vendor: PRIVATE_LABEL, note: "", memberId: null, attachments: [] }
+      : r,
   );
 }
 

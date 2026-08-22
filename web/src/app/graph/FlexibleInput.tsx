@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { toMYR, symbolOf, rateFor, CURRENCIES } from "@/lib/format";
 import SpendCapture, { type CaptureAnalysis, type Captured } from "./SpendCapture";
+import type { IncomingAttachment } from "@/lib/attachments";
 
 interface Opt {
   id: string;
@@ -68,6 +69,7 @@ export default function FlexibleInput({
   const [when, setWhen] = useState(todayLocal());
   const [note, setNote] = useState("");
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
+  const [attachment, setAttachment] = useState<IncomingAttachment | null>(null);
 
   const allocSrc = [...incomes, ...buckets];
   const [src, setSrc] = useState(allocSrc[0]?.id ?? "");
@@ -94,6 +96,8 @@ export default function FlexibleInput({
       }
     }
     setConfidence(c.confidence);
+    // Held as a draft, not uploaded on capture — see AddTransaction for why.
+    if (c.attachment) setAttachment(c.attachment);
     setMsg(null);
   }
 
@@ -119,6 +123,7 @@ export default function FlexibleInput({
           occurredAt: when ? new Date(`${when}T12:00:00`).toISOString() : undefined,
           note: note || undefined,
           confidence,
+          ...(attachment ? { attachments: [attachment] } : {}),
           ...(entryCcy !== "MYR"
             ? {
                 entered: {
@@ -146,11 +151,18 @@ export default function FlexibleInput({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? tr("g.input.saveFail"));
 
-      setMsg({ ok: true, text: tr("g.input.added", { item: tr(`add.${mode}`) + (label ? `: ${label}` : "") }) });
+      const added = tr("g.input.added", { item: tr(`add.${mode}`) + (label ? `: ${label}` : "") });
+      // A spend that saved without its photo must say so — see AddTransaction.
+      setMsg({
+        ok: true,
+        text: data.stored?.attachmentError ? `${added} · ${tr("cap.attachFailed")}` : added,
+      });
       setLabel("");
       setAmount("");
       setSubject("");
       setNote("");
+      // Cleared, or the next entry silently carries this one's receipt.
+      setAttachment(null);
       setConfidence(undefined);
       setAnalysis(null);
       setWhen(todayLocal());

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { fmtMoney } from "@/lib/format";
 import type { SpendRecord } from "@/lib/records";
+import { attachmentUrl } from "@/lib/attachments";
+import AttachmentViewer from "../AttachmentViewer";
 
 interface Bucket {
   id: string;
@@ -49,6 +51,7 @@ export default function RecordRow({
   const [history, setHistory] = useState<LedgerEntry[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<number | null>(null);
 
   const [vendor, setVendor] = useState(record.vendor ?? "");
   const [amount, setAmount] = useState(String(record.amount));
@@ -186,9 +189,50 @@ export default function RecordRow({
     );
   }
 
+  // Empty on a redacted row: lib/privacy.ts clears it, because a thumbnail of
+  // another member's private receipt hands back exactly what the redaction is
+  // hiding. /api/attachment refuses the bytes too — this only keeps the UI from
+  // offering a link that would be denied.
+  const shots = record.attachments ?? [];
+
   return (
     <div className="border-b border-zinc-50 last:border-0 dark:border-zinc-800/60">
+      {viewing !== null && (
+        <AttachmentViewer
+          items={shots.map((f) => ({
+            txId: record.id,
+            filename: f,
+            caption: `${record.vendor ?? tr("rec.unknownVendor")} · ${fmtMoney(record.amount, ccy)}`,
+          }))}
+          startIndex={viewing}
+          onClose={() => setViewing(null)}
+          lang={lang}
+        />
+      )}
       <div className="group flex items-center justify-between px-4 py-2.5 text-sm">
+        {shots.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setViewing(0)}
+            aria-label={tr("att.open", { vendor: record.vendor ?? tr("rec.unknownVendor") })}
+            className="relative mr-3 h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-zinc-200 transition hover:border-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500 dark:border-zinc-700"
+          >
+            {/* PocketBase generates and caches this resize — the brief is
+                explicit that thumbnails are not made client-side. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={attachmentUrl(record.id, shots[0], "100x100")}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+            {shots.length > 1 && (
+              <span className="absolute bottom-0 right-0 rounded-tl bg-black/70 px-1 text-[9px] font-medium text-white">
+                {shots.length}
+              </span>
+            )}
+          </button>
+        )}
         <div className="min-w-0">
           <span className={`font-medium ${record.voided ? "text-zinc-400 line-through" : ""}`}>
             {record.vendor ?? tr("rec.unknownVendor")}

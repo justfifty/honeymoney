@@ -5,9 +5,10 @@
 // so a transaction can be corrected or voided but its history can never be
 // quietly rewritten.
 
-import { pbList, pbFirst, pbCreate, pbUpdate, pbStr } from "./pocketbase";
+import { pbList, pbFirst, pbCreate, pbUpdate, pbStr, pbUploadFiles } from "./pocketbase";
 import { append } from "./ledger";
 import type { ParsedReceipt } from "./types";
+import type { DecodedAttachment } from "./attachments";
 
 export interface Actor {
   id: string;
@@ -31,6 +32,10 @@ interface IngestResult {
   walletNodeId: string;
   vendorNodeId: string;
   walletLabel: string;
+  /** Filenames PocketBase stored, if any images came with the spend. */
+  attachments?: string[];
+  /** Set when the spend saved but its image did not — the caller must say so. */
+  attachmentError?: string;
 }
 
 // Find-or-create the vendor node for this tenant (case-insensitive by label).
@@ -165,6 +170,8 @@ export async function addManualTransaction(
     confidence?: number;
     direction?: "out" | "in"; // "out" = debit/spend (default), "in" = credit/money-in
     entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
+    /** Receipt images, already decoded and size-checked by lib/attachments.ts. */
+    attachments?: DecodedAttachment[];
   },
   actor?: Actor,
 ): Promise<IngestResult> {
@@ -195,12 +202,33 @@ export async function addManualTransaction(
 
   const tx = await pbCreate<{ id: string }>("transactions", body);
 
+  // Images go up AFTER the record exists, because a file field needs something
+  // to attach to. That ordering is also why an upload failure must not throw:
+  // the spend is already recorded and correct, and losing the amount because a
+  // photo failed would be a far worse trade than a record with no picture. The
+  // failure is reported in the return value instead, so the caller can say so.
+  let attachments: string[] = [];
+  let attachmentError: string | undefined;
+  if (input.attachments?.length) {
+    try {
+      attachments = await pbUploadFiles("transactions", tx.id, "attachments", input.attachments);
+    } catch (err) {
+      attachmentError = err instanceof Error ? err.message : "Attachment upload failed";
+    }
+  }
+
   await append({
     tenantId,
     op: "create",
     collection: "transactions",
     recordId: tx.id,
-    after: { ...body, vendor_label: wallet.label && input.vendorLabel },
+    // The ledger records what was stored, attachments included — "a receipt was
+    // attached to this spend" is exactly the kind of fact an audit trail is for.
+    after: {
+      ...body,
+      vendor_label: wallet.label && input.vendorLabel,
+      ...(attachments.length ? { attachments } : {}),
+    },
     actorId: actor?.id,
     actorEmail: actor?.email,
   });
@@ -210,6 +238,8 @@ export async function addManualTransaction(
     walletNodeId: wallet.id,
     vendorNodeId,
     walletLabel: wallet.label,
+    attachments,
+    attachmentError,
   };
 }
 

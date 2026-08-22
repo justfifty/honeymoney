@@ -30,6 +30,36 @@ if ((Get-Item $log -ErrorAction SilentlyContinue).Length -gt 2MB) {
   Move-Item $log "$log.old" -Force
 }
 
+# 0) A requested PocketBase restart, to apply pending migrations.
+#
+# PocketBase runs its pending migrations at startup, so a new file in
+# pb_migrations does nothing until the process comes back. It cannot be brought
+# back by hand: this task runs elevated and PocketBase inherits that, so a
+# Stop-Process from an ordinary shell gets "Access is denied" — the same wall
+# the app hit on 2026-08-22.
+#
+# Deliberately a MARKER rather than "restart whenever a migration file is newer
+# than the process". Applying a schema change is a decision someone makes, not
+# something a 5-minute timer should do the moment a file lands on disk — and
+# dropping the marker is the moment that decision is recorded. It is also the
+# cue to have taken a backup: run deploy/backup-pocketbase.ps1 first.
+#
+#   New-Item C:\2026_honeymoney\deploy\.restart-pocketbase -ItemType File
+#   schtasks /run /tn HoneyMoney
+#
+# The marker is consumed whether or not the stop succeeds, so a failure cannot
+# leave the watchdog restarting the database every five minutes forever.
+$marker = 'C:\2026_honeymoney\deploy\.restart-pocketbase'
+if (Test-Path $marker) {
+  Note 'restart marker present -> restarting PocketBase to apply migrations'
+  Remove-Item $marker -Force -ErrorAction SilentlyContinue
+  $conn = Get-NetTCPConnection -LocalPort 8090 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($conn) {
+    Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+  }
+}
+
 # 1) PocketBase on 127.0.0.1:8090 — localhost only, never exposed through the tunnel.
 if (-not (Listening 8090)) {
   Note 'PocketBase not listening -> starting'

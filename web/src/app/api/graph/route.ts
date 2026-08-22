@@ -3,6 +3,7 @@ import { isDatabaseConfigured } from "@/lib/config";
 import { addManualTransaction, createGraphNode, createAllocationEdge } from "@/lib/graph";
 import { AuthError, can, requirePermission } from "@/lib/household";
 import { apiError } from "@/lib/apiError";
+import { decodeAttachments } from "@/lib/attachments";
 
 export const runtime = "nodejs";
 
@@ -80,6 +81,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "walletNodeId and vendorLabel are required" }, { status: 400 });
       }
       if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "amount must be > 0" }, { status: 400 });
+
+      // Decoded before the write, and its failure is a 400 rather than a 500:
+      // "that photo is too big" is something the user did and can fix, not a
+      // fault of ours, and the capture surface shows this message verbatim.
+      let attachments;
+      try {
+        attachments = decodeAttachments(body.attachments);
+      } catch (err) {
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "Invalid attachment" },
+          { status: 400 },
+        );
+      }
       const stored = await addManualTransaction(
         tenantId,
         {
@@ -100,6 +114,7 @@ export async function POST(request: Request) {
           entered: body.entered as
             | { amount: number; currency: string; perMYR: number; rateSource: string }
             | undefined,
+          attachments,
         },
         { id: ctx.user.id, email: ctx.user.email },
       );
