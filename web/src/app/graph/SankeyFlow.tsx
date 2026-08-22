@@ -324,9 +324,20 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
   const tr = (k: string) => translate(lang, k);
 
   const dim = (id: string) => focus !== null && id !== focus;
+
+  // The brief requires the treatment of transfers to be STATED on the chart, not
+  // merely implemented — a reader has no way to tell whether a missing flow is a
+  // deliberate choice or a bug. Shown only when the diagram actually contains
+  // one: a standing caption about transfers on a household that has never made
+  // one is noise, and noise is how captions stop being read.
+  // Read from the incoming edges rather than the drawn ribbons: Ribbon carries
+  // only geometry, and threading `rel` through the layout purely to decide
+  // whether to show a caption would put presentation concerns into the maths.
+  const hasTransfer = edges.some((e) => e.rel === "SAVED_INTO");
   const labelFits = (h: number) => h >= 13;
 
   return (
+    <>
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ minWidth: 680 }} role="img" aria-label="Sankey money flow: income to buckets to spending and savings">
       {/* column captions */}
       <text x={64} y={26} fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.income")}</text>
@@ -377,5 +388,11 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
         );
       })}
     </svg>
+    {hasTransfer && (
+      <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-500">
+        {tr("g.sankey.transferNote")}
+      </p>
+    )}
+    </>
   );
 }

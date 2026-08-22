@@ -34,6 +34,12 @@ interface RawTxn {
   vendor_node: string;
   amount: number;
   member: string;
+  /** inflow · outflow · transfer. Absent on rows that predate Task 1. */
+  kind?: string | null;
+  direction?: string | null;
+  /** Task 9: the goal a transfer was put toward, if any. */
+  goal?: string | null;
+  voided?: boolean;
 }
 interface Member {
   id: string;
@@ -231,7 +237,49 @@ export async function getFocusedView(
 
   // ── spend maps, re-weighted to a member when a person focus is active ──
   const scope: "structure" | "person" = focus.kind === "member" ? "person" : "structure";
-  const spendTxns = scope === "person" ? txns.filter((t) => t.member === focus.id) : txns;
+  const allInScope = scope === "person" ? txns.filter((t) => t.member === focus.id) : txns;
+
+  // Tier 2 = savings. Needed to derive the kind of rows written before Task 1.
+  const savingsBucketIds = new Set(
+    nodes.filter((n) => n.kind === "bucket" && Number(n.props?.bucket) === 2).map((n) => n.id),
+  );
+
+  // ── TRANSFERS ARE NOT SPENDING ──────────────────────────────────────────
+  //
+  // Every transaction with a bucket and a vendor used to become a bucket→vendor
+  // flow, which meant a savings deposit — a TRANSFER since Task 1 — drew as
+  // money leaving the household. The brief names this exactly: "if transfers
+  // render as flows leaving the household, the diagram shows money disappearing
+  // that never left, which is the misreading a household finance app cannot
+  // afford."
+  //
+  // THE CHOICE, and it is stated on the chart as the brief requires: transfers
+  // TERMINATE AT AN IN-HOUSEHOLD NODE rather than being excluded. Excluding them
+  // would be simpler and is the other permitted option, but it makes a household
+  // that saved RM1,000 this month look like one that earned RM1,000 less — the
+  // money would simply be missing from the picture. Terminating shows where it
+  // actually went, which is the whole point of a Sankey.
+  //
+  // Task 9's goals are the clean destination the brief anticipated: a transfer
+  // linked to a goal terminates at that goal. One that is not linked terminates
+  // at its savings bucket, which is still inside the household.
+  const isTransfer = (t: RawTxn) =>
+    t.kind === "transfer" ||
+    // Derived for rows written before the kind field existed, matching
+    // lib/recordKind.ts: anything against a tier-2 bucket is a transfer.
+    (!t.kind && savingsBucketIds.has(t.wallet_node));
+
+  const spendTxns = allInScope.filter((t) => !t.voided && !isTransfer(t));
+  const transferTxns = allInScope.filter((t) => !t.voided && isTransfer(t));
+
+  // Bucket → goal, for transfers that were put toward one. Money terminating at
+  // a goal is money the household still has.
+  const transferByGoal = new Map<string, number>();
+  for (const t of transferTxns) {
+    if (!t.goal || !t.wallet_node) continue;
+    const pair = `${t.wallet_node} ${t.goal}`;
+    transferByGoal.set(pair, (transferByGoal.get(pair) ?? 0) + Number(t.amount));
+  }
   const spendByPair = new Map<string, number>();
   const spendByBucket = new Map<string, number>();
   // Who logged each pair, so the tier-3 collapse below knows whose spend it is.
@@ -249,6 +297,13 @@ export async function getFocusedView(
   }
 
   const allEdges = buildEdges(nodes, edges, spendByPair);
+
+  // Transfers, drawn terminating inside the household rather than leaving it.
+  for (const [pair, flow] of transferByGoal) {
+    const [src, dst] = pair.split(" ");
+    if (!nodes.some((n) => n.id === dst)) continue; // goal deleted since
+    allEdges.push({ src, dst, rel: "SAVED_INTO", flow, label: `${rm0(flow)} saved` });
+  }
   const allocated = computeAllocations(nodes, edges);
 
   // ── which nodes survive the lens ──────────────────────────────────────

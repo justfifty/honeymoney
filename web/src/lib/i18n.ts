@@ -950,6 +950,7 @@ const en: Dict = {
   "rec.comp.individual": "Just you",
   "rec.comp.couple": "You and your partner",
   "rec.comp.family": "Your family",
+  "g.sankey.transferNote": "Money you moved into savings or a goal ends at that goal here — it hasn't left the household, so it isn't drawn as spending.",
 };
 
 const ms: Dict = {
@@ -1555,6 +1556,7 @@ const ms: Dict = {
   "rec.comp.individual": "Anda sahaja",
   "rec.comp.couple": "Anda dan pasangan",
   "rec.comp.family": "Keluarga anda",
+  "g.sankey.transferNote": "Wang yang anda pindahkan ke simpanan atau matlamat berakhir pada matlamat itu di sini — ia tidak meninggalkan isi rumah, jadi ia tidak dilukis sebagai perbelanjaan.",
 };
 
 // Scaffolded locales — core chrome only; everything else falls back to English.
@@ -2044,6 +2046,7 @@ const zh: Dict = {
   "rec.comp.individual": "只有你",
   "rec.comp.couple": "你和伴侣",
   "rec.comp.family": "你的家庭",
+  "g.sankey.transferNote": "你转入储蓄或目标的钱在这里终止于该目标 — 它并没有离开家庭，所以不会画成支出。",
 };
 const ta: Dict = {
   "app.title": "பணம், காட்சிப்படுத்தப்பட்டது",
@@ -2531,6 +2534,7 @@ const ta: Dict = {
   "rec.comp.individual": "நீங்கள் மட்டும்",
   "rec.comp.couple": "நீங்களும் துணையும்",
   "rec.comp.family": "உங்கள் குடும்பம்",
+  "g.sankey.transferNote": "சேமிப்பு அல்லது இலக்கிற்கு நீங்கள் நகர்த்திய பணம் இங்கே அந்த இலக்கில் முடிகிறது — அது குடும்பத்தை விட்டு வெளியேறவில்லை, எனவே செலவாக வரையப்படவில்லை.",
 };
 const hi: Dict = {
   "app.title": "पैसा, दृश्य रूप में",
@@ -3018,6 +3022,7 @@ const hi: Dict = {
   "rec.comp.individual": "सिर्फ़ आप",
   "rec.comp.couple": "आप और आपका साथी",
   "rec.comp.family": "आपका परिवार",
+  "g.sankey.transferNote": "बचत या किसी लक्ष्य में डाला गया पैसा यहाँ उसी लक्ष्य पर खत्म होता है — यह घर से बाहर नहीं गया, इसलिए इसे खर्च की तरह नहीं दिखाया जाता।",
 };
 
 // Traditional Chinese — scaffolded (Traditional conversion of the zh chrome);
@@ -3508,6 +3513,7 @@ const zhHant: Dict = {
   "rec.comp.individual": "只有你",
   "rec.comp.couple": "你和伴侶",
   "rec.comp.family": "你的家庭",
+  "g.sankey.transferNote": "你轉入儲蓄或目標的錢在這裡終止於該目標 — 它並沒有離開家庭，所以不會畫成支出。",
 };
 
 const DICTS: Record<Locale, Dict> = { en, ms, zh, "zh-Hant": zhHant, ta, hi };

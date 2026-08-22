@@ -20,6 +20,7 @@ import { getSpendRecords } from "../src/lib/records.ts";
 import { deriveKind, kindOf } from "../src/lib/recordKind.ts";
 import { householdNet, canSee, visibleFilter, defaultVisibility } from "../src/lib/attribution.ts";
 import { config } from "../src/lib/config.ts";
+import { getFocusedView } from "../src/lib/focusView.ts";
 
 let failures = 0;
 const check = (name: string, actual: unknown, expected: unknown) => {
@@ -122,6 +123,59 @@ try {
     check("the partner does NOT — the query never returned it", asBob.some((r) => r.id === t.id), false);
     check("the filter names the viewer", visibleFilter(bob.id).includes(bob.id), true);
     check("no viewer ⇒ shared only (fails closed)", visibleFilter(null), "visibility != 'private'");
+  }
+
+  console.log("\nA TRANSFER MUST NOT RENDER AS MONEY LEAVING");
+  // The Sankey's whole job is showing where money went. Until 2026-08-23 every
+  // transaction with a bucket and a vendor became a bucket->vendor flow, so a
+  // savings deposit drew as money leaving the household — the exact misreading
+  // the brief says a household finance app cannot afford.
+  {
+    const savings = (
+      await pbList<{ id: string; props: { bucket?: number } | null }>("nodes", {
+        filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+        perPage: 50,
+      })
+    ).find((b) => Number(b.props?.bucket) === 2);
+    const goal = (
+      await pbList<{ id: string; label: string }>("nodes", {
+        filter: `tenant = ${pbStr(tenantId)} && kind = 'goal'`,
+        perPage: 5,
+      })
+    )[0];
+
+    if (!savings || !goal) {
+      console.log("  --    no savings bucket or goal in this household. Skipped.");
+    } else {
+      const view = async () =>
+        getFocusedView(tenantId, { kind: "none" } as never, "en", [tenantId], { redact: false });
+
+      const before = await view();
+      const outflowBefore = before.graph.edges.filter((e) => e.rel === "SPENT_AT").length;
+
+      const t = await pbCreate<{ id: string }>("transactions", {
+        tenant: tenantId,
+        wallet_node: savings.id,
+        vendor_node: goal.id, // the shape that used to draw as spending
+        goal: goal.id,
+        amount: 250,
+        currency: "MYR",
+        occurred_at: new Date().toISOString().replace("T", " "),
+        source: "check:attribution",
+        direction: "in",
+        kind: "transfer",
+        voided: false,
+      });
+      made.push(t.id);
+
+      const after = await view();
+      const outflowAfter = after.graph.edges.filter((e) => e.rel === "SPENT_AT").length;
+      const saved = after.graph.edges.filter((e) => e.rel === "SAVED_INTO");
+
+      check("the transfer adds NO spending flow", outflowAfter, outflowBefore);
+      check("it terminates at the goal instead", saved.some((e) => e.dst === goal.id), true);
+      check("carrying its amount", saved.find((e) => e.dst === goal.id)?.flow, 250);
+    }
   }
 
   console.log("\nexisting records still load");
