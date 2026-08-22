@@ -682,7 +682,386 @@ Further backlog: waste/penalty & subscription radar (Rocket Money) · safe-to-sp
 
 ---
 
-## 7. Next (do now) — **10 days to the 31 Aug artefact gate**
+## 6.6 Implementation brief — 2026-08-22 · eleven changes, one release
+
+**Spec: [`docs/20260822_honeymoney-implementation-brief.md`](docs/20260822_honeymoney-implementation-brief.md).**
+This section is the *board*; the brief is the *spec*. Where they disagree the brief wins —
+it carries the reasoning, the trade-offs and the acceptance detail that won't fit here.
+
+### Picking this up in a fresh session (mobile Claude, or a new desktop session)
+
+1. Read the brief's **"How to use this brief"** header first — it holds the ordering rules.
+2. Work the **order below, not the task numbers.** The numbers are the change request's;
+   the order is the dependency graph.
+3. **Read the existing implementation before writing code.** Several tasks assert things
+   about the current architecture that may not hold. A contradiction is a finding to
+   report, not something to code around.
+4. 🛑 marks a **stop-and-report** point — a decision the brief deliberately leaves to the
+   user. Do the work up to it, then stop and ask. Don't pick on their behalf.
+5. One task per session where possible. These interlock; a half-finished migration
+   spanning two tasks is the expensive failure mode here.
+
+**Standing constraints, every task:** thin-server / fat-client — computation in the
+browser, PocketBase stores and serves · no new server-side runtime dependencies · no paid
+third-party services (user's own key, or local Ollama) · **do not change H-Score
+computation as a side effect of anything** — if a task appears to need it, stop and flag ·
+every schema change ships with a migration, and existing records must keep loading.
+
+**Release shape:** Tasks 5, 3, 4, 1, 6, 7, 8, 9, 10, 11 ship **together as one release**.
+Task 2 is multi-week with its own data model — **spec only, no code**, until its Open
+Decisions are answered.
+
+### The order
+
+**1 · Task 5 — Primary nav must stay visible at all widths** `[Relevance]`
+- [ ] Record · Dashboard · H-Score · More vanish as the window narrows — highest-severity
+      item in the brief, because it breaks the app at exactly the phone width most users
+      are on.
+- [ ] **Diagnose before fixing.** Name the cause (breakpoint utility · overflowing no-wrap
+      flex · broken overflow menu · fixed-width logo eating the space) before touching it.
+- [ ] Reachable at 320px. None of the four may ever collapse into an overflow menu —
+      `More` *is* the overflow menu. Icon-only + accessible label at narrow widths.
+- [ ] 44×44px targets · active state distinct by more than colour · safe-area insets ·
+      `<nav>` + `aria-current="page"` · visible keyboard focus.
+- [ ] Verify at 320 / 375 / 768 / 1024 / 1440 **and on mid-session resize**, not just fresh load.
+- 🛑 A bottom tab bar at narrow widths reaches a thumb far better. Report cost, don't implement.
+
+**2 · Task 3 — Remove the Speak function** `[Technical]`
+- [ ] Remove entirely, not behind a flag. Changelog rationale: the Web Speech API handles
+      Manglish and BM/English code-switching poorly — a structural API limit, not tuning.
+- [ ] Mic permission must stop being requested **anywhere**. Verify no prompt fires.
+- [ ] Grep the identifiers **before** deleting: check nothing reads a transcript field,
+      assumes a live mic stream, or branches on a "voice input" mode.
+- [ ] Stored voice flags/transcripts stay put — stop reading them, write no destructive migration.
+- ⚠️ *For the record:* this discards the verified voice work shipped 2026-07-14 (Unicode-first
+      parser, 11/11 across en · ms · zh · zh-Hant · ta · hi). The brief's forward path is
+      audio → the user's own key (Gemini takes audio natively) on the Task 2 BYO-key rails.
+      **Not now.**
+
+**3 · Task 4 — Viewable attachments** `[Relevance]`
+- [ ] Receipt scans can't currently be opened. Thumbnail in list + detail via PocketBase
+      `?thumb=100x100` — **not** client-side generation.
+- [ ] Full-screen viewer, full-res loaded only on open: pinch- and double-tap-zoom
+      (non-negotiable — receipt text is unreadable fit-to-screen), rotate, pan, swipe
+      between attachments, clear close affordance.
+- [ ] Real loading and error states with retry — not a blank frame. `Esc` closes, arrows move.
+- [ ] Build the **layout seam** for Task 2's line items beside the image (side-by-side wide,
+      stacked narrow). Leave the panel empty for now.
+
+**4 · Tasks 1 + 6 together — record kinds and attribution** `[Technical][Scalability]`
+> **One design, one migration.** Both change the Record data model; done separately they
+> mean two migrations over the same records and a reconciliation afterwards. Read both
+> brief sections fully before writing either.
+
+*Task 1 — sign-based categorisation*
+- [ ] Replace `From bucket` + the long category list with `+` / `−`.
+      `+` → Income · Savings · Others. `−` → Must-paid · Spendings · Others.
+- [ ] **Three internal kinds — `inflow` · `outflow` · `transfer` — behind two buttons.**
+      `+ Savings` is a **transfer**, not income; destination inferred, not asked.
+      🛑 Report what H-Score does with savings-categorised records today *before* changing
+      the input shape — this is the brief's prime suspect for an existing bug.
+- [ ] `Others` appears on both sides and must persist as **distinct keys** (`income_other` /
+      `expense_other`). Never a shared `other`. Cheap now, painful to migrate later.
+- 🛑 Dropping `From bucket` is only safe if category → bucket is deterministic. If any bucket
+      can receive from more than one category, **stop and report** — removing the field would
+      relocate the ambiguity, not remove it.
+- [ ] `+` orange / `−` dark grey — deliberately **not** green/red (red-green deficiency is the
+      common one). Do not "correct" this back. Always render the glyph alongside the colour:
+      **identifiable in greyscale**. Darker orange (~`#B45309`) for text and thin strokes;
+      bright brand orange for fills and chips. 4.5:1 text, 3:1 interactive — verify, don't assume.
+- [ ] Migration maps existing records onto the kinds. State the mapping assumptions explicitly;
+      flag anything non-deterministic rather than guessing.
+
+*Task 6 — persona context and attribution*
+- [ ] **Split the two concepts.** Household composition (individual · couple · family) is a
+      **setting**, established at onboarding and editable later, shown at the top of Record as
+      *context, not a control*. **Attribution** — whose this record is — is the per-record
+      field, its options derived from composition. Individual → the control does not render,
+      occupies no space, adds no tap.
+- 🛑 **The schema decision:** attribution has two independent axes — **who paid** vs **who
+      benefited**. One axis is acceptable for v1, but choose deliberately and **name the field
+      for what it actually holds** (recommendation: who paid). Never `persona` or `owner`.
+      Leave a schema seam for the second axis.
+- 🛑 **Privacy stance, picked explicitly and stated in the PR:** (1) fully transparent ·
+      (2) individual private by default, joint shared *(recommended, with a non-hidden
+      indicator)* · (3) per-record toggle. **Enforced in PocketBase collection rules,
+      server-side** — client-side filtering is not privacy. Not negotiable whichever wins.
+- [ ] Attribution + `+`/`−` is a **remembered default**, pre-selected, overridable in settings.
+      The common case — one person logging their own routine spending — stays zero extra taps.
+- [ ] **Partner-to-partner transfer** ("I paid you back RM200") = `transfer` A→B and **nets to
+      zero at household level**. Confirm no double-count before implementing. Check that
+      `+ Savings` in a couple household doesn't collide attribution with savings destination.
+- 🛑 Report whether H-Score computes at household or per-person level. **Do not change it.**
+- [ ] Migration: existing records → recording user as source, marked **migrated-default, not
+      user-asserted**. Do not backfill a joint-vs-individual guess; reclassifying is a user action.
+
+**5 · Task 8 — H-Score: show where the number came from** `[Technical][ESG]`
+- [ ] Three tap-through levels: **the score** (period covered + record count) → **each
+      criterion** (sub-score, weight, the actual figure, the arithmetic in one line —
+      *"Savings rate 12% → 14 of 20 points"*) → **the records that fed it**, filtered and
+      ready to inspect. That last level is what turns the score from an opinion into
+      something checkable.
+- [ ] **State what would move it** — computed and descriptive, same register as Ask Honey,
+      never an instruction to act.
+- [ ] **Say what's missing.** A criterion low from *thin data* must be visually distinct from
+      one low from *the household's finances*. The current display probably conflates them.
+- [ ] Methodology readable in-app: thresholds, weights, period. A score is an opinion
+      expressed as a number; the weights encode a view.
+- [ ] **Rename `Privacy discipline` from the code, not from the label** — read what it actually
+      computes first; a name/computation mismatch is a finding to surface, not to paper over.
+      Then check all five: name it after what the user *does or has*; no `discipline` /
+      `hygiene` / `health` / `index`; one plain line beneath each. **Verify every name renders
+      naturally in BM, Chinese and Tamil** — abstract English compounds translate badly, and
+      often into something more obscure than the English.
+- [ ] Document *and display* which record kinds and categories feed each criterion, and which
+      are ignored. 🛑 **Transfers are not income** — verify what the current implementation does
+      and report. Irregular income (bonus, freelance, festive, commission) is normal in
+      Malaysian households and needs a **stated smoothing window**, trailing multi-month,
+      visible to the user. Uncategorised and `Others` records must not silently vanish — show
+      a count of unscored records with a route to categorise them.
+- [ ] **One computation, called the same way** by the H-Score page, the Dashboard and Ask Honey.
+      No parallel implementation, no rounding drift. If the number ever disagrees between two
+      surfaces, users will trust neither.
+
+**6 · Task 9 — Goals under `More`** `[ESG][Commercial]`
+- [ ] Name · target amount · target date · progress, all editable.
+- [ ] **Progress derived by default** — the sum of `transfer` records linked to the goal — with
+      a **separately labelled** manual adjustment for savings that happened outside the app.
+      Always show *"RM8,000 tracked + RM2,000 you added manually."* Silently mixing the two
+      produces a number nobody can reconcile later.
+- [ ] Changing a target must not retroactively alter recorded progress · keep a light history of
+      target changes (a goal repeatedly revised down is real information) · progress past 100%
+      is a **success state, not an overflow bug** · deleting a goal **unlinks** records, never
+      deletes them, with a clear warning and confirm.
+- [ ] A `transfer` can be assigned to a goal at entry — optional; an unassigned savings transfer
+      is valid and lands in general savings. A record belongs to at most one goal.
+- [ ] Goals carry attribution too — **reuse the Task 6 stance**, don't invent a second one.
+      A shared goal one partner can silently retarget is a product problem before a technical one.
+- 🛑 **Does goal progress feed H-Score?** There's an argument it should, and a double-counting
+      risk against any savings-rate criterion. Report the interaction and stop for a decision.
+- *Goals' Dashboard and chart surfaces are built in Task 7 — but design this schema now, because
+  the Sankey needs somewhere for savings transfers to terminate.*
+
+**7 · Task 11 — Chart names and explanations: one source, used everywhere** `[Technical][Commercial]`
+- [ ] The Gallery's names and explanations are the strongest writing in the app and exist
+      **only there**, while Dashboard and demo use their own labels. Extract into **one shared
+      chart registry**: stable id, display name, one-line description, the longer "when to use
+      this", icon.
+- [ ] Every surface consumes it — Dashboard, chart switcher, demo showcase, settings,
+      translation catalogue. A chart's name is defined in exactly one place, or they drift
+      apart again within a few releases. **The Gallery's existing names win**; change the
+      other surface.
+- [ ] Reconcile the Task 7.4 names (Sankey · Progress Bars · Tree Diagram · Treemap · Node-Link ·
+      Horizontal Bar · Summary Metrics) against the Gallery and **use the Gallery's wording** —
+      those came from the change request, not the Gallery. Report any chart in 7.4 with no
+      Gallery entry, or a Gallery type absent from 7.4, rather than resolving it silently.
+      The *priority order* stands regardless of what they end up being called.
+- [ ] Make the one-line description reachable from every chart header — **most of all on the
+      Sankey**, the default view and the least familiar diagram type to a general audience.
+      A user meeting it cold with no explanation bounces off the app's strongest visualisation.
+- [ ] Registry entries are **translation keys, not literal strings**. Flag descriptions that
+      don't render naturally in BM / Chinese / Tamil instead of shipping a literal translation.
+- [ ] **The demo is missing the Graph Showcase entirely** — reuse the Gallery component and the
+      registry (never a demo-specific copy — that recreates the drift this task exists to fix),
+      all types rendering on the Task 7.5 seed data, explanations included, **works with no
+      login**, **deep-linkable per chart**, chart libraries lazy-loaded per view rather than
+      shipping all seven renderers up front. Test on a 375px phone over mobile data.
+
+**8 · Task 7 — Dashboard** `[Technical][Relevance]`
+> **Do not start before 5, 1, 6, 8, 9 and 11 have landed.**
+- [ ] The Dashboard's persona control is a **filter**; Record's is **data entry**. Same shared
+      component and label vocabulary so `Partner's` means and looks the same in both — but
+      **separate state**. Dashboard adds **All / Household**, the sensible default. Individual
+      composition → doesn't render, exactly as Task 6.
+- 🛑 The Dashboard filter **must not write back to Record's default.** The concrete failure:
+      filter to `Partner's` to review their spending, tap Record, log your own coffee against
+      your partner. Silent mis-attribution in a couples app is worse than an extra tap. Any
+      carry-over must be visibly and unmistakably pre-selected, never quietly applied.
+- [ ] **Remove `Add a spend`** — Record is a primary destination and always reachable after
+      Task 5, so the duplicate entry point earns nothing. Editing stays, and **an edit opens
+      the same record editor component the Record flow uses**. No inline mini-form: a parallel
+      path bypasses the Task 1 kind rules and the Task 6 attribution and privacy rules, and
+      drifts further with every subsequent change.
+- [ ] Edits recompute H-Score and refresh affected charts; optimistic updates reconcile against
+      the server result and fail visibly. Delete needs a confirm — charts make mis-taps easy.
+      A user cannot edit a record they cannot see, and **collection rules, not the UI, enforce that**.
+- [ ] **No chart may break, blank out or disappear at any item count** — which is not the same
+      as rendering every item. Report the current failure mode first (hidden below a threshold?
+      overflowing its container? erroring on empty?), then handle all three regimes for *every*
+      chart type: **zero** → a real empty state with a route to Record, not a blank panel or a
+      zero-height SVG · **one or two** → must render, with sensible minimum geometry ·
+      **many** → aggregate to top N by value plus a single **inspectable** `Other`, N tuned per
+      chart type and viewport.
+- [ ] Default order: **Sankey (default view)** · Progress Bars · Tree Diagram · Treemap ·
+      Node-Link Diagram · Horizontal Bar Chart · Summary Metrics.
+- [ ] **Sankey must consume the three record kinds correctly.** A `transfer` — savings, or a
+      repayment between partners — is **not** an outflow. If transfers render as flows leaving
+      the household, the diagram shows money disappearing that never left, which is exactly the
+      misreading a household finance app cannot afford. Terminate them at an in-household node
+      (Task 9 goals are the clean answer) or exclude them — and **state the choice on the chart**.
+- [ ] **Sankey at 375px is the risk to design for.** Options in preference order: reduce to two
+      levels and aggregate hard at narrow widths · horizontal scroll with a pinned label column ·
+      fall back to Horizontal Bar with Sankey one tap away. Pick one, verify at 320px.
+- 🛑 Tree Diagram, Treemap and Node-Link are three renderings of the same hierarchy, and
+      Node-Link is high build cost for low household-finance insight. Seven types is a large
+      surface to maintain and translate. Add lightweight local instrumentation of which views
+      actually get opened, so this gets pruned on evidence later rather than argued about.
+- [ ] **Demo seeds must exercise all seven** meaningfully, not merely without error: category
+      depth so the hierarchy charts show more than one level · at least one inflow, one outflow
+      and one **transfer** so the Sankey demonstrates the distinction · a **couple** household
+      with records across both partners and joint so Task 6 attribution is visible · plausible
+      Malaysian figures and merchant names. **No chart in the demo may show an empty state.**
+- [ ] **Live translation across all pages** — changing language re-renders the current view
+      immediately, no reload, no navigating away and back. Strings resolved reactively at
+      render, not captured at mount · every user-visible string in the catalogue including
+      error, empty and loading states · choice persisted and `<html lang>` updated ·
+      `Intl.NumberFormat` with `MYR` and `Intl.DateTimeFormat`, never hand-formatted. The two
+      usually missed: **chart labels, axis ticks, legends and tooltips including text rendered
+      into SVG** (charts draw once and never re-translate — verify with a chart open), and
+      **category and persona names**, which may be stored values rather than keys. Decide
+      whether user-created categories translate at all, and be consistent. Test the full
+      language set, not English plus one.
+- [ ] **Ask Honey — "what if?"** *(highest-value item in the brief, and the one with the most
+      ways to go wrong — read the whole section before designing)*
+  - [ ] **The model never does arithmetic.** Three stages: **parse intent** (model → a small
+        typed object, validated before use) → **compute** (deterministic, client-side, the
+        *same engine that computes H-Score*) → **narrate** (the model is handed the numbers and
+        told to explain them, never to derive them). Every number in the output traces to
+        stage 2. A hallucinated affordability figure is worse than no answer — it will be
+        believed and acted on.
+  - [ ] **Stage 2 must work with no model at all** — no key configured, the answer renders from
+        a template. Less conversational, equally correct. AI improves phrasing; it is not
+        load-bearing.
+  - [ ] "Can I afford a TV?" carries no price — **ask for one**. Never guess a typical price and
+        never look one up: that turns a budgeting tool into a product recommender, a different
+        product with a different risk profile.
+  - [ ] **Answer with consequence, not verdict** — *"…would take your emergency buffer from 2.4
+        months to 1.6, and your H-Score from 72 to 64."* Not "you should buy it", "you can't
+        afford it", or "finance it over 12 months instead".
+  - [ ] **Scope, held firmly.** In: affordability arithmetic, spending pattern summaries, budget
+        scenario projection, savings-goal timing, H-Score explanation — all from the user's own
+        records. Out, declined and routed to the existing regulatory-safe product directory:
+        which loan / insurance / investment product, whether to invest, debt restructuring, tax
+        positions, anything needing knowledge of products the user doesn't hold. Constrain
+        **both the system prompt and the intent parser's allowed types**. Persistent, visible
+        line in the chat surface: arithmetic on your own records, not financial advice — not
+        buried in settings.
+  - [ ] **Privacy — the leak is easy to write by accident.** Honey sees only the records the
+        logged-in user may see under Task 6; reuse the same permission filter as the record
+        list. The natural implementation passes "the household's data" and quietly exposes a
+        partner's private records through a conversational side channel. **Verify by having
+        partner B ask a question only answerable from partner A's private records.**
+  - [ ] **Minimise what leaves the device:** aggregates, not the ledger — monthly income,
+        must-paid total, average discretionary, savings rate, buffer in months, H-Score and its
+        components, category-level totals. **No merchant detail.** Where one specific record
+        genuinely matters, send that one. BYO Gemini key or local Ollama, no key held by us,
+        explicit first-use consent naming what is sent and where. Ollama is the answer for
+        users who won't send household finances to Google — not a fringe concern here.
+  - [ ] **Be honest about thin data** — a confidence signal from history depth and variance,
+        stated plainly (*"based on only 3 weeks of records, so treat this as rough"*), and a
+        minimum history below which Honey declines to project at all and says why.
+
+**9 · Task 10 — Import under `More`** `[Technical][Commercial]`
+- [ ] **Baseline first:** `<input type="file" multiple>` works everywhere — build that path
+      first and make it complete on its own. Then enhance: `webkitdirectory` for folder
+      selection, and `showDirectoryPicker` which is **Chromium-only, absent on Firefox and on
+      iOS Safari entirely**. Feature-detect and degrade; never gate import behind it. For a
+      Malaysian consumer PWA, iOS users are not a rounding error. Persistent folder handles go
+      in IndexedDB with permission re-requested on return — browsers drop these silently.
+- [ ] **CSV first**, then OFX/QIF if cheap. No per-bank parsers — Maybank, CIMB, Public Bank,
+      RHB and Hong Leong share no format, and hardcoded parsers rot as banks change exports.
+      Build a **column-mapping step** instead: show the file's columns, map date / description /
+      amount / balance once, remember it per source so repeats are one tap.
+- [ ] Format traps, handled explicitly: ambiguous date order (`03/04/2026` differs between
+      exports — infer from the file and **confirm with the user**, never assume) · debit and
+      credit as separate columns vs one signed column · thousands separators · trailing
+      `CR`/`DR` markers.
+- [ ] **Import is a proposal, never a direct write.** Preview before commit, with the Task 1
+      kind and Task 6 attribution assigned and **bulk-editable**. An import that silently
+      creates 400 records with the wrong attribution in a couples app is a genuine mess to
+      unwind by hand.
+- [ ] **Deduplicate** — hash date + amount + normalised description into a stable content key,
+      flag probable duplicates in the preview, default to skip. Re-importing an overlapping
+      date range is the most common thing users do. Reuse the SHA-256 approach from SiteShrimp.
+- [ ] **`import_batch_id` on every record, plus one-action rollback of the whole batch.** Cheap
+      now; the difference between a recoverable mistake and a support conversation.
+- [ ] Categorisation is a **suggestion**: map obvious merchant patterns, mark low-confidence,
+      let the user bulk-correct in the preview.
+- [ ] **Nothing from a bank file goes to any model** — including the user's own key, and
+      including for column mapping. A statement is the most sensitive file a user owns: full
+      merchant history, balances, account identifiers. Column mapping is a UI problem, not an
+      inference problem.
+- [ ] Photo / bulk import **defers with Task 2** — same extraction pipeline, never a second one.
+      When it lands: throttled serial queue with backoff (free-tier quotas die on 40 receipts at
+      once), progress, pause and resume across reload, one shared review preview.
+
+**10 · Task 2 — Receipt line-item extraction — 🛑 SPEC ONLY, NO CODE** `[Technical]`
+- [ ] Multi-week feature with its own data model. **Write the spec, then stop for review.**
+      If a session reaches this task, it produces a written spec, not an implementation.
+- [ ] Tiered, all cost-free to the user: **VLM on the user's own key** (Gemini Flash's free tier
+      extracts line items well and returns structured JSON, removing the parse layer entirely)
+      → **local Ollama vision** (Qwen2.5-VL / MiniCPM-V, desktop-only — *a requirement, not a
+      nice-to-have*, for users who won't send household receipts to Google) → **`tesseract.js`**
+      WASM fallback (won't reliably give line items, but usually captures the total, so offline
+      capture still works). **Rejected: server-side Python/Tesseract on DOM Cloud** — poor fit
+      for the thin-server architecture, and mediocre on faded thermal paper wherever it runs.
+- [ ] Malaysian specifics: **SST is inconsistent across merchants** — a line item, a footer,
+      absent, or inclusive in displayed prices; handle all four. **5-sen rounding means line
+      items legitimately will not sum to the total** — correct behaviour, not an error.
+      Reconcile `sum(items) + tax + rounding == total` at tolerance **±0.05**; on mismatch flag
+      for user review — never silently accept, never silently reject.
+- [ ] **Extraction produces a proposal, never truth** — pending state, per-field confidence,
+      user confirms before anything reaches the ledger, low-confidence fields surfaced visually
+      so review effort concentrates where it's needed. A 30-item grocery receipt that silently
+      mis-parses two items is worse than no extraction: the user trusts it and stops checking.
+- [ ] Downscale client-side to **1600px long edge, JPEG q0.8** (~250KB, still OCR-readable) and
+      keep *that* as the stored original — never the raw camera file. Receipt images will
+      otherwise dominate PocketBase storage far faster than transaction data ever will.
+- 🛑 **Open decisions to resolve before any code:** (1) does a receipt produce **one categorised
+      transaction with itemised detail attached, or can individual items carry their own
+      categories**? Per-item is where the analytical value sits — a supermarket trip is groceries
+      *and* household *and* a bottle of wine — but it's a lot of taps unless items auto-categorise
+      and the user only corrects outliers. *This determines the data model; everything waits on
+      it.* (2) how line items interact with the Task 1 kinds — presumably all `outflow`, but a
+      refund line breaks that. (3) does H-Score consume line-item detail, or only the total?
+
+### Definition of done — the release (5, 3, 4, 1, 6, 7, 8, 9, 10, 11)
+
+- [ ] All four nav destinations reachable at 320px, verified **on resize** as well as fresh load
+- [ ] No microphone permission prompt fires anywhere in the app
+- [ ] Attachments open, zoom and rotate on both touch and pointer input
+- [ ] Record type is identifiable **in greyscale**
+- [ ] Individual-composition users see no attribution control and gain no extra taps
+- [ ] Record privacy enforced by PocketBase collection rules, **verified by direct API call**,
+      not through the UI
+- [ ] A partner-to-partner transfer nets to zero at household level, and does not render as an
+      outflow in the Sankey
+- [ ] Every H-Score criterion taps through to the records that produced it
+- [ ] No criterion is named in a way a user can't interpret — **in any supported language**
+- [ ] A savings transfer is not counted as income by any criterion
+- [ ] A criterion low from missing data is visually distinct from one low from the finances
+- [ ] Goal progress reconciles to linked records, with manual adjustments shown separately
+- [ ] Every chart renders at 0, 1, 2 and 200+ items without breaking, at 320px and above
+- [ ] Dashboard edits go through the same editor component as Record, and recompute H-Score
+- [ ] Switching language re-renders the current page immediately, **chart labels included**
+- [ ] Each chart's name is defined in exactly one place, identical on Dashboard, Gallery and demo
+- [ ] Import works on iOS Safari with no folder-picker support
+- [ ] A re-imported overlapping date range creates no duplicates; a batch rolls back in one action
+- [ ] No bank file contents are sent to any model
+- [ ] The demo shows the Graph Showcase with explanations, without login — all seven types, no
+      empty states
+- [ ] Ask Honey answers an affordability question with correct arithmetic and **no model configured**
+- [ ] Every figure Honey states matches the H-Score page and the Dashboard for the same period
+- [ ] Partner B cannot obtain partner A's private records by asking Honey
+- [ ] Existing records load and display correctly after migration, with migrated attribution
+      marked **default, not asserted**
+- [ ] No new server-side dependencies
+- [ ] H-Score output unchanged for unchanged input — **except** where Task 8 identifies an
+      existing bug, which is **reported, not silently fixed**
+
+---
+
+## 7. Next (do now) — **9 days to the 31 Aug artefact gate**
 
 The 15 Aug application deadline has passed — confirm the portal submission actually
 went in before working anything else. From here the gate is the **31 Aug working
@@ -690,6 +1069,12 @@ artefact**, and the artefact is in good shape: the persona arc is coherent, ther
 public demo that works with the origin machine off, and the H-Score is on screen. The
 remaining risk is **stale deck artefacts** and the fact that the demo proves shapes the
 **signed-in app doesn't have yet**.
+
+> **Product build work now lives in §6.6** — the 2026-08-22 implementation brief, eleven
+> ordered changes covering exactly that gap (nav, Record data model, attribution, H-Score
+> traceability, Goals, the Dashboard rebuild, chart registry, Import). Start there and work
+> its order. This section keeps the competition-gate items: submission, artefacts, commercial,
+> ops. Where a §7 item is superseded, it says so and points at the task.
 
 ### 🔴 Blocking the submission
 1. [~] **Chua Kia Wah's MyKad number** — the last eligibility field. Nothing else is
@@ -712,10 +1097,18 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
    the dashboard header — that layout changed (mobile stacking fix).
 
 ### 🟡 Product — the next build
+
+> **→ §6.6 is the build board.** Items 6c, 6d, 7 and 8 below are folded into it; they stay
+> here only to record what was already known. Item 6 is now a **decision the brief forces**,
+> not an independent task.
+
 6. [~] **Couples hide/share** (§6.5 #1) — the enforcement shipped (`lib/privacy.ts`,
    wired through `/records`, `/graph` and the money view) and the couple persona
    demonstrates it. ⬜ Remaining: a **UI toggle** so a user can mark a bucket private
    themselves, instead of tier 3 being the only way in.
+   → **§6.6 Task 6 subsumes this.** Its privacy stance (options 1/2/3) covers per-record
+   visibility and must be enforced in **PocketBase collection rules**, not just `privacy.ts`.
+   Settle the stance there and build one toggle, not two.
 6b. [~] **Surface what's already built.** ✅ `hscore.ts` + `hscoreData.ts` are live on
    `/hscore` for real households; `directory.ts` renders from the H-Score goals.
    ⬜ `sst.ts` is still only exercised by the demo's sample receipt — wire it into the
@@ -726,9 +1119,13 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
    ⬜ Still open from that spec: **the Dashboard has not been rebuilt** — contributor
    split and the editable-history view exist in `/demo` and `/records` but the real
    `/dashboard` is unchanged. And `forecast.ts` is still imported by nothing.
+   → **superseded by §6.6 Task 7**, which specifies the rebuild in full.
 6d. [ ] **Translate the new UI.** ~90 new `hscore.*` / `dir.*` / `demo.*` / `cap.*`
    keys are **English-only**. They fall back cleanly, so nothing is broken — but a
    Malay-first judge opening `/demo` reads English.
+   → **do this inside §6.6 Task 7's translation pass**, not before it: Task 8 renames the
+   H-Score criteria and Task 11 turns every chart name and description into a key. Translating
+   now means translating twice.
 6e. [ ] **Sign off the product directory.** It now names real BNM/SC/PIDM-regulated
    providers (AKPK · ASNB · EPF · PIDM · BSN · PPA · Etiqa · Prudential BSN · Takaful
    Malaysia). No rates are quoted and nothing is ranked, but this is outward-facing
@@ -736,11 +1133,15 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
 7. [ ] **Finish the capture-friction pass** — the three deferred items from 2026-08-02:
    `FlexibleInput` still shows every field at once · a half-entered expense dies on
    navigation · verify buckets are seeded before a first capture can meet them.
+   → **fold into §6.6 Tasks 1 + 6**, which rebuild the Record input anyway. "Every field at
+   once" is largely what the `+`/`−` toggle and the remembered attribution default remove.
 8. [ ] **Validate the AI capture paths** against real Malaysian receipts/statements with a
    Gemini key (AI Studio free tier). Receipt breakdown + statement-photo multi-row are
    both shipped but unvalidated. *(On-device capture works token-free regardless.)*
    Also: **bank statement PDFs need an explicit password prompt** — Maybank, CIMB and
    others ship them locked to IC or DOB.
+   → validation is still worth doing now; the **rebuild** of these paths is §6.6 Task 2
+   (spec only) and Task 10. The locked-PDF password prompt belongs to Task 10's import flow.
 
 ### 🟢 Commercial (highest ROI on the 25% Commercial score)
 9. [ ] **Draft the LOI + send to the first 3 HR contacts** — `docs/LOI_TEMPLATE.md`.
@@ -760,6 +1161,12 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     wrangler has no `pages domain` command, and the API path needs Zone:DNS:Edit to
     replace the existing tunnel CNAME. Rollback is removing them and
     `cloudflared tunnel route dns honeymoney honeymoney.app`.
+    ⚠️ **Not the `Workers Routes` page** inside the honeymoney.app zone — that maps URL
+    patterns to standalone Workers and will always be empty here. Leave the zone
+    (**Back to Domains**) and open **Compute (Workers & Pages) → honeymoney → Custom domains**.
+    Re-confirmed still FAIL on 2026-08-22: `honeymoney.app/gallery` returns no
+    `X-HoneyMoney-Served` header (tunnel), while `honeymoney-e84.pages.dev/gallery` returns
+    `edge-snapshot` — so Pages is healthy and only the apex is unpointed.
     ⚠️ Re-run `npm run site:build && npm run site:deploy` after **any** change to a
     public page — the snapshot is point-in-time and does not update itself.
 
@@ -768,4 +1175,18 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     before the first real user, and log in monthly or the site is removed for
     inactivity.
 
-_Last updated: 2026-08-21_
+14. [~] **Back up PocketBase off this machine.** Found 2026-08-22: `pb_data` had **no
+    `backups/` directory at all** — the entire ledger existed in exactly one place, on a
+    laptop that is off most of the week. `deploy/backup-pocketbase.ps1` now exists and has
+    taken the first backup (2 MB), pruning to the last 14.
+    ⬜ Remaining, dashboard-only: create an **R2 bucket** + a scoped *Object Read & Write*
+    API token, then PocketBase `/_/` → **Settings → Backups → S3** (endpoint
+    `https://<account-id>.r2.cloudflarestorage.com`, region `auto`, force path-style) and
+    enable auto-backup `0 3 * * *`, keep 14. R2 needs a payment method on file even on the
+    free tier. No `storage/` dir and no file fields, so **R2 file storage is not needed** —
+    backups only.
+    ⬜ Then: launch PocketBase with `--encryptionEnv=PB_ENCRYPTION_KEY`, or the R2 secret sits
+    in plaintext inside `data.db` — which is the very thing being uploaded to R2.
+    ⬜ Then: restore one zip into a throwaway `pb_data`. An untested backup isn't a backup.
+
+_Last updated: 2026-08-22_
