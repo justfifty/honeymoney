@@ -942,17 +942,89 @@ Decisions are answered.
       `.next/types` and `.next/dev/types` first — both are generated, and `next start` never
       reads them. And `git checkout -- tsconfig.json` afterwards, as §12 already says.
 
-**3 · Task 4 — Viewable attachments** `[Relevance]`
-- [ ] Receipt scans can't currently be opened. Thumbnail in list + detail via PocketBase
-      `?thumb=100x100` — **not** client-side generation.
-- [ ] Full-screen viewer, full-res loaded only on open: pinch- and double-tap-zoom
-      (non-negotiable — receipt text is unreadable fit-to-screen), rotate, pan, swipe
-      between attachments, clear close affordance.
-- [ ] Real loading and error states with retry — not a blank frame. `Esc` closes, arrows move.
-- [ ] Build the **layout seam** for Task 2's line items beside the image (side-by-side wide,
-      stacked narrow). Leave the panel empty for now.
+**3 · Task 4 — Viewable attachments** — ✅ **done 2026-08-22** `[Relevance]`
+- 🛑 **The premise was wrong, and reporting it was not enough — the task needed the
+      missing half built.** Receipt scans could not be opened because **they were never
+      stored**. `transactions.receipt_ref` has been a text field since the first migration,
+      commented *"pointer only; never the raw image"*, written and read by **no line of
+      application code**. `SpendCapture` sent the photo to `/api/receipt`, used the vendor
+      and amount, and dropped the image. There was nothing to view.
+- [x] Storage built: a real PocketBase **file** field (migration `1751900017_attachments`),
+      `maxSelect 5`, 2 MB each. A file field is what makes `?thumb=` available at all.
+- [x] Thumbnail in the list via PocketBase `?thumb=100x100` — **not** client-side.
+      `check:attachments` asserts both declared sizes exist, because an undeclared thumb is
+      served as the **original** and a 40-row list quietly downloads 40 full-size photos.
+- [x] The client already downscaled to 1600px q0.85 for the vision call and threw the result
+      away; those same bytes are now what gets stored. `MAX_EDGE`, the API limit and the
+      field's `maxSize` moved into `lib/attachments.ts` — three numbers that must agree.
+- [x] Full-screen viewer, full-res on open only: pinch, double-tap and wheel zoom · rotate ·
+      pan · swipe and arrow keys between attachments · `Esc` closes. The 400x0 thumb stands
+      in while the original loads, so the frame is never blank.
+- [x] Real error state with a working retry (the attempt counter matters — without it the
+      browser re-serves the failed response from cache and "Try again" does nothing).
+- [x] **Layout seam built** (`lg:flex-row`): Task 2's line-items panel becomes the second
+      child with no rewrite. Left *unrendered* rather than rendered empty — an empty panel
+      is a promise the product cannot keep yet, and it would eat half a laptop screen today.
+- [x] **Privacy, which the brief did not raise and this task forces.** A receipt image *is*
+      the vendor and the line items, so it is exactly what tier-3 redaction hides.
+      `lib/privacy.ts` now empties `attachments` on a redacted row, and `/api/attachment`
+      refuses the bytes independently — the first stops the UI *offering* the image, only
+      the second stops a partner who kept the URL. **Both are needed.** 404 not 403, so the
+      response cannot confirm a transaction id exists.
+- [x] `npm run check:attachments` — round-trips a real image through PocketBase and asserts
+      the proxy refuses a signed-out caller. Its first fixture was a hand-rolled 64x64 JPEG
+      and it reported "the thumb is not resizing": true and meaningless, since PocketBase
+      returns the original when the source is smaller than the thumb. **A fixture that
+      cannot fail the test it is in is worse than no test.**
 
-**4 · Tasks 1 + 6 together — record kinds and attribution** `[Technical][Scalability]`
+**4 · Tasks 1 + 6 together — record kinds and attribution** — 🛑 **BLOCKED, awaiting two
+decisions + one conflict with a standing constraint** `[Technical][Scalability]`
+
+> ### 🛑 Findings, measured 2026-08-22 — read before designing anything here
+>
+> The brief marks four things "report before changing". All four were run against the real
+> seeded household, not reasoned about. Two of them change what Task 1 can be.
+>
+> **1. Recording that you saved money LOWERS your H-Score. Demonstrated, not suspected.**
+> Against the live tenant: inserting one RM500 record on the Savings bucket with
+> `direction: "out"` moved the score **81 → 79** (savingsRate 12.4 → 11.0 pts). The same
+> record as `direction: "in"` changed **nothing at all**.
+> The cause is in `hscoreData.ts`: `savingsMonthly = max(0, savingsAllocated −
+> savingsWithdrawn)`, where `savingsAllocated` comes **only from allocation edges** (the
+> plan) and `savingsWithdrawn` is *transactions against a tier-2 bucket*. So a transaction
+> can only ever **reduce** savings, never increase it. `direction: "in"` rows are filtered
+> out of `spend` entirely, so they are invisible to the criterion.
+> **Consequence for Task 1:** `+ Savings` — the brief's headline example, "a transfer, not
+> income" — would either lower the user's score or do nothing. It cannot be made correct
+> without changing H-Score computation, and the standing constraint says to **stop and flag**
+> when a task appears to need that. This is that case.
+>
+> **2. `category → bucket` is NOT deterministic, so `From bucket` cannot simply be dropped.**
+> The seeded household has **9 tier-1 buckets** (Rent · Utilities · Education · Transport ·
+> Kids & School · Statutory · Income Tax · Insurance · Bills & Subscriptions) and **3 tier-3**
+> (Groceries · Personal — Aiman · Personal — Siti). "Must-paid" therefore maps to nine
+> different buckets, and households can create more at any tier from `FlexibleInput`.
+> Per the brief's own condition, removing the field would **relocate** the ambiguity, not
+> remove it. A `−` record still has to land somewhere specific.
+>
+> **3. Income is declared, never recorded.** `grossIncomeMonthly` sums `income_source`
+> **nodes** (`props.monthly_amount`). No transaction, in any direction, has ever counted as
+> income. So Task 1's `+ Income` would write a row H-Score ignores completely — the same
+> shape of problem as (1).
+>
+> **4. H-Score is computed at HOUSEHOLD level, entirely.** `getScoreInputs(tenantId)` filters
+> by tenant and never by member; income is summed across the household. There is no
+> per-person score to preserve or break. *(Reported, not changed.)*
+>
+> **What is still needed from a human:**
+> - **The attribution axis** — who *paid* vs who *benefited*. The brief recommends who-paid;
+>   that is the default I would take, naming the field for what it holds and leaving a seam.
+> - **The privacy stance** — (1) transparent · (2) individual-private-by-default, joint
+>   shared *(brief's recommendation)* · (3) per-record toggle. This one genuinely shapes the
+>   product and is not mine to pick; note that (2) is close to what `privacy.ts` already
+>   enforces for tier-3 buckets, so it is also the cheapest.
+> - **Whether H-Score may change** to make `+ Savings` and `+ Income` mean anything. Without
+>   that, Task 1 ships a control that silently does the wrong thing.
 > **One design, one migration.** Both change the Record data model; done separately they
 > mean two migrations over the same records and a reconciliation afterwards. Read both
 > brief sections fully before writing either.
@@ -1000,6 +1072,13 @@ Decisions are answered.
       user-asserted**. Do not backfill a joint-vs-individual guess; reclassifying is a user action.
 
 **5 · Task 8 — H-Score: show where the number came from** `[Technical][ESG]`
+> 🛑 **Answered 2026-08-22, from the measurements above.** "Transfers are not income — verify
+> what the current implementation does": **no transaction is ever income.** Income comes only
+> from `income_source` nodes, so the criterion cannot be fooled by a transfer today — but it
+> also cannot see a real salary credit. And a savings record *reduces* the savings rate
+> (finding 1). Both belong in this task's "say what's missing" surface: they are exactly the
+> case where a criterion is low from **how the data is modelled** rather than from the
+> household's finances.
 - [ ] Three tap-through levels: **the score** (period covered + record count) → **each
       criterion** (sub-score, weight, the actual figure, the arithmetic in one line —
       *"Savings rate 12% → 14 of 20 points"*) → **the records that fed it**, filtered and
