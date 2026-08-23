@@ -40,9 +40,25 @@ if (-not (Test-Path $envFile)) { Note 'web/.env.local not found - skipping.'; ex
 # PocketBase has to be up. At boot this script runs after start-honeymoney.ps1,
 # but a cold SQLite open is not instant - give it a short grace period rather
 # than failing a backup over two seconds.
+#
+# The gate follows $PbUrl instead of a fixed local port, because on the DOM
+# Cloud LITE plan this script is the backup. Lite has no `docker` feature, so
+# the 3-hour process cap applies and PocketBase runs under Passenger, stopped
+# whenever it is idle - which means its OWN nightly cron cannot be relied on to
+# fire. The laptop has to reach in and ask for the backup, at
+# https://pb.honeymoney.app, and a localhost port check would have failed
+# against a perfectly healthy host. It also ignored $PbUrl's port even locally.
+$uri      = [Uri]$PbUrl
 $deadline = (Get-Date).AddSeconds(60)
-while (-not (Get-NetTCPConnection -LocalPort 8090 -State Listen -ErrorAction SilentlyContinue)) {
-  if ((Get-Date) -gt $deadline) { Note 'FAIL: PocketBase never came up on 8090.'; exit 1 }
+while ($true) {
+  if ($uri.IsLoopback) {
+    if (Get-NetTCPConnection -LocalPort $uri.Port -State Listen -ErrorAction SilentlyContinue) { break }
+  } else {
+    # Asking a stopped Passenger app for /api/health is what SPAWNS it, so a
+    # slow first answer here is the mechanism working, not a failure.
+    try { if ((Invoke-RestMethod -Method Get -TimeoutSec 45 -Uri "$PbUrl/api/health").code -eq 200) { break } } catch { }
+  }
+  if ((Get-Date) -gt $deadline) { Note "FAIL: PocketBase never answered at $PbUrl."; exit 1 }
   Start-Sleep -Seconds 3
 }
 

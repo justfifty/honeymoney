@@ -1873,6 +1873,43 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     identical to their sources with the executable bit set. The drift check was confirmed
     to **fail** against a modified source (exit 1) before being trusted to pass.
 
+    ✅ **The plan is LITE** (5 GB / 20 GB / x64), bought 2026-08-24 → **`pb.deploy.yml`**,
+    the Passenger variant. Checked against DOM Cloud's own docs rather than remembered:
+    `docker` is *"only starting with Kit Plan or higher"*, and `docker` is what lifts the
+    3-hour process cap.
+
+    **Lite does NOT mean the site sleeps.** Worth stating because the cap sounds like it
+    does: under Passenger, NGINX starts the app when a request arrives, so a visitor gets
+    an answer at any hour. What Lite denies is a process resident *between* requests. The
+    single consequence that matters here is that **PocketBase's own nightly cron backup
+    will not fire**, because at 3am with no visitors there is no process for the cron to
+    live in. Sizing is generous, not tight: 5 GB against a 65 MB bundle + 26 MB `pb_data`,
+    20 GB against an origin that only serves signed-in routes.
+
+    🛑 **The backup that compensates for that was broken for exactly this use, and had no
+    schedule at all.** `deploy/backup-pocketbase.ps1` gated on `Get-NetTCPConnection
+    -LocalPort 8090` — a *local* port, whatever `-PbUrl` said. After the migration the
+    laptop's own PocketBase is stopped, so the gate would have waited 60s and reported
+    *"PocketBase never came up on 8090"* every night while `pb.honeymoney.app` sat there
+    healthy and unbacked. The gate now follows `$PbUrl`: loopback still checks the port,
+    anything else polls `/api/health` — which is also what *spawns* a stopped Passenger
+    app, so a slow first answer is the mechanism working. Verified three ways: loopback
+    branch backs up; a non-loopback hostname resolving to 127.0.0.1 (`127.0.0.1.nip.io`)
+    exercises the health branch and backs up; an unreachable host fails cleanly at 63s
+    instead of hanging.
+
+    ⚠️ And it was never scheduled — `HoneyMoney`, `-Demo`, `-Nudge`, `-Purge` existed,
+    a backup task did not, so the last one before today was 2026-08-23 03:16 and manual.
+    Registered **`HoneyMoney-Backup`**, daily 03:15, `StartWhenAvailable` because this
+    laptop is off most nights. **After the migration it needs
+    `-PbUrl https://pb.honeymoney.app` added, or it will faithfully back up the stale
+    local copy and log success** — the failure mode being guarded against is a green light
+    on the wrong database.
+
+    ⬜ **Worth checking once the site exists:** whether Lite permits a host-side cron to
+    curl its own `/api/backups`. If it does, the laptop leaves the backup loop entirely on
+    Lite. The docs do not say either way, and this has not been tested — do not plan on it.
+
     ⬜ **Still the same three dashboard steps, and they are the whole remaining blocker.**
     This machine holds no credential for the DOM Cloud account — no username, no host, no
     `.host` file, and nothing in `secrets/`. `app.honeymoney.app` and `pb.honeymoney.app`

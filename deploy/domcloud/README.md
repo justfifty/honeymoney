@@ -77,12 +77,35 @@ or not**". That feature starts at the **Kit plan**.
 | cold start on first request | yes | no |
 | two processes on one `data.db` | possible under concurrency | no |
 
-**On Free or Lite, keep `deploy/backup-pocketbase.ps1` running on this laptop.** A
-scheduled backup inside a process the platform is allowed to stop is not a schedule.
+**DECIDED 2026-08-24: the plan is Lite** (5 GB storage, 20 GB bandwidth, x64), so
+the variant is **`pb.deploy.yml`** — the Passenger one. Verified against DOM Cloud's
+own docs the same day, not remembered: `docker` is "only starting with Kit Plan or
+higher", and it is the `docker` feature that lifts the 3-hour cap.
 
-The Passenger variant is not broken — the site is up 24/7 either way, which is what
-was asked for. What the lower tier costs you is the *background* work, and the
-backup is the part of that worth caring about.
+**The site is up 24/7 on Lite.** This is worth stating plainly because the 3-hour cap
+sounds like it says otherwise. It does not. Under Passenger, NGINX starts the app
+when a request arrives, so every visitor gets an answer at any hour; what Lite denies
+is a process that sits resident in the background *between* requests. Uptime is not
+what the cap costs you.
+
+What it costs is exactly one thing that matters here: **PocketBase's own nightly cron
+backup cannot be relied on to fire**, because the process it lives in is not running
+at 3am when nobody has visited. So the backup has to be triggered from outside, and
+`deploy/backup-pocketbase.ps1` is that trigger:
+
+```powershell
+# after the migration — note -PbUrl, this is the whole point
+powershell -File deploy\backup-pocketbase.ps1 -PbUrl https://pb.honeymoney.app
+```
+
+Scheduled as the **`HoneyMoney-Backup`** task (daily 03:15, `StartWhenAvailable` so a
+night with the laptop off fires at next wake rather than being skipped). Until the
+migration it points at the local PocketBase, which is the live one; **after the
+migration, add `-PbUrl` to the task or it will faithfully back up the stale local
+copy and log success.** Sizing note: 5 GB against a 65 MB bundle and a 26 MB
+`pb_data`, and 20 GB of bandwidth against an origin that only serves signed-in
+routes because Pages fronts the public pages — Lite is not a tight fit, it is a
+generous one.
 
 ---
 
