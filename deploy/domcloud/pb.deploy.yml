@@ -44,13 +44,25 @@ nginx:
     # sourced from ~/.env.pocketbase, and it must not be written into this file,
     # which is committed. See pb-start.sh.
     app_start_command: bash ./pb-start.sh
-    min_instances: 1
-  locations:
-    # The superuser UI is reachable from the internet on this hostname. It is
-    # password-protected, but it is also the one door that can export the whole
-    # ledger, so keep it off search engines and behind Cloudflare.
-    - match: /_/
-      add_header: "X-Robots-Tag \"noindex, nofollow\""
+    # NOTE: `min_instances` was here and did nothing. DOM Cloud's deploy runner
+    # copies only a fixed allowlist of passenger keys into the NGINX config
+    # (src/executor/nginx.js, `passengerKeys`) and drops the rest SILENTLY —
+    # no error, no warning, just a setting that was never applied. Checked
+    # against their source 2026-08-24. The allowlist is: enabled, app_env,
+    # env_var_list, set_header_list, app_start_command, app_type, startup_file,
+    # ruby, nodejs, python, meteor_app_settings, friendly_error_pages,
+    # document_root, base_uri, app_root, sticky_sessions.
+
+# NOTE: there is no `locations:` block, and the reason is the same allowlist.
+# The superuser UI at /_/ is the one door that can export the whole ledger, so
+# it was given `add_header: X-Robots-Tag "noindex, nofollow"` — but `add_header`
+# is NOT in the runner's `locationKeys` allowlist either (root, alias, rewrite,
+# try_files, return, index, expires, allow, deny, autoindex, proxy_pass,
+# limit_except, limit_rate, limit_rate_after, default_type). It would have been
+# dropped in silence, and the admin UI would have been indexable while the file
+# said otherwise. robots.txt below is the part that actually applies; if you
+# want the header too, add it as a Cloudflare Transform Rule, which is in front
+# of this origin anyway.
 
 commands:
   # Pinned to the version that wrote pb_data on the laptop. A NEWER PocketBase
@@ -58,6 +70,13 @@ commands:
   # the copy that has become the only copy is unrecoverable. Upgrade later, on
   # purpose, with a backup in hand.
   - mkdir -p ~/public_html/public ~/public_html/pb_data
+  # Keep the superuser UI out of search results. This is a real file in the
+  # document root, so NGINX answers it before Passenger ever sees the request —
+  # unlike the add_header above, which the runner would have discarded.
+  # Block scalar, not a plain one: the payload contains ": " and a leading "*",
+  # which YAML reads as a mapping and an alias respectively.
+  - |
+    printf 'User-agent: *\nDisallow: /\n' > ~/public_html/public/robots.txt
   - cd ~/public_html && test -x pocketbase || {
       ARCH=$(uname -m);
       case "$ARCH" in aarch64|arm64) PBARCH=arm64 ;; x86_64|amd64) PBARCH=amd64 ;; *) echo "unsupported arch $ARCH" && exit 1 ;; esac;

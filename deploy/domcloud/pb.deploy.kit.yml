@@ -35,7 +35,14 @@ nginx:
       proxy_pass: http://127.0.0.1:8090
     - match: /_/
       proxy_pass: http://127.0.0.1:8090
-      add_header: "X-Robots-Tag \"noindex, nofollow\""
+      # `add_header: X-Robots-Tag "noindex, nofollow"` was here and would have
+      # been dropped in silence — it is not in the runner's locationKeys
+      # allowlist (see pb.deploy.yml for the full list, checked against
+      # domcloud/bridge src/executor/nginx.js on 2026-08-24). Note that the
+      # robots.txt trick pb.deploy.yml uses does NOT transfer here: `match: /`
+      # proxies everything to PocketBase, so no static file is ever reached.
+      # If this variant is ever adopted, keep the admin UI out of search
+      # results with a Cloudflare Transform Rule instead.
 
 commands:
   - mkdir -p ~/public_html/public ~/public_html/pb_data ~/logs
