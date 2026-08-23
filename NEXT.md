@@ -1725,10 +1725,51 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     domain's account; a shell opened before 2026-08-23 still carries the old
     value and will deploy to the wrong account.
 
-13. [ ] **DOM Cloud** (free tier) as the always-on host: thin server / fat client, ARM
-    binary only, `--dir` outside `public_html`, nightly pull-backup via GitHub Actions
-    before the first real user, and log in monthly or the site is removed for
-    inactivity.
+13. [ ] **DOM Cloud** (https://domcloud.co) as the always-on host, so `/graph`, `/record`,
+    `/dashboard`, `/hscore`, `/goals` and `/api/*` survive the laptop being off. Verified
+    against their docs 2026-08-23 — an earlier version of this item got two things wrong.
+
+    **Why this one and not the obvious names:** every Cloudflare compute product is
+    serverless with no persistent writable disk, and PocketBase is a Go binary that writes
+    `data.db` to one — so the Tunnel to the laptop is not a shortcut, it is the consequence
+    of needing a disk from a vendor that does not rent them. Oracle's always-free tier is
+    used up. Google Cloud's e2-micro is genuinely free forever but **requires a credit
+    card** and is US-region only. Alibaba's KL region has the best latency for Malaysia but
+    its free tier is a *trial* that starts billing.
+
+    ✅ **Free, permanently, with no credit card** — the only option checked that clears all
+    three. Signup needs an invitation code **unless a GitHub account 6+ months old with at
+    least one follower is linked**, which `justfifty` satisfies. SGP region, so <100ms from
+    Malaysia. Non-sudo SSH and a real persistent filesystem; "anything that runs in Linux"
+    may be installed, which is all PocketBase needs.
+
+    🛑 **1.5 GB storage, and the current build does not fit.** Measured today: `.next` is
+    **713 MB** and `node_modules` **587 MB** — **1.3 GB before PocketBase, `pb_data` or a
+    single receipt.** The fix is `output: "standalone"` in `next.config`, which emits only
+    the server and the modules actually reached (typically 50–150 MB). **Do this first**;
+    discovering it on the host means discovering it half-migrated.
+
+    ⚠️ **ARM only** — x64 servers are not offered on the free tier, so the `linux_arm64`
+    PocketBase build, not the `amd64` one that runs here.
+
+    ℹ️ **2 GB/month outbound**, resetting on the 1st. Survivable *because* Cloudflare Pages
+    already fronts the public pages: only signed-in dynamic routes would reach this origin.
+
+    ✅ **The inactivity policy is milder than this item used to claim.** It is not a monthly
+    login: the plan extends **60 days on each login**, and **using over 50 MB of monthly
+    traffic extends it too** — so a site with real users renews itself. If it does lapse
+    there are 14 days to log back in before deletion. Still worth a calendar reminder while
+    traffic is low.
+
+    ⬜ Order of work, database LAST: `output: "standalone"` → deploy Next.js there pointing
+    at *this* laptop's PocketBase through the tunnel (proves the app runs elsewhere without
+    risking data) → move `pb_data` → repoint the R2 backup job and carry
+    `.pb-encryption-key` across, or the new host cannot open its own backups.
+
+    🛑 **Not before the 31 Aug gate.** What a judge opens — `/`, `/demo`, `/deck` — is
+    already 24/7 on Cloudflare's edge, and the signed-in app matters at the live pitch,
+    where the laptop is open. Migrating the ledger under deadline pressure risks the one
+    thing that cannot be recovered from.
 
 14. [x] ~~**Back up PocketBase off this machine.**~~ — ✅ **DONE 2026-08-23. The ledger
     now exists in more than one place, and a backup pulled back out of R2 has been
