@@ -1743,11 +1743,15 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     Malaysia. Non-sudo SSH and a real persistent filesystem; "anything that runs in Linux"
     may be installed, which is all PocketBase needs.
 
-    🛑 **1.5 GB storage, and the current build does not fit.** Measured today: `.next` is
-    **713 MB** and `node_modules` **587 MB** — **1.3 GB before PocketBase, `pb_data` or a
-    single receipt.** The fix is `output: "standalone"` in `next.config`, which emits only
-    the server and the modules actually reached (typically 50–150 MB). **Do this first**;
-    discovering it on the host means discovering it half-migrated.
+    ✅ **The storage blocker is cleared.** It was real: `.next` 713 MB + `node_modules`
+    587 MB = **1.3 GB before PocketBase, `pb_data` or a single receipt**, against 1.5 GB
+    free / 5 GiB Lite. `output: "standalone"` is now in `web/next.config.ts`
+    **behind `NEXT_STANDALONE=1`** — opt-in, because `next start` (how this laptop serves
+    the live site) refuses to run against a standalone build, and Next says so out loud.
+    The result is **65 MB on disk, 21 MB over the wire** — measured by a real
+    `deploy/domcloud/push-build.ps1 -DryRun`, not estimated. `node_modules` never reaches
+    the host at all. The standalone server was also booted locally and served `/` and
+    `/demo` at 200 before any of this was written down.
 
     ⚠️ **ARM only** — x64 servers are not offered on the free tier, so the `linux_arm64`
     PocketBase build, not the `amd64` one that runs here.
@@ -1793,10 +1797,147 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     risking data) → move `pb_data` → repoint the R2 backup job and carry
     `.pb-encryption-key` across, or the new host cannot open its own backups.
 
+    ### 2026-08-23 — a year of DOM Cloud was bought, and the migration is built
+
+    Everything that does not need the account is done and lives in
+    **`deploy/domcloud/`** (runbook in its README): `app.deploy.yml`, two PocketBase
+    variants, `start-app.sh` / `pb-start.sh` / `pb-run.sh`, `push-build.ps1` (build here,
+    ship 21 MB over SSH) and `migrate-pocketbase.ps1` (backup → key → restore → read back).
+
+    🛑 **The plan tier decides the PocketBase architecture, and it is not a preference.**
+    DOM Cloud caps **any process at 3 hours** and asks for no cron or uptime bots — *unless*
+    the site has the `docker` feature, which their docs say lifts the cap for every app on
+    the site "no matter if it actually uses Docker or not". **That feature starts at the Kit
+    plan.** So:
+    - **Kit or higher** → `pb.deploy.kit.yml`: PocketBase as a real daemon on
+      127.0.0.1:8090 with an hourly watchdog, and its nightly R2 backup actually fires.
+    - **Free or Lite** → `pb.deploy.yml`: NGINX spawns PocketBase per request via Passenger.
+      The site is still up 24/7, but **PocketBase's own scheduled backup cannot be relied
+      on**, so `deploy/backup-pocketbase.ps1` stays on this laptop until the plan changes.
+      Open-source Passenger has no per-app instance cap either, so under real concurrency
+      two processes could open one `data.db` — safe against corruption under WAL, not
+      against two processes disagreeing about cached settings.
+
+    ⚠️ **Ship the app before the ledger, and point it at the tunnel first.** An app running
+    on DOM Cloud against *this* laptop's PocketBase proves the host works while costing
+    nothing if it does not. `origin` stays on the tunnel throughout; the new names are
+    `app.` and `pb.`, so the cutover and its undo are each one DNS edit.
+
+    ⚠️ **PocketBase is pinned to 0.39.6** — the version that wrote `pb_data` — not the 0.40.0
+    that is current. A newer binary runs its own one-way data migrations on first start.
+
+    ⬜ **Three things still need the dashboard**, because this machine holds no credential
+    for the account: add `deploy/domcloud/id_domcloud.pub` (generated here, private half
+    gitignored and never sent) as an SSH key, create the two websites, and paste the
+    deployment scripts. Everything after that is `push-build.ps1`.
+
     🛑 **Not before the 31 Aug gate.** What a judge opens — `/`, `/demo`, `/deck` — is
     already 24/7 on Cloudflare's edge, and the signed-in app matters at the live pitch,
     where the laptop is open. Migrating the ledger under deadline pressure risks the one
     thing that cannot be recovered from.
+
+    ### 2026-08-24 — committed, and two defects found by running it rather than reading it
+
+    The migration is now **in the repo** (`931d0a1`), which it was not: `deploy/domcloud/`
+    had been untracked since the day it was written, so the entire runbook existed on one
+    laptop's disk and in no backup.
+
+    ✅ **The 65 MB figure is measured, again, end to end.** `push-build.ps1 -DryRun` ran
+    clean today: builds into `.next-dc`, stages `standalone/` + `static/` + `public/`,
+    bundle **65 MB**, tarball written, exit 0. The storage blocker is genuinely gone, not
+    provisionally gone.
+
+    🛑 **Nothing ever shipped the PocketBase start script — the site would have deployed
+    clean and then refused to start.** Both variants invoked a file
+    (`app_start_command: bash ./pb-start.sh`, `bash ~/public_html/pb-run.sh`) that no path
+    created. `push-build.ps1` ships `start-app.sh` over SSH to the *app* site; the
+    PocketBase site is a pasted deployment script and nothing else, and the private repo
+    rules out DOM Cloud's `source:` clone. Worse, `migrate-pocketbase.ps1` tests for
+    `pb-run.sh` and falls back to *"passenger variant: will spawn on first request"* — so
+    on a Kit site with the daemon script missing it would have printed a reassuring
+    sentence about the wrong variant. Fixed by having each YAML **write its own** start
+    script: the deployment runs on the host before any `scp` could, so a file the
+    deployment writes itself has no ordering window. Generated by
+    `deploy/domcloud/sync-embeds.mjs`; `npm run check:domcloud` fails on drift, because
+    `pb-run.sh` is what passes `--encryptionEnv` and a stale copy is one that silently
+    forgot the key.
+
+    ⚠️ **`core.autocrlf=true` would have handed bash `set -euo pipefail\r`.** There was no
+    `.gitattributes`, so a fresh clone on this Windows machine turns every `.sh` into CRLF
+    — including `start-app.sh`, which `push-build.ps1` copies into the bundle verbatim and
+    Passenger then executes. It fails only on the host, with an error naming an option
+    nobody wrote. `*.sh text eol=lf` now pins it.
+
+    ✅ **Verified, not asserted.** Both YAMLs parse; the write-command was extracted from
+    each and *executed* in a sandbox; the resulting `pb-start.sh` and `pb-run.sh` diff
+    identical to their sources with the executable bit set. The drift check was confirmed
+    to **fail** against a modified source (exit 1) before being trusted to pass.
+
+    ⬜ **Still the same three dashboard steps, and they are the whole remaining blocker.**
+    This machine holds no credential for the DOM Cloud account — no username, no host, no
+    `.host` file, and nothing in `secrets/`. `app.honeymoney.app` and `pb.honeymoney.app`
+    do not resolve, so nothing has been deployed. Everything that can be automated is.
+
+15. [ ] **Per-household AI keys — Ask Honey without an admin.** Raised 2026-08-23.
+
+    ✅ **Shipped now, because it needed no data model:** `/setup`'s AI section stopped
+    *describing* the engine and started *probing* it. **Test AI connection** calls
+    `/api/ai/check`, which asks each configured provider to reply "OK", and the panel
+    distinguishes the three states that need different actions — **not configured**, **key
+    set but rejected**, and **answering, with latency**. Collapsing the middle one into
+    "not set up" sends people to re-paste a key that was never the problem. Each engine
+    carries its own enable steps (Groq · Gemini · Ollama), and the panel says where Ask
+    Honey then appears, which is the Dashboard.
+
+    ✅ **`/setup` is now reachable from `/more`.** It never was — the hamburger was the
+    only way in, so a phone user who tapped **More** looking for AI settings found the
+    ledger, the household and the guide, and no way to switch the AI on. That is the
+    literal report this item came from.
+
+    ✅ **Per-household keys are now shipped too, encrypted.** The reason to hesitate was
+    real and is answered rather than deferred: a household AI key is a live billable
+    credential sitting beside a family's ledger, and PocketBase's settings encryption does
+    **not** extend to collection fields — so a plain `text` column would put it in every
+    backup zip in the clear. `web/src/lib/aiKeys.ts` encrypts with **AES-256-GCM** under
+    `AI_SECRETS_KEY` before PocketBase ever sees the value.
+
+    - **GCM, not CBC**, because it authenticates. A tampered ciphertext must refuse to open
+      rather than decrypt to garbage that then gets sent to a provider as if it were a key.
+    - **No master key, no storage.** Saving is refused with instructions; it never
+      downgrades to plaintext. A silent plaintext fallback is invisible precisely because
+      everything appears to work.
+    - **`key_cipher` and `key_last4`, never `key`.** The last four characters answer "is the
+      key I think is here the one that is here?" and nothing else. A stored key is never
+      sent back to a browser.
+    - **Superuser-only**, verified: all five API rules are `null`, so no browser can read
+      the collection. Confirmed by reading `_collections` out of a throwaway database.
+    - **Owner-only to change**, via `manage_members`. A key is billed to whoever issued it.
+    - **Validated on save**, against the live provider, so a wrong key fails in front of the
+      person who can fix it instead of inside an unrelated question about their savings.
+    - **Scrubbed from errors.** Gemini takes the key as a *query parameter*, so an upstream
+      change is all it would take for a URL to reach a browser and a log.
+
+    ✅ **`npm run check:aikeys`** measures the claim rather than asserting it: round trip,
+    **ciphertext does not contain the key in any obvious encoding** (a "cipher" that merely
+    base64-encoded would pass a round-trip test and fail this one), tampering refuses to
+    open, a different master key cannot open it, and a malformed `AI_SECRETS_KEY` is
+    rejected rather than stretched to fit. 9/9.
+
+    ⚠️ **A bug this found, worth keeping.** Scrubbing the key out of error messages wrapped
+    every error in a fresh `Error` — which discarded `AuthError`'s status and turned every
+    signed-out `POST /api/ai/key` into a **500 instead of a 401**. The scrubbing was right;
+    the wrapping threw the status away. Caught by curling the route signed out, not by the
+    type checker, which was perfectly happy.
+
+    ⚠️ **`AI_SECRETS_KEY` is now load-bearing, and it fails SOFTLY** — unlike
+    `deploy/.pb-encryption-key`, which stops PocketBase dead. A host restored without it
+    keeps the rows and cannot read any of them: households drop silently back to the
+    server's engine and their saved key is simply gone. It is in `.env.example` and in the
+    DOM Cloud runbook's env block for that reason.
+
+    ⬜ **Still open:** the migration is applied on a throwaway database, not on the live one —
+    it lands on the next PocketBase restart. And key **rotation reminders** and a
+    per-household **spend cap** are not built; `ai_usage` already records enough to add both.
 
 14. [x] ~~**Back up PocketBase off this machine.**~~ — ✅ **DONE 2026-08-23. The ledger
     now exists in more than one place, and a backup pulled back out of R2 has been
