@@ -152,10 +152,15 @@ export default async function Dashboard() {
             placeholder: tr("dash.ask.placeholder"),
             button: tr("dash.ask.button"),
             thinking: tr("dash.ask.thinking"),
-            aiBadge: tr("dash.badge.ai"),
-            ruleBadge: tr("dash.badge.insight"),
-            disclaimer: tr("dash.ask.disclaimer"),
+            // Both say CALCULATED, because both are — the numbers come from
+            // lib/askCompute.ts either way. Only the wording differs.
+            aiBadge: tr("ask.badge.ai"),
+            ruleBadge: tr("ask.badge.computed"),
+            disclaimer: tr("ask.scopeNotice"),
             suggestions: [tr("dash.ask.s1"), tr("dash.ask.s2"), tr("dash.ask.s3"), tr("dash.ask.s4")],
+            confHigh: tr("ask.conf.label.high"),
+            confFair: tr("ask.conf.label.fair"),
+            confThin: tr("ask.conf.label.thin"),
           }}
         />
 

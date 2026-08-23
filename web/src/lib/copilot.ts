@@ -1,132 +1,259 @@
-// Honey "what-if" co-pilot — natural-language questions answered grounded in the
-// household's OWN graph + projection, never invented numbers. Marital-safe and
-// advice-free by construction (see COPILOT_SYSTEM). Falls back to a deterministic
-// answer for the common "can we afford RM X?" / "what if income drops N%?" cases
-// so the demo never dies when no AI key is set.
+// Ask Honey — the orchestrator.
+//
+//   parse (askIntent.ts) → compute (askCompute.ts) → narrate (askNarrate.ts)
+//
+// This file gathers the facts, runs the three stages in order, and enforces the
+// two rules that make the feature safe to ship: the model never produces a
+// number, and Honey sees only what the person asking is allowed to see.
+//
+// ── WHAT THIS REPLACED, AND WHY IT HAD TO GO ───────────────────────────────
+//
+// The previous version built a context string, appended the raw question, and
+// asked a model to "answer, grounded in these numbers". Three problems, in
+// ascending order of seriousness:
+//
+//   1. The model did the arithmetic. Grounding it in a context blob makes a
+//      wrong figure LESS likely, not impossible — and an affordability number is
+//      believed precisely because the person asking could not work it out
+//      themselves. Now stage 2 computes and stage 3 is checked against it.
+//
+//   2. The deterministic path was a fallback for when no API key was set, so
+//      the two paths answered different questions with different rigour.
+//      Whether your answer was calculated or generated depended on an
+//      environment variable. Now there is one engine and the model only phrases.
+//
+//   3. **It read the whole household.** `getBucketProjection(tenantId)` and a
+//      household-wide income sum, with no notion of who was asking. Task 6 gave
+//      records a `visibility` and a `paid_by`, and the record list honours them
+//      — but Honey did not, so a partner's private spending was reachable
+//      through a conversational side channel. The record list said no and the
+//      chat box said yes, about the same rows, on the same screen. Every fact
+//      below that could carry record-level detail now goes through
+//      `getSpendRecords(..., { viewerMemberId, redact })` — the same filter, in
+//      the same query, as the list.
+//
+// H-Score, income and bucket allocations stay household-level ON PURPOSE: they
+// are already on /hscore and /dashboard for both partners, and a shared score
+// that changed depending on who asked would be a different and worse lie.
 
 import { aiGenerate } from "./ai";
 import { getBucketProjection } from "./projection";
-import { pbList, pbStr } from "./pocketbase";
+import { getHScore } from "./hscoreData";
+import { getSpendRecords } from "./records";
+import { listGoals } from "./goals";
 import { isProviderConfigured, activeAiProvider } from "./config";
 import { STATUTORY_FACTS, isStatutoryQuestion, statutoryAnswer } from "./statutory";
-import type { Locale } from "./i18n";
-import type { BucketProjection } from "./types";
+import { parseIntent, type Intent } from "./askIntent";
+import { compute, type HouseholdFacts, type Outcome } from "./askCompute";
+import { narrateTemplate, narratePrompt, verifyNumbers, NARRATE_SYSTEM } from "./askNarrate";
+import { t, type Locale } from "./i18n";
 
 export interface HoneyAnswer {
   answer: string;
-  source: "ai" | "rule-based";
+  /**
+   * How the WORDS were produced. Never how the numbers were produced — those
+   * are always stage 2. "ai" means a model phrased a computed result and the
+   * result survived the number check.
+   */
+  source: "ai" | "computed";
+  kind: Outcome["kind"];
+  confidence: Outcome["confidence"]["level"];
+  /** True when a model answer was discarded for containing an unknown number. */
+  rephrasedByFallback?: boolean;
 }
 
-const round = (v: number) => Math.round(v * 100) / 100;
+const WINDOW_DAYS = 90;
+const DAY_MS = 86_400_000;
 
-const COPILOT_SYSTEM = `You are "Honey", HoneyMoney's marital-safe financial wellness companion.
-Answer the household's question grounded ONLY in the numbers you are given — never invent figures.
-Rules:
-- Educational, NOT financial advice. Never say "you should buy/sell/invest in X". Offer options and
-  trade-offs framed as questions the couple decides together.
-- Marital-safe: never blame a spouse, never interrogate past personal spending, never itemise the
-  Spendings bucket. Talk about the shared plan, not the person.
-- Forward-looking: reason about the month-end projection and headroom, not judgement.
-- For "can we afford X", compare X to the projected headroom and say what it would take (spread over
-  months, or rebalance) — as their choice.
-- 2-4 short sentences. Use RM. If the numbers can't answer it, say so plainly.`;
-
-async function totalMonthlyIncome(tenantId: string): Promise<number> {
-  const nodes = await pbList<{ kind: string; props: Record<string, unknown> | null }>("nodes", {
-    filter: `tenant = ${pbStr(tenantId)} && kind = 'income_source'`,
-  });
-  return nodes.reduce((s, n) => s + (Number(n.props?.monthly_amount) || 0), 0);
+export interface AskOptions {
+  viewerMemberId?: string | null;
+  /** Off for the fictional demo personas, whose "private" spend is invented. */
+  redact?: boolean;
 }
 
-function headroomOf(projection: BucketProjection[]): number {
-  return round(projection.reduce((s, b) => s + Math.max(0, b.projected_balance), 0));
+// ── fact gathering ─────────────────────────────────────────────────────────
+
+async function gatherFacts(tenantId: string, opts: AskOptions): Promise<HouseholdFacts> {
+  const now = new Date();
+  const from = new Date(now.getTime() - WINDOW_DAYS * DAY_MS);
+
+  const [hs, projection, records, goals] = await Promise.all([
+    getHScore(tenantId, { persist: false }),
+    getBucketProjection(tenantId),
+    // The privacy boundary. Same function, same filter, same query as the
+    // record list — so the two can never drift apart into disagreeing about
+    // what this viewer may see.
+    getSpendRecords(tenantId, from, now, {
+      viewerMemberId: opts.viewerMemberId,
+      redact: opts.redact ?? true,
+    }),
+    listGoals(tenantId).catch(() => []),
+  ]);
+
+  const byBucket = new Map<string, number>();
+  for (const r of records) {
+    const label = r.bucketLabel ?? "Unsorted";
+    byBucket.set(label, (byBucket.get(label) ?? 0) + Math.abs(r.amount));
+  }
+
+  const days = records.length
+    ? Math.max(
+        1,
+        Math.round(
+          (now.getTime() - new Date(records[records.length - 1].occurred_at).getTime()) / DAY_MS,
+        ),
+      )
+    : 0;
+  const months = new Set(records.map((r) => r.occurred_at.slice(0, 7)));
+
+  return {
+    inputs: hs.inputs,
+    confidence: hs.confidence,
+    hscore: hs,
+    headroomThisMonth:
+      Math.round(projection.reduce((s, b) => s + Math.max(0, b.projected_balance), 0) * 100) / 100,
+    allocatedMonthly: Math.round(projection.reduce((s, b) => s + b.allocated, 0) * 100) / 100,
+    categoryTotals: [...byBucket].map(([label, amount]) => ({ label, amount })),
+    goals: goals.map((g) => ({
+      label: g.name,
+      target: g.target,
+      saved: g.current,
+      // A goal's own monthly contribution is not modelled yet, so this is 0 and
+      // stage 2 falls back to what the household actually saves. Deliberately
+      // not an assumed contribution: a made-up monthly figure would produce a
+      // made-up target date, which is exactly the class of answer this whole
+      // pipeline exists to prevent.
+      monthly: 0,
+    })),
+    history: { days, txnCount: records.length, monthsWithData: months.size },
+  };
 }
 
-function buildContext(projection: BucketProjection[], income: number): string {
-  const lines = projection.map(
-    (b) =>
-      `- ${b.bucket_label}: allocated RM${b.allocated}, projected spend RM${b.projected_spend}, ` +
-      `projected balance RM${b.projected_balance} (${b.status})`,
-  );
-  return `Monthly income: RM${round(income)}\nBuckets:\n${lines.join("\n")}\nProjected headroom this month: RM${headroomOf(projection)}`;
-}
+// ── the pipeline ───────────────────────────────────────────────────────────
 
 export async function askHoney(
   question: string,
   tenantId: string,
   locale: Locale = "en",
+  opts: AskOptions = {},
 ): Promise<HoneyAnswer> {
-  const [projection, income] = await Promise.all([
-    getBucketProjection(tenantId),
-    totalMonthlyIncome(tenantId),
-  ]);
+  // ── STAGE 1: what were they asking? ──
+  const intent: Intent = parseIntent(question);
 
-  const statutory = isStatutoryQuestion(question);
-
-  if (!isProviderConfigured(activeAiProvider())) {
-    return { answer: ruleBasedAnswer(question, projection, income, statutory), source: "rule-based" };
-  }
-  try {
-    const langLine = locale === "en" ? "" : `\n\nReply in the user's language.`;
-    // For statutory questions, ground the model in the verified fact block so it
-    // never invents an EPF/SOCSO/EIS rate.
-    const facts = statutory ? `\n\n${STATUTORY_FACTS}` : "";
-    const answer = await aiGenerate(
-      `Household position:\n${buildContext(projection, income)}${facts}\n\nQuestion: ${question}\n\nAnswer now, grounded in these numbers.${langLine}`,
-      { system: COPILOT_SYSTEM, fn: "askHoney", meta: { tenantId, source: "web" } },
-    );
-    return { answer, source: "ai" };
-  } catch {
-    return { answer: ruleBasedAnswer(question, projection, income, statutory), source: "rule-based" };
-  }
-}
-
-// Deterministic, marital-safe answers for the two highest-value question shapes.
-// English only — the AI path handles other languages; this is the graceful
-// zero-token floor so a demo without keys still shows a grounded answer.
-function ruleBasedAnswer(
-  question: string,
-  projection: BucketProjection[],
-  income: number,
-  statutory: boolean,
-): string {
-  const q = question.toLowerCase();
-  const headroom = headroomOf(projection);
-  const allocated = round(projection.reduce((s, b) => s + b.allocated, 0));
-
-  // Malaysian statutory: answer from the verified figures if a wage is present,
-  // otherwise fall through to the general grounded reply.
-  if (statutory) {
-    const wageMatch = q.match(/rm\s*([\d,]+(?:\.\d+)?)/) || q.match(/\b(\d{3,}(?:,\d{3})*(?:\.\d+)?)\b/);
-    if (wageMatch) return statutoryAnswer(round(parseFloat(wageMatch[1].replace(/,/g, ""))));
-    return `EPF for a Malaysian under 60 is 11% employee + 12–13% employer; SOCSO ~0.5% and EIS 0.2% (employee), both table-based to a RM6,000 ceiling. Tell me a monthly wage (e.g. "EPF on RM4,000?") and I'll estimate your take-home. 2025 figures — confirm on KWSP/PERKESO. Educational, not advice.`;
+  // Declines and requests for a price cost nothing to answer and must not leak
+  // a database read, so they short-circuit before any household data is
+  // touched. "How much is a TV?" should not query anyone's ledger.
+  if (intent.kind === "out_of_scope" || intent.kind === "needs_price" || intent.kind === "unclear") {
+    const outcome = compute(intent, EMPTY_FACTS);
+    return {
+      answer: narrateTemplate(outcome, locale),
+      source: "computed",
+      kind: outcome.kind,
+      confidence: outcome.confidence.level,
+    };
   }
 
-  // "what if income drops N%"
-  const pctMatch = q.match(/(\d+)\s*%/);
-  if (pctMatch && /(income|salary|gaji|pay|drop|cut|lose|lost)/.test(q)) {
-    const pct = Number(pctMatch[1]);
-    const newIncome = round(income * (1 - pct / 100));
-    const gap = round(allocated - newIncome);
-    return gap > 0
-      ? `If income dropped ${pct}% (to about RM${newIncome}/mo), your current plan of RM${allocated} would be short by about RM${gap}. You could rebalance the plan together or ease a flexible bucket — your call, no rush.`
-      : `If income dropped ${pct}% (to about RM${newIncome}/mo), your plan of RM${allocated} still fits, with about RM${Math.abs(gap)} to spare. Want to route the difference into Savings?`;
-  }
+  const facts = await gatherFacts(tenantId, opts);
 
-  // "can we afford RM X" — pull the first money-looking number
-  const amtMatch = q.match(/rm\s*([\d,]+(?:\.\d+)?)/) || q.match(/\b(\d{2,}(?:,\d{3})*(?:\.\d+)?)\b/);
-  if (amtMatch) {
-    const amount = round(parseFloat(amtMatch[1].replace(/,/g, "")));
-    if (amount <= headroom) {
-      return `RM${amount} fits within about RM${headroom} of projected headroom this month. Taking it from a flexible bucket keeps your Savings on track — up to you both.`;
+  // Statutory rates are owned by lib/statutory.ts, which holds the verified
+  // tables. Kept whole rather than folded into stage 2: EPF is not a fact about
+  // this household, and mixing published rates into the household's own
+  // arithmetic is how a wrong rate acquires the authority of a real balance.
+  if (intent.kind === "statutory" || isStatutoryQuestion(question)) {
+    const wage = intent.amount ?? facts.inputs.grossIncomeMonthly;
+    if (wage > 0) {
+      return {
+        answer: statutoryAnswer(Math.round(wage * 100) / 100),
+        source: "computed",
+        kind: "statutory",
+        confidence: "high",
+      };
     }
-    const over = round(amount - headroom);
-    const months = Math.max(2, Math.ceil(amount / Math.max(1, headroom)));
-    return `RM${amount} is about RM${over} more than this month's projected headroom (RM${headroom}). You could spread it over roughly ${months} months, or rebalance the plan — whichever feels right for you two.`;
   }
 
-  const summary = projection.length
-    ? projection.map((b) => `${b.bucket_label} ${b.status.replace(/_/g, " ")}`).join(", ")
-    : "no buckets set up yet";
-  return `Here's where the month is heading: ${summary}. Try asking "can we afford RM2000 for a trip?" or "what if income drops 20%?" — I'll check it against your plan. (Turn on AI in Setup for free-form questions.)`;
+  // ── STAGE 2: compute. Every number the user sees is born here. ──
+  const outcome = compute(intent, facts);
+
+  // ── STAGE 3: narrate. ──
+  const template = narrateTemplate(outcome, locale);
+
+  // No key, nothing to compute, or nothing to say — the template IS the answer,
+  // and it is a correct one. Not a degraded mode.
+  if (!isProviderConfigured(activeAiProvider()) || outcome.cannotAnswer || !Object.keys(outcome.facts).length) {
+    return {
+      answer: template,
+      source: "computed",
+      kind: outcome.kind,
+      confidence: outcome.confidence.level,
+    };
+  }
+
+  try {
+    const facts_ = outcome.kind === "statutory" ? `\n\n${STATUTORY_FACTS}` : "";
+    const prose = await aiGenerate(narratePrompt(outcome, question, locale) + facts_, {
+      system: NARRATE_SYSTEM,
+      fn: "askHoney",
+      meta: { tenantId, source: "web" },
+    });
+
+    // The enforcement. A model that introduced any figure stage 2 did not
+    // compute loses its answer entirely — no partial credit, no repair pass.
+    // Repairing it would mean deciding which of its numbers to trust, and the
+    // whole point is that we cannot.
+    const check = verifyNumbers(prose, outcome);
+    if (!check.ok) {
+      return {
+        answer: template,
+        source: "computed",
+        kind: outcome.kind,
+        confidence: outcome.confidence.level,
+        rephrasedByFallback: true,
+      };
+    }
+    return { answer: prose, source: "ai", kind: outcome.kind, confidence: outcome.confidence.level };
+  } catch {
+    return {
+      answer: template,
+      source: "computed",
+      kind: outcome.kind,
+      confidence: outcome.confidence.level,
+    };
+  }
 }
+
+/**
+ * A zero household, for the questions answered before any data is read.
+ *
+ * Real zeros rather than optimistic defaults: if this ever reached the
+ * arithmetic by mistake it would produce an obviously-wrong answer rather than
+ * a plausible one, and an obviously-wrong answer gets reported.
+ */
+const EMPTY_FACTS: HouseholdFacts = {
+  inputs: {
+    netIncomeMonthly: 0,
+    grossIncomeMonthly: 0,
+    savingsMonthly: 0,
+    mustPaidMonthly: 0,
+    debtRepaymentsMonthly: 0,
+    liquidSavings: 0,
+    privacyCapMonthly: 0,
+    privacyTrailing3: [],
+  },
+  confidence: { ok: false, missing: ["income", "transactions", "buckets"], txns30d: 0 },
+  hscore: {
+    score: 0,
+    rawBand: "building",
+    band: "building",
+    subScores: [],
+    confidence: { ok: false, missing: [], txns30d: 0 },
+  },
+  headroomThisMonth: 0,
+  allocatedMonthly: 0,
+  categoryTotals: [],
+  goals: [],
+  history: { days: 0, txnCount: 0, monthsWithData: 0 },
+};
+
+/** The persistent, visible line under the chat surface. Never in settings. */
+export const scopeNoticeKey = "ask.scopeNotice";
+export const scopeNotice = (locale: Locale) => t(locale, scopeNoticeKey);

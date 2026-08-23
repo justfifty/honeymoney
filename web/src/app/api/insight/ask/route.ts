@@ -25,10 +25,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ask a question." }, { status: 400 });
   }
   try {
-    const { tenantId } = await resolveViewTenant();
+    const { tenantId, ctx, isDemo } = await resolveViewTenant();
     if (!tenantId) return NextResponse.json({ error: "No household to reason over." }, { status: 404 });
     const locale = await getLocale();
-    const result = await askHoney(question.slice(0, 300), tenantId, locale);
+    // WHO IS ASKING, not just which household. Without this, Honey answers from
+    // the whole ledger while the record list on the same screen hides a
+    // partner's private rows — the conversational side channel Task 6's
+    // privacy work exists to close. `redact` is off only for the demo, whose
+    // "private" spending belongs to fictional personas.
+    const result = await askHoney(question.slice(0, 300), tenantId, locale, {
+      viewerMemberId: ctx?.memberId ?? null,
+      redact: !isDemo,
+    });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return apiError(err);

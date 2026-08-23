@@ -11,15 +11,38 @@ export interface HoneyAskLabels {
   ruleBadge: string;
   disclaimer: string;
   suggestions: string[];
+  /** Confidence chips — the honest signal about how thin the data is. */
+  confHigh: string;
+  confFair: string;
+  confThin: string;
 }
 
-// The what-if co-pilot input: ask Honey a plain-language money question and get a
-// grounded, advice-free answer. Works for signed-out visitors too (demo tenant),
-// so a judge can try it live in the demo.
+interface AskResult {
+  answer: string;
+  source: "ai" | "computed" | "error";
+  kind?: string;
+  confidence?: "high" | "fair" | "thin";
+}
+
+// The what-if co-pilot input. What arrives here has already been through the
+// three stages in lib/copilot.ts — parse, compute, narrate — so this component
+// renders a finished sentence and never assembles one.
+//
+// ── WHAT THE BADGES SAY, AND WHY THE WORDING CHANGED ───────────────────────
+//
+// The old pair was "AI" / "rule-based", which described the wrong thing and
+// flattered the wrong path: it implied the AI answer was the good one and the
+// deterministic one was a degraded fallback. It was the other way round — the
+// deterministic path was the only one doing arithmetic.
+//
+// Both badges now say the numbers were CALCULATED, because in both cases they
+// were, by the same engine. The only difference is who chose the words. A user
+// deciding whether to trust a figure is asking "did something work this out?",
+// not "was a language model involved?"
 export default function HoneyAsk({ labels }: { labels: HoneyAskLabels }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<{ answer: string; source: string } | null>(null);
+  const [res, setRes] = useState<AskResult | null>(null);
 
   async function ask(question: string) {
     const text = question.trim();
@@ -34,13 +57,24 @@ export default function HoneyAsk({ labels }: { labels: HoneyAskLabels }) {
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || "Couldn’t answer that.");
-      setRes({ answer: data.answer, source: data.source });
+      setRes({ answer: data.answer, source: data.source, kind: data.kind, confidence: data.confidence });
     } catch (e) {
       setRes({ answer: e instanceof Error ? e.message : "Couldn’t answer that.", source: "error" });
     } finally {
       setBusy(false);
     }
   }
+
+  const conf = res?.confidence;
+  const confLabel = conf === "high" ? labels.confHigh : conf === "fair" ? labels.confFair : labels.confThin;
+  // Amber for thin data rather than red: not enough history is a normal state
+  // for a new household, not an error they did something to cause.
+  const confTone =
+    conf === "high"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"
+      : conf === "fair"
+        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200"
+        : "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
 
   return (
     <section className="mt-6 rounded-2xl border border-amber-200 bg-white p-5 dark:border-amber-900/50 dark:bg-zinc-900">
@@ -88,16 +122,31 @@ export default function HoneyAsk({ labels }: { labels: HoneyAskLabels }) {
       </div>
 
       {res && (
-        <div className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-relaxed text-zinc-800 dark:bg-amber-950/30 dark:text-zinc-100">
+        <div
+          aria-live="polite"
+          className="mt-4 rounded-xl bg-amber-50 p-4 text-sm leading-relaxed text-zinc-800 dark:bg-amber-950/30 dark:text-zinc-100"
+        >
           <p>{res.answer}</p>
           {res.source !== "error" && (
-            <span className="mt-2 inline-block rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-black/30 dark:text-amber-300">
-              {res.source === "ai" ? labels.aiBadge : labels.ruleBadge}
-            </span>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="inline-block rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-black/30 dark:text-amber-300">
+                {res.source === "ai" ? labels.aiBadge : labels.ruleBadge}
+              </span>
+              {/* Only shown where a projection was actually made. A confidence
+                  chip on "I can't help pick a loan" would be meaningless. */}
+              {conf && res.kind !== "out_of_scope" && res.kind !== "needs_price" && res.kind !== "unclear" && (
+                <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${confTone}`}>
+                  {confLabel}
+                </span>
+              )}
+            </div>
           )}
         </div>
       )}
 
+      {/* The scope line. Persistent and visible under the surface itself —
+          never behind a settings toggle, because the person who needs to read
+          it is the one about to act on an answer. */}
       <p className="mt-3 text-xs text-zinc-400">{labels.disclaimer}</p>
     </section>
   );

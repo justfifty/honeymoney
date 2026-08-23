@@ -1401,47 +1401,70 @@ Decisions are answered.
       **category and persona names**, which may be stored values rather than keys. Decide
       whether user-created categories translate at all, and be consistent. Test the full
       language set, not English plus one.
-- [ ] **Ask Honey — "what if?"** *(highest-value item in the brief, and the one with the most
-      ways to go wrong — read the whole section before designing)*
-  - [ ] **The model never does arithmetic.** Three stages: **parse intent** (model → a small
-        typed object, validated before use) → **compute** (deterministic, client-side, the
-        *same engine that computes H-Score*) → **narrate** (the model is handed the numbers and
-        told to explain them, never to derive them). Every number in the output traces to
-        stage 2. A hallucinated affordability figure is worse than no answer — it will be
-        believed and acted on.
-  - [ ] **Stage 2 must work with no model at all** — no key configured, the answer renders from
-        a template. Less conversational, equally correct. AI improves phrasing; it is not
-        load-bearing.
-  - [ ] "Can I afford a TV?" carries no price — **ask for one**. Never guess a typical price and
-        never look one up: that turns a budgeting tool into a product recommender, a different
-        product with a different risk profile.
-  - [ ] **Answer with consequence, not verdict** — *"…would take your emergency buffer from 2.4
-        months to 1.6, and your H-Score from 72 to 64."* Not "you should buy it", "you can't
-        afford it", or "finance it over 12 months instead".
-  - [ ] **Scope, held firmly.** In: affordability arithmetic, spending pattern summaries, budget
-        scenario projection, savings-goal timing, H-Score explanation — all from the user's own
-        records. Out, declined and routed to the existing regulatory-safe product directory:
-        which loan / insurance / investment product, whether to invest, debt restructuring, tax
-        positions, anything needing knowledge of products the user doesn't hold. Constrain
-        **both the system prompt and the intent parser's allowed types**. Persistent, visible
-        line in the chat surface: arithmetic on your own records, not financial advice — not
-        buried in settings.
-  - [ ] **Privacy — the leak is easy to write by accident.** Honey sees only the records the
-        logged-in user may see under Task 6; reuse the same permission filter as the record
-        list. The natural implementation passes "the household's data" and quietly exposes a
-        partner's private records through a conversational side channel. **Verify by having
-        partner B ask a question only answerable from partner A's private records.**
-  - [ ] **Minimise what leaves the device:** aggregates, not the ledger — monthly income,
-        must-paid total, average discretionary, savings rate, buffer in months, H-Score and its
-        components, category-level totals. **No merchant detail.** Where one specific record
-        genuinely matters, send that one. BYO Gemini key or local Ollama, no key held by us,
-        explicit first-use consent naming what is sent and where. Ollama is the answer for
-        users who won't send household finances to Google — not a fringe concern here.
-  - [ ] **Be honest about thin data** — a confidence signal from history depth and variance,
-        stated plainly (*"based on only 3 weeks of records, so treat this as rough"*), and a
-        minimum history below which Honey declines to project at all and says why.
+- [x] ~~**Ask Honey — "what if?"**~~ — ✅ **DONE 2026-08-23. Rebuilt as three stages, and
+      the rebuild found two real defects in what was already shipped.**
 
-**9 · Task 10 — Import under `More`** — ✅ **done 2026-08-23** (file/CSV half; photo half defers with Task 2) `[Technical][Commercial]`
+  **`parse → compute → narrate`**, in `askIntent.ts` → `askCompute.ts` → `askNarrate.ts`,
+  orchestrated by `copilot.ts`. 51 checks in `npm run check:ask`.
+
+  ✅ **The model never does arithmetic — and is not trusted not to.** Stage 2 produces
+  every number and publishes them as an allowlist; stage 3 extracts every figure from the
+  model's prose and discards the whole answer if one is not on it. *"Never invent figures"
+  was already in the system prompt.* A system prompt is a request made of a probabilistic
+  system; `verifyNumbers` is the enforcement. The failure mode being defended against is
+  not a wild lie — it is a plausible extra figure in an otherwise-correct sentence.
+
+  ✅ **Stage 2 works with no model at all.** The template is the floor, not the fallback:
+  fully i18n'd, always correct, and identical in its numbers. AI changes the wording and
+  nothing else.
+
+  🛑 **The previous version had the model doing the arithmetic**, and kept a
+  deterministic path only for when no API key was set — so the two paths answered with
+  different rigour, and *which one you got depended on an environment variable.*
+
+  🛑 **PRIVACY — the leak was already live, exactly where the brief said to look.**
+  `askHoney` read the whole household with no notion of who was asking, while the record
+  list on the same screen honoured Task 6's `visibility` / `paid_by`. **The list said no
+  and the chat box said yes, about the same rows.** Now every fact that could carry
+  record-level detail goes through `getSpendRecords(..., { viewerMemberId, redact })` —
+  the same filter, in the same query, as the list. H-Score, income and bucket allocations
+  stay household-level on purpose: both partners already see them, and a shared score that
+  changed depending on who asked would be a worse lie.
+  **Proven discriminating**: with the filter B sees RM4,634; without it, RM991,158 — so
+  the check fails against the old behaviour rather than passing vacuously.
+
+  ✅ **No price is ever guessed.** "Can I afford a TV?" asks for one and says why it
+  will not invent one. Guessing turns a budgeting tool into a product recommender — a
+  different product with a different risk profile — and a looked-up price is someone
+  else's TV. A model that helpfully fills one in is caught by `validateIntent`.
+
+  ✅ **Consequence, not verdict.** *"RM2,000 fits inside the RM5,103.72 of headroom left
+  this month. It would take your buffer from 6.5 to 6.5 months, and your H-Score from 81 to
+  75."* Never "you can afford this" — asserted by a check.
+
+  ✅ **Scope held at the TYPE level, not just in the prompt.** `IntentKind` is an
+  allowlist, so there is no code path that answers "which unit trust?" at all. Declines run
+  FIRST and win: *"should I invest my RM5,000 bonus?"* used to parse as `afford(5000)` and
+  get a confident, irrelevant answer — **the number is what makes the wrong reading look
+  right.** Declines route to the licensed directory rather than dead-ending.
+
+  🛑 **A one-off is not a new habit — found by testing against the live household.**
+  A single RM2,000 holiday came out as a **13-point** H-Score drop, because subtracting a
+  lump sum from `savingsMonthly` — a 90-day AVERAGE — models a family that stopped
+  saving permanently. Worse, it was **charged twice**: once against the savings flow and
+  again against the pot. Now the flow absorbs what it can across the window and only the
+  excess touches the buffer. Same purchase: **81 → 75, buffer unchanged.** RM50,000 still
+  correctly empties it (81 → 50).
+
+  ✅ **Honest about thin data.** Below 8 records or 14 days, Honey **declines to project
+  and says why** rather than forecasting with a disclaimer stapled on. Above it, the
+  confidence is stated in the sentence itself, not in a footnote.
+
+  ✅ **Persistent, visible scope line** under the chat surface — never in settings,
+  because the person who needs it is the one about to act on an answer. Both badges now say
+  the numbers were **calculated**, because in both cases they were; the old "AI" /
+  "rule-based" pair flattered the wrong path.
+
 - [ ] **Baseline first:** `<input type="file" multiple>` works everywhere — build that path
       first and make it complete on its own. Then enhance: `webkitdirectory` for folder
       selection, and `showDirectoryPicker` which is **Chromium-only, absent on Firefox and on
