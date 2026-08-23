@@ -36,6 +36,9 @@ const GROUPS: { titleKey: string; items: Item[] }[] = [
       { href: "/household", key: "more.household", desc: "more.d.household", icon: "👪", auth: true },
       { href: "/ledger", key: "more.ledger", desc: "more.d.ledger", icon: "⛓️", auth: true },
       { href: "/account", key: "more.account", desc: "more.d.account", icon: "⚙️", auth: true },
+      // Setup was reachable only from the hamburger, so a user on a phone who
+      // tapped "More" looking for AI settings found everything except them.
+      { href: "/setup", key: "more.setup", desc: "more.d.setup", icon: "🧠" },
     ],
   },
   {

@@ -44,17 +44,60 @@ async function logUsage(
   }
 }
 
+// A household's own engine, resolved from tenant_ai_keys by lib/aiKeys.ts and
+// passed in by the caller that knows which household is asking. Absent means
+// "use the server's environment", which is what a self-hosted owner wants.
+export interface AiCreds {
+  provider: AiProvider;
+  apiKey?: string;
+  url?: string;
+  model?: string;
+}
+
 export interface GenOpts {
   system?: string;
   json?: boolean;
   fn?: string;
   provider?: AiProvider;
+  creds?: AiCreds;
   meta?: { tenantId?: string; source?: string };
 }
 
+// The household's credentials override the server's environment, field by
+// field. This exists as one resolver rather than `opts.creds?.apiKey ??
+// config.x` repeated at nine call sites, because the repeated form is exactly
+// how a tenth call site gets added that silently ignores the override and bills
+// the server owner for a household that supplied its own key.
+//
+// `vision` deliberately ignores a household's MODEL choice: a household picks a
+// text model, and sending a receipt image to a text-only model fails in a way
+// that reads like a broken key. Its API KEY is still used - own key, server's
+// idea of which multimodal model to call.
+function resolve(opts: GenOpts, p: AiProvider, vision = false) {
+  const c = opts.creds?.provider === p ? opts.creds : undefined;
+  if (p === "groq") {
+    return {
+      key: c?.apiKey || config.groqApiKey,
+      model: vision ? config.groqVisionModel : c?.model || config.groqModel,
+      url: "",
+    };
+  }
+  if (p === "ollama") {
+    return {
+      key: "",
+      model: vision ? config.ollamaVisionModel : c?.model || config.ollamaModel,
+      url: (c?.url || config.ollamaUrl).replace(/\/$/, ""),
+    };
+  }
+  return { key: c?.apiKey || config.geminiApiKey, model: c?.model || config.geminiModel, url: "" };
+}
+
+const NO_KEY = (engine: string, envVar: string) =>
+  `No ${engine} key. Set ${envVar} on the server, or add your household's own key under Setup.`;
+
 // Generate text with the chosen (or configured) provider.
 export async function aiGenerate(prompt: string, opts: GenOpts = {}): Promise<string> {
-  const provider = opts.provider ?? activeAiProvider();
+  const provider = opts.provider ?? opts.creds?.provider ?? activeAiProvider();
   const fn = opts.fn ?? "aiGenerate";
   if (provider === "groq") return groqGen(prompt, opts, fn);
   if (provider === "ollama") return ollamaGen(prompt, opts, fn);
@@ -62,8 +105,9 @@ export async function aiGenerate(prompt: string, opts: GenOpts = {}): Promise<st
 }
 
 async function geminiGen(prompt: string, opts: GenOpts, fn: string): Promise<string> {
-  if (!config.geminiApiKey) throw new Error("Gemini not configured (set GEMINI_API_KEY).");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
+  const { key, model } = resolve(opts, "gemini");
+  if (!key) throw new Error(NO_KEY("Gemini", "GEMINI_API_KEY"));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const parts: { text: string }[] = [];
   if (opts.system) parts.push({ text: opts.system });
   parts.push({ text: prompt });
@@ -88,7 +132,7 @@ async function geminiGen(prompt: string, opts: GenOpts, fn: string): Promise<str
   await logUsage(
     fn,
     "gemini",
-    config.geminiModel,
+    model,
     { prompt: um.promptTokenCount || 0, output: um.candidatesTokenCount || 0, total: um.totalTokenCount || 0 },
     opts.meta,
   );
@@ -96,15 +140,16 @@ async function geminiGen(prompt: string, opts: GenOpts, fn: string): Promise<str
 }
 
 async function groqGen(prompt: string, opts: GenOpts, fn: string): Promise<string> {
-  if (!config.groqApiKey) throw new Error("Groq not configured (set GROQ_API_KEY).");
+  const { key, model } = resolve(opts, "groq");
+  if (!key) throw new Error(NO_KEY("Groq", "GROQ_API_KEY"));
   const messages: { role: string; content: string }[] = [];
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: prompt });
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.groqApiKey}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: config.groqModel,
+      model,
       messages,
       temperature: opts.json ? 0.1 : 0.7,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
@@ -118,7 +163,7 @@ async function groqGen(prompt: string, opts: GenOpts, fn: string): Promise<strin
   await logUsage(
     fn,
     "groq",
-    config.groqModel,
+    model,
     { prompt: u.prompt_tokens || 0, output: u.completion_tokens || 0, total: u.total_tokens || 0 },
     opts.meta,
   );
@@ -126,15 +171,16 @@ async function groqGen(prompt: string, opts: GenOpts, fn: string): Promise<strin
 }
 
 async function ollamaGen(prompt: string, opts: GenOpts, fn: string): Promise<string> {
-  if (!config.ollamaUrl) throw new Error("Ollama not configured (set OLLAMA_URL).");
+  const { model, url: base } = resolve(opts, "ollama");
+  if (!base) throw new Error(NO_KEY("Ollama", "OLLAMA_URL"));
   const messages: { role: string; content: string }[] = [];
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: prompt });
-  const res = await fetch(`${config.ollamaUrl}/api/chat`, {
+  const res = await fetch(`${base}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: config.ollamaModel,
+      model,
       messages,
       stream: false,
       ...(opts.json ? { format: "json" } : {}),
@@ -146,7 +192,7 @@ async function ollamaGen(prompt: string, opts: GenOpts, fn: string): Promise<str
   if (!text) throw new Error("Ollama returned an empty response.");
   const pin = data.prompt_eval_count || 0;
   const pout = data.eval_count || 0;
-  await logUsage(fn, "ollama", config.ollamaModel, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
+  await logUsage(fn, "ollama", model, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
   return text;
 }
 
@@ -171,7 +217,7 @@ export async function aiVision(
   imageBase64: string,
   opts: VisionOpts,
 ): Promise<string> {
-  const provider = opts.provider ?? activeAiProvider();
+  const provider = opts.provider ?? opts.creds?.provider ?? activeAiProvider();
   const fn = opts.fn ?? "aiVision";
   if (provider === "groq") return groqVision(prompt, imageBase64, opts, fn);
   if (provider === "ollama") return ollamaVision(prompt, imageBase64, opts, fn);
@@ -179,8 +225,9 @@ export async function aiVision(
 }
 
 async function geminiVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
-  if (!config.geminiApiKey) throw new Error("Gemini not configured (set GEMINI_API_KEY).");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
+  const { key, model } = resolve(opts, "gemini", true);
+  if (!key) throw new Error(NO_KEY("Gemini", "GEMINI_API_KEY"));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   const parts: unknown[] = [];
   if (opts.system) parts.push({ text: opts.system });
   parts.push({ text: prompt });
@@ -215,7 +262,8 @@ async function geminiVision(prompt: string, image: string, opts: VisionOpts, fn:
 }
 
 async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
-  if (!config.groqApiKey) throw new Error("Groq not configured (set GROQ_API_KEY).");
+  const { key, model } = resolve(opts, "groq", true);
+  if (!key) throw new Error(NO_KEY("Groq", "GROQ_API_KEY"));
   // Groq speaks the OpenAI vision shape: an image_url whose url is a data: URI.
   const content = [
     { type: "text", text: opts.system ? `${opts.system}\n\n${prompt}` : prompt },
@@ -223,9 +271,9 @@ async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: s
   ];
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.groqApiKey}` },
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: config.groqVisionModel,
+      model,
       messages: [{ role: "user", content }],
       temperature: opts.json ? 0.1 : 0.4,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
@@ -239,7 +287,7 @@ async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: s
   await logUsage(
     fn,
     "groq",
-    config.groqVisionModel,
+    model,
     { prompt: u.prompt_tokens || 0, output: u.completion_tokens || 0, total: u.total_tokens || 0 },
     opts.meta,
   );
@@ -247,16 +295,17 @@ async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: s
 }
 
 async function ollamaVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
-  if (!config.ollamaUrl) throw new Error("Ollama not configured (set OLLAMA_URL).");
+  const { model, url: base } = resolve(opts, "ollama", true);
+  if (!base) throw new Error(NO_KEY("Ollama", "OLLAMA_URL"));
   const messages: unknown[] = [];
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: prompt, images: [image] });
 
-  const res = await fetch(`${config.ollamaUrl}/api/chat`, {
+  const res = await fetch(`${base}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: config.ollamaVisionModel,
+      model,
       messages,
       stream: false,
       ...(opts.json ? { format: "json" } : {}),
@@ -268,7 +317,7 @@ async function ollamaVision(prompt: string, image: string, opts: VisionOpts, fn:
   if (!text) throw new Error("Ollama returned an empty response.");
   const pin = data.prompt_eval_count || 0;
   const pout = data.eval_count || 0;
-  await logUsage(fn, "ollama", config.ollamaVisionModel, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
+  await logUsage(fn, "ollama", model, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
   return text;
 }
 
@@ -282,26 +331,33 @@ export interface ProviderHealth {
   error?: string;
 }
 
-function modelOf(p: AiProvider): string {
-  if (p === "groq") return config.groqModel;
-  if (p === "ollama") return config.ollamaModel;
-  return config.geminiModel;
+function modelOf(p: AiProvider, creds?: AiCreds): string {
+  const c = creds?.provider === p ? creds : undefined;
+  if (p === "groq") return c?.model || config.groqModel;
+  if (p === "ollama") return c?.model || config.ollamaModel;
+  return c?.model || config.geminiModel;
 }
 
 // Agentic check: ask each configured provider to reply "OK" and report status.
-export async function aiHealth(): Promise<ProviderHealth[]> {
+//
+// `creds` lets the probe answer the question a household actually has - "does
+// MY key work?" - rather than only "does the server's?". Without it, someone who
+// had just saved their own key would still see the server's status and conclude
+// their key was the thing that failed.
+export async function aiHealth(creds?: AiCreds): Promise<ProviderHealth[]> {
   const providers: AiProvider[] = ["gemini", "groq", "ollama"];
   const out: ProviderHealth[] = [];
   for (const p of providers) {
-    const configured = isProviderConfigured(p);
+    const configured = creds?.provider === p ? true : isProviderConfigured(p);
     if (!configured) {
-      out.push({ provider: p, configured: false, ok: false, model: modelOf(p), latencyMs: 0 });
+      out.push({ provider: p, configured: false, ok: false, model: modelOf(p, creds), latencyMs: 0 });
       continue;
     }
     const t0 = Date.now();
     try {
       const reply = await aiGenerate("Reply with exactly: OK", {
         provider: p,
+        creds,
         fn: "agentic_check",
         system: "You are a health probe. Reply with exactly the requested token, nothing else.",
       });
@@ -309,7 +365,7 @@ export async function aiHealth(): Promise<ProviderHealth[]> {
         provider: p,
         configured: true,
         ok: /ok/i.test(reply),
-        model: modelOf(p),
+        model: modelOf(p, creds),
         latencyMs: Date.now() - t0,
         reply: reply.slice(0, 40),
       });
@@ -318,7 +374,7 @@ export async function aiHealth(): Promise<ProviderHealth[]> {
         provider: p,
         configured: true,
         ok: false,
-        model: modelOf(p),
+        model: modelOf(p, creds),
         latencyMs: Date.now() - t0,
         error: e instanceof Error ? e.message : "error",
       });

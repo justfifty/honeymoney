@@ -8,6 +8,7 @@ import Logo from "../Logo";
 import IosInstallGuide from "../IosInstallGuide";
 import ProfileSettings from "../account/ProfileSettings";
 import AccountActions from "../account/AccountActions";
+import AiStatus from "./AiStatus";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -116,23 +117,48 @@ export default async function SetupPage() {
         </ul>
       </Section>
 
-      <Section title={`🧠 ${tr("setup.stack.title")}`} tone="plain">
-        <p className="mb-3">{tr("setup.stack.body")}</p>
-        <ul className="space-y-2">
-          {(["groq", "gemini", "ollama"] as const).map((p) => (
-            <li key={p} className="flex items-start gap-2">
-              <span aria-hidden="true">•</span>
-              <span>
-                {tr(`setup.stack.${p}`)}
-                {provider === p && (
-                  <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                    {tr("setup.stack.active")}
-                  </span>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
+      {/* The AI engine section used to be three static bullets plus whichever
+          provider an env var named. That told a user what the app *intends*,
+          never whether it works — so someone whose key was rejected saw the
+          same screen as someone whose key was fine. AiStatus probes instead. */}
+      <Section title={`🧠 ${tr("setup.ai.title")}`} tone="plain">
+        <p className="mb-4">{tr("setup.ai.body")}</p>
+        <AiStatus
+          activeProvider={provider}
+          signedIn={Boolean(ctx)}
+          strings={{
+            testBtn: tr("setup.ai.testBtn"),
+            testing: tr("setup.ai.testing"),
+            retest: tr("setup.ai.retest"),
+            ready: tr("setup.ai.ready"),
+            noneReady: tr("setup.ai.noneReady"),
+            failed: tr("setup.ai.failed"),
+            colProvider: tr("setup.ai.colProvider"),
+            colStatus: tr("setup.ai.colStatus"),
+            live: tr("setup.ai.live"),
+            keyBad: tr("setup.ai.keyBad"),
+            notSet: tr("setup.ai.notSet"),
+            active: tr("setup.stack.active"),
+            howTo: tr("setup.ai.howTo"),
+            askHint: tr("setup.ai.askHint"),
+            ownTitle: tr("setup.ai.ownTitle"),
+            ownBody: tr("setup.ai.ownBody"),
+            ownSaved: tr("setup.ai.ownSaved"),
+            ownNone: tr("setup.ai.ownNone"),
+            ownNotOwner: tr("setup.ai.ownNotOwner"),
+            ownSignedOut: tr("setup.ai.ownSignedOut"),
+            usingOwn: tr("setup.ai.usingOwn"),
+            fieldKey: tr("setup.ai.fieldKey"),
+            fieldUrl: tr("setup.ai.fieldUrl"),
+            fieldModel: tr("setup.ai.fieldModel"),
+            modelHint: tr("setup.ai.modelHint"),
+            save: tr("setup.ai.save"),
+            saving: tr("setup.ai.saving"),
+            remove: tr("setup.ai.remove"),
+            removed: tr("setup.ai.removed"),
+            savedOk: tr("setup.ai.savedOk"),
+          }}
+        />
       </Section>
 
       <Section title={`💬 ${tr("setup.connect.title")}`} tone="good">

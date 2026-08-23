@@ -1,10 +1,16 @@
 # AI Setup — HoneyMoney (Groq · Gemini Flash · Ollama)
 
 HoneyMoney's AI is **optional and swappable**. The app runs fully without any AI
-(on-device OCR + voice use zero tokens). When you want AI insights/OCR, pick **one**
+(on-device OCR uses zero tokens). When you want AI insights/OCR, pick **one**
 provider, add its key to `web/.env.local`, and restart the app.
 
-Pick the provider with **`AI_PROVIDER`** = `groq` | `gemini` | `ollama`.
+**Two ways to configure it.** The environment variables below set the *server's* engine and
+are what a self-hosted household wants. A signed-in household owner can instead store their
+**own** key in the app at **Setup → AI engine**, which overrides the server for that
+household only; it is encrypted with `AI_SECRETS_KEY` before storage (see `.env.example`)
+and validated against the provider on save.
+
+Pick the server provider with **`AI_PROVIDER`** = `groq` | `gemini` | `ollama`.
 After editing `web/.env.local`, restart: stop + `npm run build && npm run start`
 (or `deploy/start-honeymoney.ps1`). Verify anytime at **`/api/ai/check`** — it runs
 an agentic probe against each configured provider and reports OK / latency / tokens.

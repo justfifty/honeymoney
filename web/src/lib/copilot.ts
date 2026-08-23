@@ -37,6 +37,7 @@
 // that changed depending on who asked would be a different and worse lie.
 
 import { aiGenerate } from "./ai";
+import { resolveAiCreds } from "./aiKeys";
 import { getBucketProjection } from "./projection";
 import { getHScore } from "./hscoreData";
 import { getSpendRecords } from "./records";
@@ -190,9 +191,15 @@ export async function askHoney(
 
   try {
     const facts_ = outcome.kind === "statutory" ? `\n\n${STATUTORY_FACTS}` : "";
+    // The household's own engine if it has one, the server's otherwise. Only
+    // stage 3 - the phrasing - ever sees a model, so this cannot change any
+    // figure: stage 2 already computed every number, and the allowlist check
+    // below still discards an answer that invents one, whoever is paying.
+    const creds = (await resolveAiCreds(tenantId).catch(() => null)) ?? undefined;
     const prose = await aiGenerate(narratePrompt(outcome, question, locale) + facts_, {
       system: NARRATE_SYSTEM,
       fn: "askHoney",
+      creds,
       meta: { tenantId, source: "web" },
     });
 
