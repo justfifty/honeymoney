@@ -61,26 +61,26 @@ under Passenger the port is assigned per spawn and is not a fixed address.
 
 ---
 
-## Which PocketBase variant — this depends on the plan, and it matters
+## Which PocketBase variant — decided: `pb.deploy.yml`
 
-DOM Cloud caps **any process at 3 hours** and asks you not to install cron or uptime
-bots, *unless* the site has the `docker` feature. Their docs are explicit that
-enabling it "allows any app under the site [to] have long running processes i.e. the
-3 hour process limit is automatically appealed **no matter if it actually uses Docker
-or not**". That feature starts at the **Kit plan**.
+**The plan is Lite** (5 GB storage, 20 GB bandwidth, x64), bought 2026-08-24, and
+**`pb.deploy.yml` is the file to paste.** Lite is the baseline this project targets.
+Kit is not a prerequisite, is not planned, and nothing here is written as "until you
+upgrade" — `pb.deploy.kit.yml` exists only so the daemon arrangement is already
+worked out if the plan is ever raised for some *other* reason, like traffic.
 
-| | `pb.deploy.yml` (Passenger) | `pb.deploy.kit.yml` (24/7) |
+DOM Cloud caps **any process at 3 hours** unless the site has the `docker` feature,
+which their docs put at "only starting with Kit Plan or higher". Verified against
+their docs on 2026-08-24 rather than remembered.
+
+| | `pb.deploy.yml` — **in use** | `pb.deploy.kit.yml` — optional, unused |
 |---|---|---|
-| plan | Free / Lite | **Kit or higher** |
-| how PocketBase runs | NGINX spawns it on request, stops it when idle | `pb-run.sh` daemon on 127.0.0.1:8090, hourly watchdog |
-| PocketBase's own nightly R2 backup | **does not reliably fire** | fires |
-| cold start on first request | yes | no |
-| two processes on one `data.db` | possible under concurrency | no |
-
-**DECIDED 2026-08-24: the plan is Lite** (5 GB storage, 20 GB bandwidth, x64), so
-the variant is **`pb.deploy.yml`** — the Passenger one. Verified against DOM Cloud's
-own docs the same day, not remembered: `docker` is "only starting with Kit Plan or
-higher", and it is the `docker` feature that lifts the 3-hour cap.
+| plan | **Lite** (also Free) | Kit or higher |
+| site reachable 24/7 | **yes** | yes |
+| how PocketBase runs | NGINX starts it on request | `pb-run.sh` daemon, hourly watchdog |
+| nightly backup | **triggered externally, scheduled** | fires in-process |
+| cold start on first request after idle | a SQLite open | none |
+| two processes on one `data.db` | possible under concurrency this origin does not see | no |
 
 **The site is up 24/7 on Lite.** This is worth stating plainly because the 3-hour cap
 sounds like it says otherwise. It does not. Under Passenger, NGINX starts the app
@@ -121,8 +121,11 @@ account this machine has no credential for:
 2. **Create two websites** — one for the app, one for PocketBase. Note the SSH
    username and host shown for each.
 3. **Paste the deployment script** into each site's Setup -> Deploy tab:
-   `app.deploy.yml` for the app, and `pb.deploy.yml` **or** `pb.deploy.kit.yml`
-   for PocketBase depending on the plan above.
+   `app.deploy.yml` for the app site, and **`pb.deploy.yml`** for the PocketBase
+   site. There is no choice to make here — `pb.deploy.yml` is the one, on Lite.
+   (`pb.deploy.kit.yml` is an unused Kit-plan variant kept for later; pasting it
+   on Lite would be a fair-use violation, since it asks for a `docker` feature
+   the plan does not carry.)
 
    The PocketBase YAMLs are **self-contained**: each one writes its own start
    script (`pb-start.sh` or `pb-run.sh`) onto the host before invoking it. That

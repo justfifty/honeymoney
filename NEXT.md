@@ -1804,19 +1804,23 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     variants, `start-app.sh` / `pb-start.sh` / `pb-run.sh`, `push-build.ps1` (build here,
     ship 21 MB over SSH) and `migrate-pocketbase.ps1` (backup → key → restore → read back).
 
-    🛑 **The plan tier decides the PocketBase architecture, and it is not a preference.**
-    DOM Cloud caps **any process at 3 hours** and asks for no cron or uptime bots — *unless*
-    the site has the `docker` feature, which their docs say lifts the cap for every app on
-    the site "no matter if it actually uses Docker or not". **That feature starts at the Kit
-    plan.** So:
-    - **Kit or higher** → `pb.deploy.kit.yml`: PocketBase as a real daemon on
-      127.0.0.1:8090 with an hourly watchdog, and its nightly R2 backup actually fires.
-    - **Free or Lite** → `pb.deploy.yml`: NGINX spawns PocketBase per request via Passenger.
-      The site is still up 24/7, but **PocketBase's own scheduled backup cannot be relied
-      on**, so `deploy/backup-pocketbase.ps1` stays on this laptop until the plan changes.
-      Open-source Passenger has no per-app instance cap either, so under real concurrency
-      two processes could open one `data.db` — safe against corruption under WAL, not
-      against two processes disagreeing about cached settings.
+    ✅ **The target is Lite, and `pb.deploy.yml` is the deployment.** Superseded by the
+    2026-08-24 entry below; recorded here because this item originally read as though Kit
+    were the destination and Lite a waiting room. It is not. Kit is unplanned.
+    - **`pb.deploy.yml` — in use.** NGINX starts PocketBase per request via Passenger. The
+      site is up 24/7. PocketBase's own scheduled backup cannot be relied on, so the
+      backup is triggered from *outside* by `deploy/backup-pocketbase.ps1` on the
+      `HoneyMoney-Backup` schedule — an arrangement that does not depend on the host's
+      process policy at all, which is the more robust one on any plan.
+      Open-source Passenger has no per-app instance cap, so under real concurrency two
+      processes could open one `data.db` — safe against corruption under WAL, not against
+      two processes disagreeing about cached settings. Kept in view, but proportionate:
+      this origin serves single-digit signed-in users with Pages fronting every public
+      page. Revisit if that changes, not before.
+    - **`pb.deploy.kit.yml` — unused.** Kept only so the daemon arrangement is already
+      solved if the plan is ever raised for traffic or storage. It is not a to-do, and
+      DOM Cloud caps any process at 3 hours without the `docker` feature it asks for, so
+      pasting it on Lite would be a fair-use violation rather than an optimisation.
 
     ⚠️ **Ship the app before the ledger, and point it at the tunnel first.** An app running
     on DOM Cloud against *this* laptop's PocketBase proves the host works while costing

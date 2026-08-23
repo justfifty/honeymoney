@@ -1,8 +1,16 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# HoneyMoney — PocketBase on DOM Cloud  ·  24/7 VARIANT (Kit plan or higher)
+# HoneyMoney — PocketBase on DOM Cloud  ·  OPTIONAL UPGRADE (Kit plan or higher)
 #
-# Prefer this one. It is the only variant on which PocketBase's own nightly
-# backup to R2 actually fires, because the process is never stopped.
+# DO NOT PASTE THIS ONE. The project runs on Lite via pb.deploy.yml, which is
+# the baseline and is sufficient. This file is kept for one reason: so that IF
+# the plan is ever raised to Kit, the daemon arrangement already exists and
+# nobody has to work it out again under pressure.
+#
+# Nothing here is required. The single thing it buys over pb.deploy.yml is
+# PocketBase's own nightly cron firing in-process, and that job is already done
+# from outside by deploy/backup-pocketbase.ps1 on a schedule that does not care
+# what the host's process policy is. Upgrade for traffic or storage if those
+# ever bind — not for this.
 #
 # Why `features: docker` when nothing here is containerised: DOM Cloud's docs
 # state that enabling it lifts the 3-hour process cap for EVERY app on the
