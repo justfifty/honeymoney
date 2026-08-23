@@ -1761,6 +1761,33 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     there are 14 days to log back in before deletion. Still worth a calendar reminder while
     traffic is low.
 
+    ### What it actually costs, checked 2026-08-23
+
+    | | cost | card? | storage | notes |
+    |---|---|---|---|---|
+    | **DOM Cloud free** | **$0** | **no** | 1.5 GB | needs the GitHub trust link |
+    | DOM Cloud Lite | $1.50/mo · **RM84/yr** | yes | 5 GiB | managed platform |
+    | **RackNerd KVM VPS** | **$11.29/yr · RM53/yr** | yes | **21 GB + 1 GB RAM + 1.5 TB** | root, unmanaged |
+    | PocketHost | **$9.99/mo** | yes | 250 MB DB | ❌ no longer free |
+
+    🛑 **PocketHost was suggested here earlier as a free, card-free option. It is not one.**
+    Checked against their pricing page today: **$9.99/month**, or $59.99/year. The free tier
+    that made it worth naming is gone. Repeating a remembered price without checking it is
+    how a plan acquires a step that cannot be taken.
+
+    ⚠️ **RackNerd is genuinely cheaper than DOM Cloud's paid tier and not close** — RM53/yr
+    against RM84/yr, for **4× the storage, 75× the bandwidth and root access.** The catch is
+    not the price, it is that *unmanaged* means owning the OS: firewall, TLS renewal, systemd
+    units, security patches. That is a standing obligation attached to a box holding a
+    household's financial records, and it does not pause for a busy month. DOM Cloud's
+    RM31/yr premium buys the platform being someone else's job.
+
+    ✅ **The free path is not exhausted yet.** Trust is granted by a GitHub account **6+
+    months old with ≥1 follower**. `justfifty` (created 2026-07-08, 0 followers) fails both —
+    and *age cannot be fixed*, so it would not qualify until Jan 2027. **`integrations-space`
+    (created 2013, 2 followers) satisfies both** and is already authenticated on this
+    machine. Re-link that one before paying anything.
+
     ⬜ Order of work, database LAST: `output: "standalone"` → deploy Next.js there pointing
     at *this* laptop's PocketBase through the tunnel (proves the app runs elsewhere without
     risking data) → move `pb_data` → repoint the R2 backup job and carry
