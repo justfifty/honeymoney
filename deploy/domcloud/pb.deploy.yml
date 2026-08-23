@@ -77,13 +77,30 @@ commands:
   # which YAML reads as a mapping and an alias respectively.
   - |
     printf 'User-agent: *\nDisallow: /\n' > ~/public_html/public/robots.txt
-  - cd ~/public_html && test -x pocketbase || {
-      ARCH=$(uname -m);
-      case "$ARCH" in aarch64|arm64) PBARCH=arm64 ;; x86_64|amd64) PBARCH=amd64 ;; *) echo "unsupported arch $ARCH" && exit 1 ;; esac;
-      echo "installing PocketBase 0.39.6 for linux_$PBARCH";
-      curl -sSLo pb.zip "https://github.com/pocketbase/pocketbase/releases/download/v0.39.6/pocketbase_0.39.6_linux_${PBARCH}.zip";
-      unzip -o pb.zip pocketbase && rm pb.zip && chmod +x pocketbase;
-    }
+  # Pins the VERSION, not merely the presence of a binary. The guard used to be
+  # `test -x pocketbase ||`, which skips the install whenever any pocketbase
+  # exists — and DOM Cloud ships a PocketBase site template that would leave a
+  # current release sitting there. That binary would then open pb_data and run
+  # its own one-way migrations, which for the household ledger is the one
+  # failure with no way back. Wrong version now means REPLACE, not skip.
+  - |
+    cd ~/public_html
+    WANT=0.39.6
+    HAVE=$(test -x ./pocketbase && ./pocketbase --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    if [ "$HAVE" = "$WANT" ]; then
+      echo "PocketBase $WANT already installed"
+    else
+      [ -n "$HAVE" ] && echo "replacing PocketBase $HAVE with $WANT"
+      ARCH=$(uname -m)
+      case "$ARCH" in
+        aarch64|arm64) PBARCH=arm64 ;;
+        x86_64|amd64)  PBARCH=amd64 ;;
+        *) echo "unsupported arch $ARCH"; exit 1 ;;
+      esac
+      echo "installing PocketBase $WANT for linux_$PBARCH"
+      curl -sSLo pb.zip "https://github.com/pocketbase/pocketbase/releases/download/v${WANT}/pocketbase_${WANT}_linux_${PBARCH}.zip"
+      unzip -o pb.zip pocketbase && rm pb.zip && chmod +x ./pocketbase
+    fi
   - touch ~/.env.pocketbase && chmod 600 ~/.env.pocketbase
   # Passenger runs bash ./pb-start.sh below, and nothing else on this host
   # would ever have created that file: the repo is private, so there is no
