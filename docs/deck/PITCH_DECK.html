@@ -1,562 +1,705 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>HoneyMoney Pitch Deck - MAIC Nexus 2026</title>
-  <style>
-    @page { size: A4 landscape; margin: 0; }
-    :root {
-      --ink: #10231a;
-      --ink-soft: #33513f;
-      --honey: #e8a012;
-      --honey-soft: #f6c94a;
-      --green: #1f6f4a;
-      --green-deep: #123524;
-      --line: rgba(18, 53, 36, 0.14);
-      --card: rgba(255, 255, 255, 0.78);
-      --red: #c0473b;
-      --amber: #d98a1f;
-      --ok: #2b8a57;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
-      color: var(--ink);
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .slide {
-      position: relative;
-      width: 297mm;
-      height: 210mm;
-      padding: 15mm 17mm 12mm;
-      page-break-after: always;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 8% 12%, rgba(232, 160, 18, 0.16), transparent 34%),
-        radial-gradient(circle at 92% 88%, rgba(31, 111, 74, 0.14), transparent 40%),
-        linear-gradient(145deg, #fffdf7 0%, #f4f7f1 100%);
-    }
-    .slide:last-child { page-break-after: auto; }
-    .slide::before {
-      content: "";
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 5mm;
-      background: linear-gradient(90deg, var(--honey) 0%, var(--green) 100%);
-    }
+<meta charset="UTF-8" />
+<title>HoneyMoney — Pitch Deck (MAIC Nexus 2026, Track T3)</title>
+<!--
+  HoneyMoney pitch deck — 13 slides, 16:9.
 
-    /* ---- header ---- */
-    .head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 7mm;
-    }
-    .kicker { font-size: 10.5pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
-    .kicker b { color: var(--green); }
-    .criterion {
-      font-weight: 700; color: #fff; background: var(--green);
-      border-radius: 999px; padding: 5px 13px; font-size: 10pt;
-      letter-spacing: 0.04em; text-transform: uppercase;
-    }
-    .criterion.tech { background: #1b6b8a; }
-    .criterion.comm { background: #b5731a; }
-    .criterion.rel { background: #2b8a57; }
-    .criterion.scale { background: #6a4fb0; }
-    .criterion.esg { background: #1f7a4a; }
+  This file is the SOURCE. The PDF is generated from it:
 
-    h2 { margin: 0; font-size: 27pt; line-height: 1.1; color: var(--green-deep); letter-spacing: -0.01em; }
-    .lead { margin: 6px 0 0; font-size: 14.5pt; color: var(--ink-soft); line-height: 1.4; max-width: 92%; }
+    "/c/Program Files/Google/Chrome/Application/chrome.exe" --headless --disable-gpu \
+      --no-pdf-header-footer \
+      --print-to-pdf="C:\2026_honeymoney\docs\deck\HoneyMoney_Pitch_Deck_MAIC2026.pdf" \
+      "file:///C:/2026_honeymoney/docs/deck/PITCH_DECK.html"
 
-    .body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  Artwork in deck_assets/ was extracted from the previous PDF export, so the
+  design carries over while the words become editable again. Before this
+  revision the deck existed only as a flattened PDF: a typo or a stale claim
+  could not be fixed without rebuilding the whole thing by hand.
 
-    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
-    .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm; }
+  @page is 13.333in x 7.5in - 1280x720 at 96dpi, the standard widescreen slide.
+-->
+<style>
+  @page { size: 13.333in 7.5in; margin: 0; }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 11px 15px;
-    }
-    .card h3 { margin: 0 0 7px; font-size: 13.5pt; color: var(--green-deep); }
-    ul { margin: 0; padding-left: 17px; line-height: 1.4; font-size: 12.5pt; }
-    li { margin-bottom: 5px; }
-    li b { color: var(--green-deep); }
+  :root {
+    --orange: #F97316;
+    --orange-deep: #EA6A0C;
+    --ink: #111111;
+    --amber: #FBBF24;
+  }
 
-    /* ---- footer ---- */
-    .foot {
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: 9.5pt; color: var(--ink-soft);
-      border-top: 1px solid var(--line); padding-top: 4mm; margin-top: 6mm;
-    }
-    .foot .brand { font-weight: 700; color: var(--green); }
-    .mono { font-family: Consolas, "Courier New", monospace; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* ---- metrics ---- */
-    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm; }
-    .metric { text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 10px; }
-    .metric .n { display: block; font-size: 30pt; font-weight: 800; color: var(--green); line-height: 1; margin-bottom: 6px; }
-    .metric .n.red { color: var(--red); }
-    .metric .n.honey { color: var(--amber); }
-    .metric small { font-size: 10.5pt; color: var(--ink-soft); line-height: 1.3; display: block; }
+  html, body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
 
-    /* ---- title slide ---- */
-    .title-wrap { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-    .logo { font-size: 52pt; font-weight: 800; color: var(--green-deep); letter-spacing: -0.02em; margin: 0; }
-    .logo span { color: var(--honey); }
-    .tagline { font-size: 18pt; color: var(--ink-soft); margin: 4mm 0 0; max-width: 78%; line-height: 1.35; }
-    .oneliner { font-size: 15pt; font-weight: 700; color: var(--green-deep); margin-top: 9mm; padding: 10px 16px; background: rgba(255,255,255,0.6); border-left: 5px solid var(--honey); border-radius: 0 10px 10px 0; max-width: 82%; }
+  .slide {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background: #fff;
+    page-break-after: always;
+    break-after: page;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
 
-    /* ---- screenshot frames ---- */
-    .shot { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; box-shadow: 0 6px 18px rgba(18,53,36,0.10); }
-    .shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
-    .shot .cap { font-size: 9.5pt; color: var(--ink-soft); padding: 5px 10px; border-top: 1px solid var(--line); background: #fff; }
-    .shot-tall img { height: 118mm; }
-    .shot-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8mm; }
-    .shot-row .shot img { height: 92mm; }
+  /* ── Brand furniture ─────────────────────────────────────────────────── */
+  .brand {
+    position: absolute; top: 38px; left: 56px;
+    display: flex; align-items: center; gap: 11px;
+    z-index: 5;
+  }
+  .brand svg { width: 30px; height: 30px; }
+  .brand span { font-size: 20px; font-weight: 700; letter-spacing: -0.2px; }
+  .brand.on-dark span { color: #fff; }
 
-    /* ---- numbered steps ---- */
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7mm; }
-    .step { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; position: relative; }
-    .step .num { width: 30px; height: 30px; border-radius: 50%; background: var(--honey); color: #fff; font-weight: 800; font-size: 14pt; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
-    .step h3 { margin: 0 0 5px; font-size: 13.5pt; color: var(--green-deep); }
-    .step p { margin: 0; font-size: 11.5pt; color: var(--ink-soft); line-height: 1.35; }
+  .foot {
+    position: absolute; bottom: 30px; left: 56px;
+    font-size: 13px; color: rgba(0,0,0,0.42);
+    z-index: 5;
+  }
+  .foot.on-dark { color: rgba(255,255,255,0.72); }
 
-    /* ---- matrix ---- */
-    table.matrix { width: 100%; border-collapse: collapse; font-size: 11.5pt; }
-    table.matrix th, table.matrix td { padding: 9px 8px; text-align: center; border-bottom: 1px solid var(--line); }
-    table.matrix th { font-size: 10.5pt; color: var(--ink-soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-    table.matrix td.rowh { text-align: left; font-weight: 600; color: var(--green-deep); }
-    table.matrix tr.us { background: rgba(232,160,18,0.13); }
-    table.matrix tr.us td.rowh { color: var(--green-deep); font-weight: 800; }
-    .yes { color: var(--ok); font-weight: 800; }
-    .no { color: #b9463b; font-weight: 700; }
-    .part { color: var(--amber); font-weight: 700; }
+  .pageno {
+    position: absolute; bottom: 28px; right: 56px;
+    font-size: 13px; z-index: 5;
+  }
+  .pageno b { font-weight: 700; }
+  .pageno.on-dark { color: #fff; }
 
-    /* ---- funnel / market ---- */
-    .funnel { display: flex; flex-direction: column; gap: 5mm; align-items: center; justify-content: center; }
-    .tier { border-radius: 12px; color: #fff; padding: 11px 18px; text-align: center; box-shadow: 0 4px 12px rgba(18,53,36,0.12); }
-    .tier .lbl { font-size: 11pt; font-weight: 700; letter-spacing: 0.05em; opacity: 0.92; }
-    .tier .val { font-size: 20pt; font-weight: 800; }
-    .tier.tam { background: var(--green-deep); width: 100%; }
-    .tier.sam { background: var(--green); width: 78%; }
-    .tier.som { background: var(--honey); width: 52%; }
+  .arrow {
+    position: absolute; top: 30px; right: 48px;
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--orange); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 21px; z-index: 5;
+  }
+  .arrow.inv { background: #fff; color: var(--orange); }
 
-    /* ---- timeline ---- */
-    .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8mm; }
-    .phase { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px 15px; border-top: 4px solid var(--green); }
-    .phase .yr { font-size: 12pt; font-weight: 800; color: var(--honey); letter-spacing: 0.05em; }
-    .phase h3 { margin: 3px 0 7px; font-size: 14pt; color: var(--green-deep); }
-    .phase ul { font-size: 11.5pt; }
+  /* ── Type ────────────────────────────────────────────────────────────── */
+  h1.mega {
+    font-size: 82px; font-weight: 800; letter-spacing: -2.6px; line-height: 0.98;
+  }
+  h2.big {
+    font-size: 66px; font-weight: 800; letter-spacing: -1.9px; line-height: 1.0;
+  }
+  h2.big.on-dark, h1.mega.on-dark { color: #fff; }
+  .kicker {
+    font-size: 15px; font-weight: 700; letter-spacing: 1.6px;
+    text-transform: uppercase; opacity: 0.72;
+  }
+  p.body { font-size: 20px; line-height: 1.5; }
 
-    /* ---- team ---- */
-    .team { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
-    .person { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 15px 18px; }
-    .person .who { font-size: 16pt; font-weight: 800; color: var(--green-deep); }
-    .person .role { font-size: 12pt; color: var(--honey); font-weight: 700; margin-bottom: 8px; }
-    .person p { margin: 0; font-size: 11.5pt; color: var(--ink-soft); line-height: 1.4; }
-    .flag { display: inline-block; font-size: 9.5pt; font-weight: 700; color: #fff; background: var(--ok); border-radius: 999px; padding: 2px 9px; margin-top: 8px; }
+  .banner {
+    position: absolute; left: 0; right: 0;
+    background-size: cover; background-position: center;
+  }
+  .tint::after {
+    content: ""; position: absolute; inset: 0;
+    background: rgba(8,12,18,0.46);
+  }
+  .banner > * { position: relative; z-index: 2; }
 
-    .echo { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5mm; margin-top: 6mm; }
-    .echo div { text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px; font-size: 9.5pt; color: var(--ink-soft); }
-    .echo b { display: block; color: var(--green-deep); font-size: 11pt; margin-bottom: 2px; }
+  /* ── Cards ───────────────────────────────────────────────────────────── */
+  .card {
+    background: #fff; border-radius: 18px; padding: 20px 22px;
+  }
+  .card h3 { font-size: 25px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.4px; }
+  .card p  { font-size: 17px; line-height: 1.42; color: #1f1f1f; }
 
-    .note { font-size: 9pt; color: #7d8b83; margin-top: 4mm; font-style: italic; }
-  </style>
+  .card.ring { border: 3px solid var(--amber); }
+
+  .stat {
+    display: inline-block; background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.34);
+    border-radius: 12px; padding: 12px 16px;
+    font-size: 16px; line-height: 1.4; color: #fff;
+  }
+
+  .fixnote {
+    font-size: 14px; line-height: 1.45; color: rgba(0,0,0,0.5);
+  }
+</style>
 </head>
 <body>
 
-  <!-- 1 · TITLE / PURPOSE -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">MAIC Nexus 2026 · Track <b>T3</b> — AI for Fintech &amp; Inclusive Finance</div>
-      <div class="kicker">Live: <b>honeymoney.app</b></div>
-    </div>
-    <div class="title-wrap">
-      <p class="logo">Honey<span>Money</span></p>
-      <p class="tagline">AI financial-wellness for Malaysian households and small businesses — funding transparency, spending autonomy.</p>
-      <div class="oneliner">We replace "watch-every-ringgit" budgeting with a system couples and teams actually stick to — and an AI that warns you <em>before</em> a goal slips, not after.</div>
-    </div>
-    <div class="foot">
-      <span class="brand">Team HoneyMoney</span>
-      <span>Chua Kia Wah · Pong Woon Wei &nbsp;|&nbsp; <span class="mono">honeymoney.app</span></span>
-    </div>
-  </section>
+<!-- The brand sunburst, inlined so the deck needs no network and no font file.
+     Geometry is generated by the same constants as web/src/app/Logo.tsx - 20
+     tapered rays alternating long/short around a solid hub. Keep the two in
+     step; a logo that drifts from the product's own mark is a small lie. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="hm-logo" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="4.12" fill="currentColor"/>
+    <path fill="currentColor" d="M23.48,20.09 L23.51,13.13 L24.49,13.13 L24.52,20.09 Z M24.71,20.12 L26.51,14.87 L27.33,15.14 L25.70,20.45 Z M25.87,20.53 L29.99,14.92 L30.79,15.50 L26.72,21.15 Z M26.85,21.28 L31.40,18.09 L31.91,18.79 L27.47,22.13 Z M27.55,22.30 L34.18,20.17 L34.49,21.11 L27.88,23.29 Z M27.91,23.48 L33.46,23.57 L33.46,24.43 L27.91,24.52 Z M27.88,24.71 L34.49,26.89 L34.18,27.83 L27.55,25.70 Z M27.47,25.87 L31.91,29.21 L31.40,29.91 L26.85,26.72 Z M26.72,26.85 L30.79,32.50 L29.99,33.08 L25.87,27.47 Z M25.70,27.55 L27.33,32.86 L26.51,33.13 L24.71,27.88 Z M24.52,27.91 L24.49,34.87 L23.51,34.87 L23.48,27.91 Z M23.29,27.88 L21.49,33.13 L20.67,32.86 L22.30,27.55 Z M22.13,27.47 L18.01,33.08 L17.21,32.50 L21.28,26.85 Z M21.15,26.72 L16.60,29.91 L16.09,29.21 L20.53,25.87 Z M20.45,25.70 L13.82,27.83 L13.51,26.89 L20.12,24.71 Z M20.09,24.52 L14.54,24.43 L14.54,23.57 L20.09,23.48 Z M20.12,23.29 L13.51,21.11 L13.82,20.17 L20.45,22.30 Z M20.53,22.13 L16.09,18.79 L16.60,18.09 L21.15,21.28 Z M21.28,21.15 L17.21,15.50 L18.01,14.92 L22.13,20.53 Z M22.30,20.45 L20.67,15.14 L21.49,14.87 L23.29,20.12 Z"/>
+  </symbol>
+</svg>
 
-  <!-- 2 · PROBLEM -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">The problem</div>
-      <div class="criterion rel">Industry Relevance</div>
-    </div>
-    <h2>Money is the #1 household conflict — and most Malaysians have no buffer</h2>
-    <p class="lead">Meet Aisyah: dual-income family, five e-wallets, a shared Umrah goal — and no clear picture of where the money goes. Today's apps make it worse.</p>
-    <div class="body">
-      <div class="metrics" style="margin-bottom:8mm">
-        <div class="metric"><span class="n red">47%</span><small>of Malaysians can't raise <b>RM1,000</b> for an emergency<br>(BNM Financial Capability Survey)</small></div>
-        <div class="metric"><span class="n red">63%</span><small>have <b>less than 3 months</b> of emergency savings<br>(RinggitPlus 2022 Literacy Survey)</small></div>
-        <div class="metric"><span class="n honey">~9</span><small>productive <b>days lost</b> per stressed employee / year<br>(financial-stress presenteeism)</small></div>
-      </div>
-      <div class="cols">
-        <div class="card">
-          <h3>Why today's apps fail</h3>
-          <ul>
-            <li>They feel like your partner is <b>watching every ringgit</b> — surveillance fatigue.</li>
-            <li>Typing every expense is tiring, so <b>~80% quit</b> in month one.</li>
-            <li>They only record the <b>past</b> — they can't warn you early.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>The Malaysia gap</h3>
-          <ul>
-            <li>Money is fragmented across <b>TNG, MAE, GrabPay, ShopeePay</b>.</li>
-            <li>Families with <b>irregular income</b> need simple, practical tools.</li>
-            <li>No app is built for <b>Malaysian couples</b> across all these wallets.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 2 · Category fit: AI for Financial Services &amp; Fintech</span></div>
-  </section>
 
-  <!-- 3 · SOLUTION -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">The solution — a 3-step system</div>
-      <div class="criterion rel">Relevance · Technical</div>
-    </div>
-    <h2>The 3-Bucket method: transparency where it helps, privacy where it matters</h2>
-    <p class="lead">On payday, income splits top-down into three buckets — so the shared money is clear and personal money stays private.</p>
-    <div class="body">
-      <div class="steps">
-        <div class="step">
-          <div class="num">1</div>
-          <h3>Must-paid</h3>
-          <p>Rent, bills, essentials — hardcoded and fully transparent to both partners.</p>
-        </div>
-        <div class="step">
-          <div class="num">2</div>
-          <h3>Savings</h3>
-          <p>A set % auto-saved <b>before</b> any spending is tracked — pay-yourselves-first, on autopilot.</p>
-        </div>
-        <div class="step">
-          <div class="num">3</div>
-          <h3>Spendings</h3>
-          <p>Capped personal pools where <b>tracking stops</b> — restoring autonomy and killing spousal friction.</p>
-        </div>
-      </div>
-      <div class="card" style="margin-top:8mm">
-        <h3>Why it works where budgeting apps don't</h3>
-        <ul>
-          <li>The user is the hero; Honey is the guide — it <b>nudges you both</b>, never polices either of you.</li>
-          <li>A hybrid of the methods people already trust: <b>pay-yourself-first + envelope caps + zero-based intent</b>.</li>
-        </ul>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 3 · Core promise: funding transparency, spending autonomy</span></div>
-  </section>
+<!-- ═══════════════ 01 · TITLE ═══════════════ -->
+<section class="slide">
+  <!-- The swoosh carries its own alpha (recomposited from the PDF's soft mask),
+       so it sits on white rather than dragging a black plate behind it. Sized to
+       clear the bottom-right corner, where the MAIC line has to stay legible. -->
+  <img src="deck_assets/p01_0.png" alt=""
+       style="position:absolute;top:-150px;right:-90px;width:930px;" />
+  <div class="brand"><svg style="color:var(--orange)"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow">&#8594;</div>
 
-  <!-- 4 · WHY NOW -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Why now</div>
-      <div class="criterion scale">Scalability · Relevance</div>
-    </div>
-    <h2>Three things just became true at once</h2>
-    <p class="lead">HoneyMoney couldn't have worked three years ago — and will be table-stakes in three more.</p>
-    <div class="body">
-      <div class="cols-3">
-        <div class="card">
-          <h3>AI got cheap</h3>
-          <ul><li>LLM inference cost collapsed; <b>free-tier + on-device</b> AI now runs a real product at ~RM0.</li></ul>
-        </div>
-        <div class="card">
-          <h3>Malaysia went cashless</h3>
-          <ul><li>E-wallet penetration means spending data lives in <b>screenshots</b> — no fragile bank APIs needed.</li></ul>
-        </div>
-        <div class="card">
-          <h3>Wellness is a benefit</h3>
-          <ul><li>Employers now buy <b>financial wellness</b> to cut stress-driven presenteeism and churn.</li></ul>
-        </div>
-      </div>
-      <div class="oneliner" style="max-width:100%; margin-top:9mm">The inflection: capture is finally frictionless <em>and</em> free, and the buyer (the employer) finally exists.</div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 4 · The timing thesis</span></div>
-  </section>
+  <div style="position:absolute;left:64px;bottom:132px;">
+    <h1 class="mega">HoneyMoney.app</h1>
+    <p style="font-size:34px;color:var(--orange);margin-top:14px;letter-spacing:-0.4px;">Happy Wife . Happy Life</p>
+    <p style="font-size:29px;font-weight:800;color:var(--orange);margin-top:6px;letter-spacing:-0.5px;">
+      The AI money layer for Malaysian Families</p>
+  </div>
 
-  <!-- 5 · PRODUCT / DEMO -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">The product — live today at honeymoney.app</div>
-      <div class="criterion tech">Technical Feasibility</div>
-    </div>
-    <h2>Frictionless capture in, a clear forward-looking picture out</h2>
-    <div class="body">
-      <div class="shot-row">
-        <div class="shot">
-          <img src="graph_gallery/g-family-sankey.png" alt="Sankey money-flow view" />
-          <div class="cap">Where every ringgit goes — income → buckets → spend vs saved (real app, seeded household).</div>
-        </div>
-        <div class="shot">
-          <img src="graph_gallery/g-family-bars.png" alt="Budget vs actual bars" />
-          <div class="cap">Budget vs actual on one scale — the red bars are what's bleeding, spotted early.</div>
-        </div>
-      </div>
-      <div class="cols" style="margin-top:7mm">
-        <div class="card"><h3>Adding a spend is effortless</h3><ul><li>Forward an e-wallet screenshot to a <b>Telegram bot</b>, or</li><li><b>scan a receipt / say it out loud</b> — on-device, zero AI tokens. No bank link needed.</li></ul></div>
-        <div class="card"><h3>What you get back</h3><ul><li>A dashboard + <b>six ways to see your money</b>, with a forward projection.</li><li>Works across <b>many languages and currencies</b>; you always confirm before it saves.</li></ul></div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 5 · Every screen shown is the real, running product</span></div>
-  </section>
+  <div style="position:absolute;right:56px;bottom:44px;font-size:27px;font-weight:800;letter-spacing:-0.5px;">
+    MAIC Nexus 2026 | Track T3
+  </div>
+</section>
 
-  <!-- 6 · UNDERLYING MAGIC -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Underlying magic — the knowledge graph + swappable AI</div>
-      <div class="criterion tech">Technical Feasibility</div>
-    </div>
-    <h2>Money as a living graph — so the AI reasons over structure, not rows</h2>
-    <div class="body">
-      <div class="cols" style="align-items:stretch">
-        <div class="shot"><img src="graph_gallery/g-family-organic.png" alt="Knowledge graph network view" style="height:104mm" /><div class="cap">The real graph: income → buckets → spend → goals. Node size ∝ connections.</div></div>
-        <div style="display:flex; flex-direction:column; gap:6mm">
-          <div class="card"><h3>A financial knowledge graph</h3><ul><li>Nodes + typed, temporal edges in a <b>local-first PocketBase</b> store.</li><li>A projection walks spending velocity to <b>warn before a goal slips</b> — "at this pace, your Savings goal lands 6 weeks late."</li></ul></div>
-          <div class="card"><h3>AI you can trust — and afford</h3><ul><li>Swappable providers: <b>Gemini Flash · Groq · local Ollama</b>; if one fails, we switch.</li><li>Every AI call's <b>cost is logged</b>; a deterministic fallback means the demo never breaks.</li><li>Data stays on the device — a real <b>PDPA</b> story.</li></ul></div>
-        </div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 6 · "There really is a graph under here" — the base for inclusive credit scoring</span></div>
-  </section>
 
-  <!-- 7 · MARKET SIZE -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Market size — built bottom-up</div>
-      <div class="criterion comm">Commercial · Scalability</div>
-    </div>
-    <h2>A real, bottom-up market — not a top-down slice</h2>
-    <p class="lead">Priced as an employer-sponsored wellness seat at <b>RM4 / employee / month (RM48 / yr)</b>. Assumptions shown, not a "% of a big number."</p>
-    <div class="body">
-      <div class="cols" style="align-items:center">
-        <div class="funnel">
-          <div class="tier tam"><div class="lbl">TAM · all employed Malaysians</div><div class="val">~16.5M × RM48 ≈ RM790M / yr</div></div>
-          <div class="tier sam"><div class="lbl">SAM · formal-sector employees, mid/large employers</div><div class="val">~6M × RM48 ≈ RM290M / yr</div></div>
-          <div class="tier som"><div class="lbl">SOM · realistic 3-yr reach (~100k seats)</div><div class="val">≈ RM4.8M ARR</div></div>
-        </div>
-        <div class="card">
-          <h3>Why the buyer is the employer</h3>
-          <ul>
-            <li>Financially-stressed staff are <b>~5× more distracted</b> and <b>~2× more likely to quit</b>.</li>
-            <li>One prevented resignation pays for <b>hundreds of seats</b>.</li>
-            <li>Households join <b>free</b> → the workforce is the paid, low-CAC channel.</li>
-          </ul>
-        </div>
-      </div>
-      <p class="note">Population/workforce figures are DOSM order-of-magnitude estimates and seat price is an illustrative target — reconfirm before a live slide.</p>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 7 · Bottom-up TAM / SAM / SOM</span></div>
-  </section>
+<!-- ═══════════════ 02 · THE PROBLEM ═══════════════ -->
+<section class="slide">
+  <div style="position:absolute;inset:0 550px 0 0;background:var(--orange);"></div>
+  <img src="deck_assets/p02_0.jpeg" alt=""
+       style="position:absolute;top:0;right:0;width:550px;height:720px;object-fit:cover;" />
 
-  <!-- 8 · BUSINESS MODEL + UNIT ECONOMICS -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Business model &amp; unit economics</div>
-      <div class="criterion comm">Commercial Viability</div>
-    </div>
-    <h2>B2B2C: free for families, employers pay for their teams' wellbeing</h2>
-    <div class="body">
-      <div class="metrics" style="margin-bottom:8mm">
-        <div class="metric"><span class="n">RM4</span><small>per employee / month<br>(employer-sponsored seat)</small></div>
-        <div class="metric"><span class="n honey">~85%+</span><small>gross margin — local-first stack +<br>free-tier / multi-provider AI</small></div>
-        <div class="metric"><span class="n">RM0</span><small>consumer CAC — employees onboard<br>their own households for free</small></div>
-      </div>
-      <div class="cols">
-        <div class="card"><h3>How we grow</h3><ul><li>Free for families, who <b>invite each other</b>; community groups + guided setup.</li><li>Our promise: <b>less judgment, more peace of mind</b>.</li></ul></div>
-        <div class="card"><h3>How we earn</h3><ul><li>Employers <b>sponsor seats</b> as a staff wellbeing benefit.</li><li>Near-zero marginal cost → nearly all seat revenue is margin.</li><li>Bootstrapped via a <b>grant</b> (Cradle CIP Spark) — no equity given up.</li></ul></div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 8 · Unit economics: the RM0-cost stack is the margin story</span></div>
-  </section>
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow inv">&#8594;</div>
 
-  <!-- 9 · TRACTION / STATUS -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Traction &amp; status</div>
-      <div class="criterion comm">Commercial Viability</div>
-    </div>
-    <h2>A working product, not a concept — live and honest</h2>
-    <div class="body">
-      <div class="metrics" style="margin-bottom:8mm">
-        <div class="metric"><span class="n">Live</span><small>public app at <b>honeymoney.app</b><br>(dashboard · 6 views · analytics)</small></div>
-        <div class="metric"><span class="n">3</span><small>seeded personas on <b>one engine</b><br>(solo · family · business)</small></div>
-        <div class="metric"><span class="n honey">0</span><small>backdated commits — a <b>real,<br>auditable</b> build history</small></div>
-      </div>
-      <div class="cols">
-        <div class="card"><h3>Already shipped</h3><ul><li>Full loop works: <b>capture → parse → bucket → Honey insight → dashboard</b>.</li><li>On-device capture, multi-language/currency, admin AI cost ledger.</li></ul></div>
-        <div class="card"><h3>Next milestones (semi-final)</h3><ul><li>Target: <b>1 signed corporate LOI</b> and a 3–5 employer pilot pipeline.</li><li>Curated OCR ≥95% on a golden set; refined Honey persona.</li></ul></div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 9 · Pre-revenue and honest about it — evidence over adjectives</span></div>
-  </section>
+  <div style="position:absolute;left:56px;top:120px;width:440px;color:#fff;">
+    <h2 class="big on-dark">The Problem</h2>
 
-  <!-- 10 · COMPETITION -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Competition &amp; positioning</div>
-      <div class="criterion comm">Commercial · Technical</div>
-    </div>
-    <h2>Why users choose us: the only tool built for Malaysian couples across all wallets</h2>
-    <div class="body">
-      <table class="matrix">
-        <thead>
-          <tr>
-            <th style="text-align:left">&nbsp;</th>
-            <th>Multi-wallet capture</th>
-            <th>Couple: transparency + privacy</th>
-            <th>Forward projection</th>
-            <th>Local-first privacy</th>
-            <th>Employer B2B2C</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td class="rowh">Generic budgeting apps</td><td class="part">partial</td><td class="no">no</td><td class="no">no</td><td class="no">no</td><td class="no">no</td></tr>
-          <tr><td class="rowh">Bank / e-wallet apps</td><td class="no">single-wallet</td><td class="no">no</td><td class="no">no</td><td class="part">varies</td><td class="no">no</td></tr>
-          <tr><td class="rowh">Spreadsheets</td><td class="no">manual</td><td class="no">no</td><td class="part">manual</td><td class="yes">yes</td><td class="no">no</td></tr>
-          <tr class="us"><td class="rowh">HoneyMoney</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
-        </tbody>
-      </table>
-      <div class="oneliner" style="max-width:100%; margin-top:8mm">Our wedge: <em>transparency-with-autonomy</em> for couples, zero-integration capture, and a graph that looks ahead — sold through employers, not ad-funded.</div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 10 · Positioning, not a self-serving checklist</span></div>
-  </section>
+    <p class="body" style="margin-top:26px;color:#fff;">
+      Malaysian households run money across four or five e-wallets &mdash; TNG, MAE,
+      GrabPay, ShopeePay &mdash; plus cards and cash. Nothing adds them up.
+    </p>
+    <p class="body" style="margin-top:16px;color:#fff;">
+      Traditional apps answer that with manual entry and surveillance, so people burn
+      out and stop. <strong>Tracking fatigue is the failure mode</strong>, not missing
+      features. For couples it is worse: no shared view of what must be paid, and no
+      private space for what shouldn't be shared.
+    </p>
+    <p class="body" style="margin-top:16px;color:#fff;">
+      The result is not a data problem. It is a <strong>decision problem</strong>.
+      Households find out they overspent after the money is gone.
+    </p>
 
-  <!-- 11 · SCALABILITY / GTM -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Scalability — one engine, three personas</div>
-      <div class="criterion scale">Scalability</div>
+    <div class="stat" style="margin-top:22px;">
+      Only <strong>27%</strong> of middle-income Malaysians could last six months on
+      savings in 2025 &mdash; down from 32% a year earlier.
+      <span style="opacity:0.75;font-size:14px;">RinggitPlus RMFLS 2025</span>
     </div>
-    <h2>The same graph scales up the org chart — no schema change</h2>
-    <p class="lead">Person → family → business is only new labels, views, and aggregations over the identical engine — the strongest single argument that HoneyMoney scales.</p>
-    <div class="body">
-      <div class="shot-row">
-        <div class="shot"><img src="graph_gallery/g-solo-sankey.png" alt="Solo freelancer view" /><div class="cap">Solo freelancer — four income streams on the same engine.</div></div>
-        <div class="shot"><img src="graph_gallery/g-business-sankey.png" alt="Business view" /><div class="cap">A café SME — revenue lines → operating buckets, business vocabulary.</div></div>
-      </div>
-      <div class="cols" style="margin-top:6mm">
-        <div class="card"><h3>Product scales</h3><ul><li>One system for a person, family, or small business; browser-based, nothing to install.</li></ul></div>
-        <div class="card"><h3>Costs stay flat</h3><ul><li>Data lives on the device (we store little); AI providers are swappable and cost-metered.</li></ul></div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 11 · From household pilot to regional, multi-language replication</span></div>
-  </section>
+  </div>
 
-  <!-- 12 · ESG / NATIONAL IMPACT -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">ESG &amp; national impact</div>
-      <div class="criterion esg">ESG · National Impact</div>
-    </div>
-    <h2>Financial inclusion as a growth wedge — quantified, not hand-wavy</h2>
-    <div class="body">
-      <div class="cols">
-        <div class="card">
-          <h3>Real-world impact</h3>
-          <ul>
-            <li>Directly targets the <b>#1 B40 challenge</b>: low confidence in financial knowledge (FEN).</li>
-            <li>Less money-driven conflict at home; less stress carried to work.</li>
-            <li>Works with <b>no bank link</b> — reaches the underbanked.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Policy alignment</h3>
-          <ul>
-            <li><b>SDG 1</b> No Poverty · <b>SDG 8</b> Decent Work &amp; Growth · <b>SDG 10</b> Reduced Inequalities.</li>
-            <li>Fits <b>Ekonomi MADANI</b> + BNM financial-inclusion agenda + MITI <b>i-ESG</b>.</li>
-          </ul>
-        </div>
-      </div>
-      <div class="oneliner" style="max-width:100%; margin-top:8mm"><strong>Impact KPI:</strong> help <em>N</em> households build a 1-month emergency buffer within 12 months — a measurable outcome, not a slogan.</div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 12 · Inclusion protects the commercial score and wins the ESG score</span></div>
-  </section>
+  <div class="foot on-dark">honeymoney.app</div>
+  <div class="pageno on-dark"><b>Page</b> 02</div>
+</section>
 
-  <!-- 13 · TEAM -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Team — why us</div>
-      <div class="criterion rel">Credibility</div>
-    </div>
-    <h2>A business lead who knows the buyer, a tech lead who shipped the product</h2>
-    <div class="body">
-      <div class="team">
-        <div class="person">
-          <div class="who">Chua Kia Wah</div>
-          <div class="role">Business Lead — GTM, employer partnerships</div>
-          <p>Owns the B2B2C wedge: reaching employers, pilots, and the commercialisation story the Grand Final asks for.</p>
-          <span class="flag">🇲🇾 Malaysian citizen · MyKad (T3 eligibility)</span>
-        </div>
-        <div class="person">
-          <div class="who">Pong Woon Wei</div>
-          <div class="role">Tech Lead — full-stack, AI, internationalisation</div>
-          <p>Built the live product end-to-end: the knowledge-graph engine, multi-provider AI, on-device capture, and the six-view monitoring layer.</p>
-          <span class="flag" style="background:#1b6b8a">Shipped honeymoney.app · real build history</span>
-        </div>
-      </div>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 13 · Contact: team@honeymoney.app</span></div>
-  </section>
 
-  <!-- 14 · FINANCIALS / ROADMAP -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">Financials &amp; roadmap</div>
-      <div class="criterion comm">Commercial Viability</div>
-    </div>
-    <h2>What the next 3 years — and this round — buy</h2>
-    <div class="body">
-      <div class="timeline">
-        <div class="phase"><div class="yr">YEAR 1</div><h3>Pilot</h3><ul><li>3–5 employer pilots; refine seat pricing.</li><li>Target ~5k seats → early ARR.</li></ul></div>
-        <div class="phase"><div class="yr">YEAR 2</div><h3>Scale employers</h3><ul><li>Sales motion + HR partnerships.</li><li>~40k seats; departments/business tier.</li></ul></div>
-        <div class="phase"><div class="yr">YEAR 3</div><h3>Regional</h3><ul><li>~100k seats (≈RM4.8M ARR).</li><li>Multi-market, inclusive-credit pilot.</li></ul></div>
-      </div>
-      <div class="card" style="margin-top:8mm"><h3>Path to margin</h3><ul><li>Near-zero variable cost keeps <b>gross margin ~85%+</b> as seats grow; grant-funded runway means <b>no equity dilution</b> to reach the first pilots.</li></ul></div>
-      <p class="note">Figures are illustrative projections tied to the bottom-up model on Slide 7 — assumptions stated, not booked revenue.</p>
-    </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 14 · Milestones the money buys</span></div>
-  </section>
+<!-- ═══════════════ 03 · LIVE NOW ═══════════════ -->
+<section class="slide" style="background:var(--orange);">
+  <div style="position:absolute;top:0;left:0;right:0;height:104px;background:var(--orange);z-index:4;"></div>
+  <div class="banner tint" style="top:104px;height:250px;background-image:url('deck_assets/p03_0.jpeg');"></div>
 
-  <!-- 15 · ASK + RUBRIC ECHO -->
-  <section class="slide">
-    <div class="head">
-      <div class="kicker">The ask</div>
-      <div class="criterion esg">All criteria</div>
-    </div>
-    <h2>Help families plan together — without policing each other</h2>
-    <p class="lead">HoneyMoney is live now at <b>honeymoney.app</b>. Here's what we're asking for to reach the first pilots.</p>
-    <div class="body">
-      <div class="cols-3">
-        <div class="card"><h3>💰 Grant</h3><ul><li>Cradle <b>CIP Spark</b> (or MAIC award) to fund the pilot build — <b>no equity</b>.</li></ul></div>
-        <div class="card"><h3>🤝 Pilots</h3><ul><li><b>3–5 employers</b> willing to sponsor seats for their staff.</li></ul></div>
-        <div class="card"><h3>🧭 Mentors</h3><ul><li>Fintech + <b>regulatory</b> guidance and partner introductions.</li></ul></div>
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow inv">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:130px;z-index:6;">
+    <h2 class="big on-dark">Live Now</h2>
+    <p class="kicker" style="color:#fff;margin-top:10px;">Live now, not a concept</p>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:378px;display:flex;gap:16px;">
+    <div style="flex:1;">
+      <img src="deck_assets/p03_2.png" alt="HoneyMoney landing page"
+           style="width:100%;height:150px;object-fit:cover;object-position:top;border-radius:10px;border:3px solid var(--amber);background:#fff;" />
+      <div class="card" style="margin-top:10px;padding:10px 12px;border-radius:12px;text-align:center;">
+        <h3 style="font-size:19px;margin:0;">Live App</h3>
       </div>
-      <div class="echo">
-        <div><b>Technical</b>Live graph + swappable AI</div>
-        <div><b>Commercial</b>B2B2C, ~85% margin</div>
-        <div><b>Relevance</b>Malaysian couples, all wallets</div>
-        <div><b>Scalability</b>One engine, 3 personas</div>
-        <div><b>ESG</b>Inclusion, SDG 1·8·10</div>
+      <p style="color:#fff;font-size:15px;line-height:1.35;margin-top:8px;font-style:italic;">
+        Public app live at honeymoney.app &mdash; a real build, no backdated code</p>
+    </div>
+    <div style="flex:1;">
+      <img src="deck_assets/p03_3.png" alt="Dashboard"
+           style="width:100%;height:150px;object-fit:cover;object-position:top;border-radius:10px;border:3px solid var(--amber);background:#fff;" />
+      <div class="card" style="margin-top:10px;padding:10px 12px;border-radius:12px;text-align:center;">
+        <h3 style="font-size:19px;margin:0;">Dashboard</h3>
+      </div>
+      <p style="color:#fff;font-size:15px;line-height:1.35;margin-top:8px;font-style:italic;">
+        Expenditure by day, week and month &mdash; with forecast</p>
+    </div>
+    <div style="flex:1;">
+      <img src="deck_assets/p03_4.png" alt="Spending tree"
+           style="width:100%;height:150px;object-fit:cover;object-position:top;border-radius:10px;border:3px solid var(--amber);background:#fff;" />
+      <div class="card" style="margin-top:10px;padding:10px 12px;border-radius:12px;text-align:center;">
+        <h3 style="font-size:19px;margin:0;">Spending</h3>
+      </div>
+      <p style="color:#fff;font-size:15px;line-height:1.35;margin-top:8px;font-style:italic;">
+        Add by text, receipt scan, or a Telegram forward</p>
+    </div>
+    <div style="flex:1;">
+      <img src="deck_assets/p03_5.png" alt="Graph analytics"
+           style="width:100%;height:150px;object-fit:cover;object-position:top;border-radius:10px;border:3px solid var(--amber);background:#fff;" />
+      <div class="card" style="margin-top:10px;padding:10px 12px;border-radius:12px;text-align:center;">
+        <h3 style="font-size:19px;margin:0;">Analytics</h3>
+      </div>
+      <p style="color:#fff;font-size:15px;line-height:1.35;margin-top:8px;font-style:italic;">
+        Visual analytics on income versus spending</p>
+    </div>
+    <div style="flex:1;">
+      <img src="deck_assets/p03_6.png" alt="AI cost tracking"
+           style="width:100%;height:150px;object-fit:cover;object-position:top;border-radius:10px;border:3px solid var(--amber);background:#fff;" />
+      <div class="card" style="margin-top:10px;padding:10px 12px;border-radius:12px;text-align:center;">
+        <h3 style="font-size:19px;margin:0;">AI Tracking</h3>
+      </div>
+      <p style="color:#fff;font-size:15px;line-height:1.35;margin-top:8px;font-style:italic;">
+        Admin view tracking every AI call and its cost</p>
+    </div>
+  </div>
+
+  <div class="foot on-dark">honeymoney.app &middot; public pages served 24/7 from Cloudflare's edge</div>
+  <div class="pageno on-dark"><b>Page</b> 03</div>
+</section>
+
+
+<!-- ═══════════════ 04 · 3-BUCKET METHOD ═══════════════ -->
+<section class="slide" style="background:var(--orange);">
+  <div style="position:absolute;top:0;left:0;right:0;height:104px;background:var(--orange);z-index:4;"></div>
+  <div class="banner tint" style="top:104px;height:262px;background-image:url('deck_assets/p04_3.jpeg');"></div>
+
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow inv">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:150px;z-index:6;">
+    <h2 class="big on-dark" style="font-size:60px;">The 3-Bucket Method</h2>
+    <p style="font-size:44px;color:#fff;font-weight:300;letter-spacing:-1px;margin-top:4px;">
+      with a Score that Tells You if it Works</p>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:392px;">
+    <p style="color:#fff;font-size:21px;font-weight:800;margin-bottom:9px;">Where our money goes</p>
+    <div style="display:flex;gap:16px;">
+      <div class="card" style="flex:1;">
+        <h3>🏠 Must-Paid</h3>
+        <p>Rent, bills, essentials. Shared and visible to both partners, so nobody has to
+        guess what is still outstanding this month.</p>
+      </div>
+      <div class="card" style="flex:1;">
+        <h3>🐖 Savings</h3>
+        <p>Set as a percentage and moved before it can be spent.
+        Security without willpower.</p>
+      </div>
+      <div class="card" style="flex:1;">
+        <h3>🔒 Privacy</h3>
+        <p>Personal money stays personal. No tracking, no judgment,
+        no exceptions.</p>
       </div>
     </div>
-    <div class="foot"><span class="brand">HoneyMoney</span><span>Slide 15 · <span class="mono">honeymoney.app</span> · MAIC Nexus 2026 · Track T3</span></div>
-  </section>
+
+    <p style="color:#fff;font-size:21px;font-weight:800;margin:14px 0 9px;">How our money works</p>
+    <div class="card" style="padding:14px 22px;">
+      <h3 style="display:inline;">💗 Health Score</h3>
+      <span style="font-size:17px;margin-left:12px;">
+        Fail &middot; Pass &middot; Good &middot; Excellent &mdash; and every point traceable
+        down to the records behind it, so the number can be argued with.</span>
+    </div>
+  </div>
+
+  <div class="pageno on-dark"><b>Page</b> 04</div>
+</section>
+
+
+<!-- ═══════════════ 05 · PRODUCT EXPERIENCE ═══════════════ -->
+<section class="slide">
+  <div class="brand"><svg style="color:var(--orange)"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:170px;width:400px;">
+    <h2 class="big" style="font-size:72px;">Product<br/>Experience</h2>
+    <div style="font-size:60px;color:var(--orange);line-height:0.6;margin:44px 0 14px;">&rdquo;</div>
+    <p style="font-size:23px;line-height:1.5;">
+      Add a spend in seconds,<br/>
+      forward a screenshot,<br/>
+      or scan a receipt.<br/>
+      No bank link.<br/>
+      No forms.<br/>
+      No spreadsheet.
+    </p>
+  </div>
+
+  <div style="position:absolute;left:520px;right:56px;top:150px;display:grid;grid-template-columns:1fr 1fr;gap:38px 40px;">
+    <div>
+      <div style="font-size:34px;">🧾</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;">Easy Capture</h3>
+      <p style="font-size:17px;line-height:1.45;">
+        Forward an e-wallet screenshot to the Telegram bot, or scan a receipt with
+        on-device OCR that spends no tokens at all.
+        <strong>No bank connection required.</strong></p>
+    </div>
+    <div>
+      <div style="font-size:34px;">📊</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;">Dashboards</h3>
+      <p style="font-size:17px;line-height:1.45;">
+        Spending by day, week and month, with a forward-looking forecast built in.</p>
+    </div>
+    <div>
+      <div style="font-size:34px;">🌏</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;">Language &amp; Currency</h3>
+      <p style="font-size:17px;line-height:1.45;">
+        Six languages and multiple currencies, so every family member can actually
+        use it &mdash; not just the one who set it up.</p>
+    </div>
+    <div>
+      <div style="font-size:34px;">⭐</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;">Sees It Coming</h3>
+      <p style="font-size:17px;line-height:1.45;">
+        The forecast doesn't just report. It warns: &ldquo;Short by the 24th at this
+        pace &mdash; RM120 less on dining fixes it.&rdquo;</p>
+    </div>
+  </div>
+
+  <div class="foot">honeymoney.app</div>
+  <div class="pageno"><b>Page</b> 05</div>
+</section>
+
+
+<!-- ═══════════════ 06 · ARCHITECTURE & AI ═══════════════ -->
+<section class="slide" style="background:var(--orange);">
+  <div class="banner tint" style="top:0;height:330px;background-image:url('deck_assets/p06_1.jpeg');"></div>
+
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow inv">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:118px;z-index:6;">
+    <h2 class="big on-dark">Architecture &amp;<br/>AI-Support</h2>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:360px;display:flex;gap:22px;">
+    <div style="flex:1;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#EAF7C8;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;">1</div>
+      <p style="color:#fff;font-size:13px;font-weight:800;letter-spacing:1.2px;margin-top:14px;">LAYER 1</p>
+      <p style="color:#fff;font-size:18px;font-weight:800;margin-top:3px;">Next.js Progressive Web App</p>
+      <p style="color:#fff;font-size:15px;line-height:1.4;margin-top:5px;opacity:0.95;">
+        Lightweight front end, works on any device, nothing to install.</p>
+    </div>
+    <div style="flex:1;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#FDE68A;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;">2</div>
+      <p style="color:#fff;font-size:13px;font-weight:800;letter-spacing:1.2px;margin-top:14px;">LAYER 2</p>
+      <p style="color:#fff;font-size:18px;font-weight:800;margin-top:3px;">PocketBase knowledge graph</p>
+      <p style="color:#fff;font-size:15px;line-height:1.4;margin-top:5px;opacity:0.95;">
+        Self-hosted, single-tenant, no third-party processor. Encrypted at rest, and an
+        append-only hash-chained ledger.</p>
+    </div>
+    <div style="flex:1;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#FCD34D;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;">3</div>
+      <p style="color:#fff;font-size:13px;font-weight:800;letter-spacing:1.2px;margin-top:14px;">LAYER 3</p>
+      <p style="color:#fff;font-size:18px;font-weight:800;margin-top:3px;">Telegram Bot + API</p>
+      <p style="color:#fff;font-size:15px;line-height:1.4;margin-top:5px;opacity:0.95;">
+        Screenshots and receipts. Multilingual, multi-currency.
+        No bank connection needed.</p>
+    </div>
+    <div style="flex:1;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#FBBF24;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;">4</div>
+      <p style="color:#fff;font-size:13px;font-weight:800;letter-spacing:1.2px;margin-top:14px;">LAYER 4</p>
+      <p style="color:#fff;font-size:18px;font-weight:800;margin-top:3px;">Switchable AI</p>
+      <p style="color:#fff;font-size:15px;line-height:1.4;margin-top:5px;opacity:0.95;">
+        Gemini Flash, Groq, or local Ollama &mdash; chosen per deployment.
+        Cost tracked per call. No vendor lock-in.</p>
+    </div>
+  </div>
+
+  <div class="card" style="position:absolute;left:56px;right:56px;bottom:64px;padding:14px 20px;">
+    <p style="font-size:17px;line-height:1.42;">
+      <strong>Honey does not do the arithmetic.</strong> Every figure a user sees is
+      computed by the same function behind the H-Score, then each number in the model's
+      prose is checked against that allowlist &mdash; <strong>one invented figure discards
+      the whole answer</strong> in favour of a deterministic template.</p>
+  </div>
+
+  <div class="foot on-dark">Cost-free AI calls within free-tier limits to start &mdash; e.g. Google's $300 AI credit</div>
+  <div class="pageno on-dark"><b>Page</b> 06</div>
+</section>
+
+
+<!-- ═══════════════ 07 · MARKET & TRACTION ═══════════════ -->
+<section class="slide">
+  <div class="banner tint" style="top:0;height:290px;background-image:url('deck_assets/p07_0.jpeg');"></div>
+
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:120px;z-index:6;">
+    <h2 class="big on-dark">Market &amp; Traction</h2>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:304px;">
+    <p style="color:var(--orange);font-size:22px;font-weight:800;">Market size</p>
+    <p style="font-size:18px;line-height:1.45;margin-top:3px;">
+      <strong>8.2 million Malaysian households</strong> (DOSM, 2024), averaging
+      <strong>1.8 income earners</strong> each &mdash; so shared-versus-private money is the
+      norm, not a niche. Beachhead: urban dual-income couples, where the friction is daily.</p>
+
+    <p style="color:var(--orange);font-size:22px;font-weight:800;margin-top:12px;">Gap</p>
+    <p style="font-size:18px;line-height:1.45;margin-top:3px;">
+      Existing tools serve one of two ends: bank apps that see only their own bank, or
+      spreadsheets that see everything but demand discipline nobody sustains.</p>
+
+    <p style="color:var(--orange);font-size:22px;font-weight:800;margin-top:12px;">Where we sit</p>
+    <p style="font-size:18px;line-height:1.45;margin-top:3px;">
+      The daily-use layer across every wallet, with a couple-aware privacy model that a
+      bank-owned app structurally cannot offer.</p>
+
+    <p style="color:var(--orange);font-size:22px;font-weight:800;margin-top:12px;">Evidence today</p>
+    <p style="font-size:18px;line-height:1.45;margin-top:3px;">
+      A working public build at honeymoney.app; the AI pipeline running with per-call cost
+      tracking; a household ledger with backup and restore proven end to end.
+      <span style="color:#B45309;font-weight:700;">[Pilot numbers &mdash; users, weekly active,
+      retention &mdash; to be filled from the pilot before submission.]</span></p>
+  </div>
+
+  <div class="foot">honeymoney.app</div>
+  <div class="pageno"><b>Page</b> 07</div>
+</section>
+
+
+<!-- ═══════════════ 08 · BUSINESS MODEL ═══════════════ -->
+<section class="slide">
+  <div class="banner" style="top:0;height:290px;background-image:url('deck_assets/p08_0.jpeg');"></div>
+
+  <div class="brand"><svg style="color:var(--orange)"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:126px;z-index:6;">
+    <h2 class="big on-dark">Business Model</h2>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:330px;display:flex;gap:22px;">
+    <div style="flex:1;background:var(--orange);border-radius:20px;padding:24px 26px;color:#fff;">
+      <div style="font-size:32px;">👥</div>
+      <h3 style="font-size:25px;font-weight:800;margin:10px 0 10px;">Strategy &amp; Growth</h3>
+      <p style="font-size:17px;line-height:1.5;">
+        Free for households, forever: 3-bucket tracking, the Money Health Score and
+        forecasts. That is the acquisition engine, not a trial &mdash; a budgeting tool
+        people abandon earns nothing at any price.</p>
+    </div>
+    <div style="flex:1;background:#F59E0B;border-radius:20px;padding:24px 26px;color:#fff;">
+      <div style="font-size:32px;">💲</div>
+      <h3 style="font-size:25px;font-weight:800;margin:10px 0 10px;">Revenue</h3>
+      <p style="font-size:17px;line-height:1.5;">
+        <strong>B2B2C employee financial wellness.</strong> Employers sponsor seats as a
+        benefit; households never pay to keep tracking. A premium plan serves households
+        who want more. Licensed-partner referrals come later, disclosed, and never on the
+        free tier's data.</p>
+    </div>
+  </div>
+
+  <div class="foot">honeymoney.app</div>
+  <div class="pageno"><b>Page</b> 08</div>
+</section>
+
+
+<!-- ═══════════════ 09 · ROADMAP & ASK ═══════════════ -->
+<section class="slide">
+  <div class="banner tint" style="top:0;height:290px;background-image:url('deck_assets/p09_0.jpeg');background-position:center 30%;"></div>
+
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:110px;z-index:6;">
+    <h2 class="big on-dark">Development<br/>Roadmap</h2>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:318px;display:flex;gap:18px;">
+    <div class="card" style="flex:1;border:3px solid var(--orange);padding:16px 18px;">
+      <h3 style="font-size:21px;">Pilot <span style="color:var(--orange);font-size:14px;">Phase 1 &middot; 0&ndash;12 mth</span></h3>
+      <p style="font-size:16px;line-height:1.4;">
+        &bull; 1,000-household pilot, target <strong>500 sponsored seats</strong><br/>
+        &bull; Early retention KPIs</p>
+    </div>
+    <div class="card" style="flex:1;border:3px solid var(--orange);padding:16px 18px;">
+      <h3 style="font-size:21px;">Scale <span style="color:var(--orange);font-size:14px;">Phase 2 &middot; 12&ndash;24 mth</span></h3>
+      <p style="font-size:16px;line-height:1.4;">
+        &bull; National rollout to <strong>50,000 users</strong>, target 8,000 seats<br/>
+        &bull; Revenue from employer sponsorship + premium</p>
+    </div>
+    <div class="card" style="flex:1;border:3px solid var(--orange);padding:16px 18px;">
+      <h3 style="font-size:21px;">Expand <span style="color:var(--orange);font-size:14px;">Phase 3 &middot; 24&ndash;36 mth</span></h3>
+      <p style="font-size:16px;line-height:1.4;">
+        &bull; ASEAN B2B market, target <strong>30,000 seats</strong><br/>
+        &bull; High-value fintech partnerships</p>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;bottom:58px;">
+    <p style="font-size:22px;font-weight:800;">The Ask</p>
+    <p style="font-size:17px;line-height:1.5;margin-top:4px;">
+      We are raising <strong>RM150k</strong> for 18 months of runway, from a live product
+      toward the seat targets above &mdash; at RM48 per seat per year:
+      <strong>500 &times; RM48 = RM24k</strong> (Yr 1) &middot;
+      <strong>8,000 &times; RM48 = RM384k</strong> (Yr 2) &middot;
+      <strong>30,000 &times; RM48 = RM1.44m</strong> (Yr 3).<br/>
+      Use of funds: 60% engineering &middot; 25% people &middot; 15% Sdn Bhd incorporation and expenses.</p>
+  </div>
+
+  <div class="foot">honeymoney.app</div>
+  <div class="pageno"><b>Page</b> 09</div>
+</section>
+
+
+<!-- ═══════════════ 10 · MALAYSIA FIT & IMPACT ═══════════════ -->
+<section class="slide" style="background:var(--orange);">
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow inv">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:118px;">
+    <h2 class="big on-dark">Malaysia Fit &amp; Impact</h2>
+    <p class="kicker" style="color:#fff;margin-top:10px;">Why this matters here, and to whom</p>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:272px;display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+    <div class="card">
+      <h3 style="font-size:22px;">🏛️ National agenda</h3>
+      <p>Household financial resilience sits squarely inside the <strong>MADANI</strong>
+      cost-of-living agenda and <strong>Bank Negara Malaysia's</strong> financial literacy
+      priorities. HoneyMoney is a tool for the behaviour those policies ask for, not a
+      substitute for licensed advice.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:22px;">🌍 SDG alignment</h3>
+      <p><strong>SDG 1 (No Poverty)</strong> &mdash; an emergency buffer built by rule
+      rather than willpower. <strong>SDG 8 (Decent Work)</strong> &mdash; financial stress
+      follows people to work; employer-sponsored seats treat it as the workplace issue it
+      is.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:22px;">🔐 Privacy as a design rule</h3>
+      <p>No bank credentials are ever requested, receipt images are discarded after
+      confirmation, and the default receipt scan runs on-device. Consistent with
+      <strong>PDPA 2010</strong>; described as alignment, not certified compliance,
+      because no audit has been done.</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:22px;">💛 Who it reaches</h3>
+      <p>Free forever for households means the people under the most cost-of-living
+      pressure are not the ones priced out. Six languages, and a phone-first PWA that
+      installs on hardware families already own.</p>
+    </div>
+  </div>
+
+  <div class="foot on-dark">honeymoney.app</div>
+  <div class="pageno on-dark"><b>Page</b> 10</div>
+</section>
+
+
+<!-- ═══════════════ 11 · TEAM ═══════════════ -->
+<section class="slide" style="background:var(--orange);">
+  <div class="banner tint" style="top:88px;height:200px;background-image:url('deck_assets/p10_0.jpeg');"></div>
+  <div style="position:absolute;top:0;left:0;right:0;height:88px;background:var(--orange);z-index:4;"></div>
+
+  <div class="brand on-dark"><svg style="color:#fff"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow inv">&#8594;</div>
+
+  <div style="position:absolute;left:56px;top:126px;z-index:6;">
+    <h2 class="big on-dark" style="font-size:58px;">Our Team &mdash; JUST50</h2>
+  </div>
+
+  <!-- Cards start below the banner and must finish clear of the footer at
+       y=690. Three columns of quoted bio text is the tallest block in the deck,
+       so this slide is the one that overflows first when copy grows. -->
+  <div style="position:absolute;left:56px;right:56px;top:320px;display:flex;gap:20px;">
+    <div class="card ring" style="flex:1;padding:16px 18px;">
+      <div style="font-size:38px;color:var(--orange);line-height:0.5;margin-bottom:14px;">&rdquo;</div>
+      <p style="font-style:italic;font-weight:700;color:var(--orange);font-size:17px;line-height:1.4;">
+        Drives business strategy, partnerships and growth. Focused on making
+        HoneyMoney.app the go-to expenditure tracking app for Malaysian consumers,
+        couples and families.</p>
+      <p style="margin-top:14px;font-size:15px;font-weight:800;">Chua Kia Wah</p>
+      <p style="font-size:14px;color:#666;">Business Lead &middot; Malaysian Citizen</p>
+    </div>
+    <div class="card ring" style="flex:1;padding:16px 18px;">
+      <div style="font-size:38px;color:var(--orange);line-height:0.5;margin-bottom:14px;">&rdquo;</div>
+      <p style="font-style:italic;font-weight:700;color:var(--orange);font-size:17px;line-height:1.4;">
+        Architects the platform, from the local-first knowledge graph to the AI
+        integrations, while keeping the system lean and resilient. AI-award-winning
+        Tech Lead.</p>
+      <p style="margin-top:14px;font-size:15px;font-weight:800;">Pong Woon Wei</p>
+      <p style="font-size:14px;color:#666;">AI Tech Lead &middot; Full-Stack &amp; AI Engineer</p>
+    </div>
+    <div class="card ring" style="flex:1;padding:16px 18px;">
+      <div style="font-size:32px;">🤝</div>
+      <p style="font-style:italic;font-weight:700;color:var(--orange);font-size:17px;line-height:1.45;margin-top:10px;">
+        &bull; Pilot partners: employers and community groups offering HoneyMoney as a
+        wellbeing benefit<br/>
+        &bull; Licensed fintech partners for the Year 3 referral layer<br/>
+        &bull; Impact-driven investors</p>
+      <p style="margin-top:14px;font-size:15px;font-weight:800;">What We're Looking For</p>
+      <p style="font-size:14px;color:#666;">hello@honeymoney.app</p>
+    </div>
+  </div>
+
+  <div class="foot on-dark">honeymoney.app</div>
+  <div class="pageno on-dark"><b>Page</b> 11</div>
+</section>
+
+
+<!-- ═══════════════ 12 · WHY HONEYMONEY ═══════════════ -->
+<section class="slide">
+  <div class="banner tint" style="top:104px;height:290px;background-image:url('deck_assets/p11_0.jpeg');"></div>
+
+  <div class="brand"><svg style="color:var(--orange)"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+  <div class="arrow">&#8592;</div>
+
+  <div style="position:absolute;left:56px;top:170px;z-index:6;">
+    <h2 class="big on-dark">Why HoneyMoney.app</h2>
+  </div>
+
+  <div style="position:absolute;left:56px;right:56px;top:432px;">
+    <p style="font-size:22px;font-weight:800;">Problem statement</p>
+    <p style="font-size:19px;line-height:1.5;margin-top:4px;">
+      Fragmented, exhausting household money management for consumers, couples and
+      families. Overspending gets discovered after the fact.</p>
+
+    <p style="font-size:22px;font-weight:800;margin-top:16px;">Our solution</p>
+    <p style="font-size:19px;line-height:1.5;margin-top:4px;">
+      One app that captures every spend in seconds, scores your monthly money health, and
+      warns you before you run short &mdash; without ever connecting to your bank.
+      <strong>Live now at honeymoney.app.</strong></p>
+
+    <div style="margin-top:18px;display:flex;align-items:center;gap:22px;">
+      <span style="background:var(--orange);color:#fff;font-size:17px;font-weight:800;padding:13px 32px;border-radius:999px;">TRY IT LIVE</span>
+      <span style="font-size:16px;color:#555;">Contact &nbsp;<strong style="color:#111;">hello@honeymoney.app</strong></span>
+    </div>
+  </div>
+
+  <div class="pageno"><b>Page</b> 12</div>
+</section>
+
+
+<!-- ═══════════════ 13 · THANK YOU ═══════════════ -->
+<section class="slide">
+  <div class="brand"><svg style="color:var(--orange)"><use href="#hm-logo"/></svg><span>HoneyMoney</span></div>
+
+  <div style="position:absolute;left:64px;top:280px;">
+    <h1 class="mega">Thank you</h1>
+  </div>
+
+  <div style="position:absolute;left:64px;bottom:150px;">
+    <p style="font-size:32px;color:var(--orange);letter-spacing:-0.4px;">Happy Wife . Happy Life</p>
+    <p style="font-size:27px;font-weight:800;color:var(--orange);margin-top:4px;letter-spacing:-0.5px;">
+      The AI money layer for Malaysian Families</p>
+  </div>
+
+  <div style="position:absolute;right:56px;bottom:52px;font-size:27px;font-weight:800;letter-spacing:-0.5px;">
+    MAIC Nexus 2026 | Track T3
+  </div>
+</section>
 
 </body>
 </html>
