@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# HoneyMoney — the Next.js app on DOM Cloud
+#
+# Paste this into the site's  Setup → Deploy  tab (or POST it to the API).
+# It configures NGINX/Passenger ONLY. It deliberately does not clone or build
+# anything: the build is produced on the laptop by push-build.ps1 and shipped
+# as a ~34 MB standalone bundle. Building on the host would need node_modules
+# (587 MB measured 2026-08-23) on a 1.5–5 GiB disk, and would rebuild the site
+# every time the platform re-ran a deploy.
+#
+# `source:` is absent ON PURPOSE — it replaces ~/public_html wholesale, which
+# would delete the bundle we just pushed.
+# ─────────────────────────────────────────────────────────────────────────────
+
+features:
+  - node lts        # Passenger needs a node on PATH; the bundle ships its own deps
+  - ssl letsencrypt
+
+nginx:
+  # Next.js standalone serves its own /_next/* assets, so this root only ever
+  # answers for files physically in public/. Everything else falls to Passenger.
+  root: public_html/public
+  passenger:
+    enabled: "on"
+    app_root: public_html
+    app_env: production
+    # start-app.sh sources ~/.env.honeymoney (secrets live there, not in this
+    # file, which is committed) and then execs the standalone server.
+    app_start_command: bash ./start-app.sh
+  locations:
+    # PocketBase attachments and the Next.js image routes are the only large
+    # responses this origin serves; everything else is HTML/JSON. Outbound is
+    # metered (2 GB/mo free, 20 GiB Lite), so let the browser cache.
+    - match: /_next/static
+      expires: 30d
+
+commands:
+  - mkdir -p ~/public_html/public
+  - touch ~/.env.honeymoney && chmod 600 ~/.env.honeymoney

@@ -1,0 +1,15 @@
+# This repo is developed on Windows with core.autocrlf=true, which is right for
+# almost everything here and wrong for the files that are shipped to a Linux
+# host and executed there.
+#
+# deploy/domcloud/push-build.ps1 copies start-app.sh into the bundle verbatim
+# and runs it as Passenger's app_start_command; sync-embeds.mjs embeds
+# pb-start.sh / pb-run.sh into the deployment YAMLs. A checkout that turned
+# those into CRLF would ship `set -euo pipefail\r` to bash, which fails with an
+# error naming an option nobody wrote. It would not fail here — only on the
+# host, after the ledger had already moved.
+*.sh text eol=lf
+
+# Pasted into DOM Cloud's dashboard, and they carry heredoc'd shell inside a
+# YAML block scalar, so the same reasoning applies to their line endings.
+deploy/domcloud/*.yml text eol=lf

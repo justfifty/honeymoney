@@ -95,3 +95,11 @@ deploy/.pb-encryption-key
 # R2 API credentials used by deploy/setup-r2-backups.mjs to configure PocketBase.
 # Scoped to the backups bucket, but still a credential.
 deploy/.r2-credentials.json
+
+# SSH keypair used to deploy to DOM Cloud (deploy/domcloud/README.md). The
+# PUBLIC half is meant to be pasted into the DOM Cloud dashboard; the private
+# half is the only credential this machine holds for the host, so it never
+# goes near the repo.
+deploy/domcloud/id_domcloud
+deploy/domcloud/id_domcloud.pub
+deploy/domcloud/.host
