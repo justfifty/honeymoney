@@ -24,13 +24,34 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB = path.join(ROOT, "web");
-const NEXT_STATIC = path.join(WEB, ".next", "static");
+// Which build's client assets go into the snapshot. It MUST be the build that
+// the --base origin is serving, or the HTML will reference chunk hashes that
+// are not in dist/_next/static, Cloudflare Pages will answer those with its
+// fallback HTML at status 200, and the page renders with no stylesheet — which
+// is what "the login page is haywire" looked like on 2026-08-24.
+//
+// It used to be hardcoded to .next, which was right only while the origin was
+// this laptop. Now the origin is DOM Cloud, running the bundle push-build.ps1
+// makes in .next-dc, and a next.config.ts change was enough to move two chunk
+// hashes. Same variable name next.config.ts uses, so the two cannot disagree:
+//
+//   NEXT_DIST_DIR=.next-dc node scripts/build-static-site.mjs --base https://honeymoney-app.domcloud.dev
+// Defaults to .next-dc for the same reason --base defaults to DOM Cloud: that
+// is the build the origin runs. `.next` is this laptop's, and pairing it with
+// the DOM Cloud origin is precisely the mismatch described above.
+const NEXT_STATIC = path.join(WEB, process.env.NEXT_DIST_DIR || ".next-dc", "static");
 const PUBLIC = path.join(WEB, "public");
 const PAGES = path.join(ROOT, "deploy", "pages");
 const DIST = path.join(PAGES, "dist");
 
+// The default is the DOM CLOUD origin, not localhost, because that is what
+// honeymoney.app actually proxies to since 2026-08-24. It used to default to
+// the laptop, and leaving it that way would mean `npm run site:build` quietly
+// snapshots one build while the origin serves another — the failure this file
+// now guards against twice over (see NEXT_STATIC above). Pass --base
+// http://localhost:3000 deliberately if you are snapshotting the laptop.
 const argBase = process.argv.indexOf("--base");
-const BASE = (argBase > -1 ? process.argv[argBase + 1] : "http://localhost:3000").replace(/\/+$/, "");
+const BASE = (argBase > -1 ? process.argv[argBase + 1] : "https://honeymoney-app.domcloud.dev").replace(/\/+$/, "");
 
 // The public surface: every route here must render without PocketBase, because
 // the snapshot has no database behind it. Keep this list and the SNAPSHOT set

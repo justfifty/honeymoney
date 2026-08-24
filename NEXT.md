@@ -1953,11 +1953,44 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     check it, so the same key worked from one shell and hung in another. The migration
     script now repairs the ACL itself, idempotently.
 
-    ⬜ **Remaining:** the Next.js app site (a second DOM Cloud website — `app.deploy.yml`
-    still carries the `ssl letsencrypt` fix but has not been deployed), then repoint
-    `POCKETBASE_URL`, then add `-PbUrl` to the `HoneyMoney-Backup` task. Until that repoint
-    happens the live site still reads the laptop's PocketBase, and the DOM Cloud copy is a
-    verified standby — which is the reversible order this was supposed to go in.
+    ### 2026-08-24 (evening) — honeymoney.app is 24/7, and there is one database again
+
+    ✅ **The app runs on DOM Cloud** at `honeymoney-app.domcloud.dev` and
+    **`honeymoney.app` now serves its signed-in half from there.** One constant in
+    `deploy/pages/_worker.js` — `ORIGIN_HOST`, moved off the laptop's tunnel. No DNS
+    change, no new vendor, the public URL untouched.
+
+    🛑 **The first deploy of that changed nothing, and every check said it worked.**
+    `wrangler.toml` sets `pages_build_output_dir = "dist"`, so the worker that ships is
+    `dist/_worker.js`, written by `scripts/build-static-site.mjs` — not the file that was
+    edited. Deploying without rebuilding shipped the previous day's worker. The deployment
+    was Production on `main`; every route returned 200; `/api/health` was byte-identical
+    between origins; build IDs and chunk hashes matched. **Two correct copies of one app
+    cannot be told apart from their answers.** It was settled by asking the DESTINATION:
+    a tagged request to honeymoney.app, then grep on DOM Cloud's nginx access log. Absent
+    before the rebuild, present after — logged as HTTP/2.0 where direct curl logs
+    HTTP/1.1. **Order is `site:build` then `site:deploy`**, and that is also the rollback
+    order.
+
+    ✅ **The two-database problem is closed.** `web/.env.local` now points at
+    `https://honeymoney-pb.domcloud.dev` with the rotated password, so on the laptop's
+    next restart it reads the same database the public site does. `HoneyMoney-Backup` was
+    repointed with `-PbUrl` and **run to prove it** — a backup created on the live
+    database, verified present. Without that flag the script defaults to
+    `127.0.0.1:8090`, which is now a stale copy: it would have reported success nightly
+    while backing up the wrong database.
+
+    ✅ **Backup history is continuous.** The DOM Cloud PocketBase inherited the R2 S3
+    settings with `pb_data`, so both instances write to the same bucket. A final laptop
+    snapshot was taken before the switch and sits alongside the new ones.
+
+    ⚠️ **One window remains until the laptop is restarted.** The process serving port 3000
+    started before the env change and still holds `POCKETBASE_URL=127.0.0.1:8090` in
+    memory, so `origin.honeymoney.app` — still resolving, still reachable — would write to
+    the stale copy. Nothing routes there any more (the worker does not), so it takes
+    someone typing that hostname deliberately. **Use honeymoney.app until the restart.**
+    The restart needs `deploy/install-restart-task.ps1` run once, elevated; that is the
+    same step blocking the `/setup` AI engine picker.
 
 15. [ ] **Per-household AI keys — Ask Honey without an admin.** Raised 2026-08-23.
 
