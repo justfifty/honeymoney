@@ -94,7 +94,7 @@
   <div class="head">
     <span class="badge">MAIC Nexus 2026 &middot; Track T3</span>
     <h1>AI Disclosure Statement &mdash; HoneyMoney</h1>
-    <p class="sub"><strong>Team JUST50</strong> &middot; Updated 24 August 2026</p>
+    <p class="sub"><strong>Team JUST50</strong> &middot; Updated 25 August 2026</p>
   </div>
 
   <h2>What the AI does</h2>
@@ -121,16 +121,19 @@
   <p>Providers are switchable per deployment, with a per-call token and cost ledger:
   <strong>Google Gemini Flash</strong> (multimodal, the only one doing image OCR),
   <strong>Groq</strong> (text insight), and <strong>Ollama</strong> (local &mdash; nothing
-  leaves the machine). A household may supply its own key; it is encrypted
+  leaves the machine; hosts open models such as DeepSeek and Qwen). A household may supply its own key; it is encrypted
   (<strong>AES-256-GCM</strong>) before storage, never returned to a browser, and validated
   against the provider when saved. Extraction sends the forwarded image. Insight sends
   derived, minimised aggregates &mdash; never a raw ledger.</p>
 
   <h2>Privacy</h2>
-  <p>The default in-app receipt scan runs <strong>on-device OCR</strong> (Tesseract, in the
-  browser) and contacts no model at all. Private Spendings buckets are excluded from shared
-  household views. Data is isolated per household, settings are encrypted at rest, and
-  backups are encrypted and held off-site.</p>
+  <p><strong>AI features are off until a household switches them on.</strong> Consent is
+  asked per purpose and recorded in an append-only ledger &mdash; withdrawal included &mdash;
+  and a one-click export returns everything held. The default in-app receipt scan runs
+  <strong>on-device OCR</strong> (Tesseract, in the browser), reads itemised line items, and
+  contacts no model at all. Private Spendings buckets are excluded from shared household
+  views. Data is isolated per household, settings are encrypted at rest, and backups are
+  encrypted, held off-site, and <strong>proven restorable</strong>.</p>
 
   <h2>AI used to build HoneyMoney</h2>
   <p>We used <strong>AI coding assistants</strong> during development. Architecture, data
