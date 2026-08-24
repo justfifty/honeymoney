@@ -89,7 +89,13 @@ export interface AppendInput {
   before?: Record<string, unknown> | null;
   after?: Record<string, unknown> | null;
   actorId?: string;
-  actorEmail?: string;
+  /**
+   * A NON-EMAIL label for the actor, used only where there is no user to
+   * resolve — e.g. "telegram" for the bot path. Human actors are recorded by
+   * `actorId` alone and resolved to a display name at render time, so no email
+   * is ever written next to a money record. See actorLabels() below.
+   */
+  actorLabel?: string;
 }
 
 // Append one entry. The (tenant, seq) unique index is what makes this safe under
@@ -128,7 +134,8 @@ export async function append(input: AppendInput): Promise<LedgerEntry | null> {
         before: input.before ?? null,
         after: input.after ?? null,
         actor: input.actorId ?? "",
-        actor_email: input.actorEmail ?? "",
+        // Column kept (renaming needs a migration); an email is never put in it.
+        actor_email: input.actorLabel ?? "",
         at,
       });
     } catch (err) {
@@ -197,6 +204,23 @@ export async function historyFor(tenantId: string, recordId: string): Promise<Le
     filter: `tenant = ${pbStr(tenantId)} && record_id = ${pbStr(recordId)}`,
     sort: "seq",
   });
+}
+
+/**
+ * Resolve actor user-IDs to household display names, for the ledger view.
+ *
+ * One query for the whole page rather than a lookup per row, and it deliberately
+ * resolves ONLY within the caller's tenant: an actor ID from another household
+ * falls through to "system" instead of leaking that a name exists.
+ */
+export async function actorLabels(tenantId: string): Promise<Map<string, string>> {
+  const rows = await pbList<{ user: string; display_name: string }>("members", {
+    filter: `tenant = ${pbStr(tenantId)}`,
+    perPage: 200,
+  });
+  const out = new Map<string, string>();
+  for (const r of rows) if (r.user) out.set(r.user, r.display_name);
+  return out;
 }
 
 export async function recentEntries(tenantId: string, limit = 100): Promise<LedgerEntry[]> {

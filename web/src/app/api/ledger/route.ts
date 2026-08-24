@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { isDatabaseConfigured } from "@/lib/config";
 import { requireContext } from "@/lib/household";
-import { listAnchors, recentEntries, verifyChain } from "@/lib/ledger";
+import { listAnchors, recentEntries, verifyChain , actorLabels } from "@/lib/ledger";
 import { apiError } from "@/lib/apiError";
 
 export const runtime = "nodejs";
@@ -21,10 +21,11 @@ export async function GET(request: NextRequest) {
     const ctx = await requireContext();
     const limit = Number(new URL(request.url).searchParams.get("limit") ?? 100);
 
-    const [chain, entries, anchors] = await Promise.all([
+    const [chain, entries, anchors, labels] = await Promise.all([
       verifyChain(ctx.tenant.id),
       recentEntries(ctx.tenant.id, Number.isFinite(limit) ? limit : 100),
       listAnchors(ctx.tenant.id),
+      actorLabels(ctx.tenant.id),
     ]);
 
     return NextResponse.json({
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
         recordId: e.record_id,
         hash: e.hash,
         prevHash: e.prev_hash,
-        actor: e.actor_email || "system",
+        actor: labels.get(e.actor) || e.actor_email || "system",
         at: e.at,
         before: e.before,
         after: e.after,

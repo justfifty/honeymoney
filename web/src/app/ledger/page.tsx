@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isDatabaseConfigured } from "@/lib/config";
 import { getContext, can } from "@/lib/household";
-import { listAnchors, recentEntries, verifyChain } from "@/lib/ledger";
+import { listAnchors, recentEntries, verifyChain, actorLabels } from "@/lib/ledger";
 import AnchorButton from "./AnchorButton";
 
 export const dynamic = "force-dynamic";
@@ -36,10 +36,13 @@ export default async function LedgerPage() {
   // Verified on every page load, not read from a stored flag — the whole point
   // is that this recomputes the hashes and would catch a database edit made
   // behind the app's back.
-  const [chain, entries, anchors] = await Promise.all([
+  const [chain, entries, anchors, labels] = await Promise.all([
     verifyChain(ctx.tenant.id),
     recentEntries(ctx.tenant.id, 200),
     listAnchors(ctx.tenant.id, 10),
+    // Names come from the household roster now, not from an email stored on the
+    // entry. Same information on screen, no global identifier at rest.
+    actorLabels(ctx.tenant.id),
   ]);
 
   const latestAnchor = anchors[0];
@@ -192,7 +195,7 @@ export default async function LedgerPage() {
                 <span className="min-w-0 flex-1 truncate text-xs text-zinc-500">
                   {describe(e.after ?? e.before)}
                 </span>
-                <span className="shrink-0 text-xs text-zinc-400">{e.actor_email || "system"}</span>
+                <span className="shrink-0 text-xs text-zinc-400">{labels.get(e.actor) || e.actor_email || "system"}</span>
                 <span className="shrink-0 text-xs text-zinc-400">
                   {new Date(e.at).toLocaleString("en-MY", {
                     day: "numeric",

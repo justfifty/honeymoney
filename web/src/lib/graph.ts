@@ -140,7 +140,7 @@ export async function ingestReceipt(
     collection: "transactions",
     recordId: tx.id,
     after: body,
-    actorEmail: source, // e.g. "telegram" — no logged-in actor on that path
+    actorLabel: source, // e.g. "telegram" — no logged-in actor on that path
   });
 
   return {
@@ -277,7 +277,6 @@ export async function addManualTransaction(
       ...(attachments.length ? { attachments } : {}),
     },
     actorId: actor?.id,
-    actorEmail: actor?.email,
   });
 
   return {
@@ -380,7 +379,6 @@ export async function updateTransaction(
     before: before as unknown as Record<string, unknown>,
     after: after as unknown as Record<string, unknown>,
     actorId: actor?.id,
-    actorEmail: actor?.email,
   });
 
   return after;
@@ -413,7 +411,6 @@ export async function setTransactionVoided(
     before: before as unknown as Record<string, unknown>,
     after: after as unknown as Record<string, unknown>,
     actorId: actor?.id,
-    actorEmail: actor?.email,
   });
 
   return after;
