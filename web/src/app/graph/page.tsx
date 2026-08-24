@@ -126,6 +126,9 @@ export default async function GraphPage({
   }
 
   const maxFlow = Math.max(...edges.map((e) => e.flow), 1);
+  // Charts need something to draw, not merely something to list. An edge with a
+  // zero flow is as unchartable as no edge at all.
+  const hasFlow = edges.some((e) => e.flow > 0);
   const width = COL_X.income + NODE_W + 40;
 
   const rootLabel = "Household";
@@ -264,7 +267,26 @@ export default async function GraphPage({
       </div>
 
       <div className="mt-3 overflow-x-auto rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-        {nodes.length === 0 ? (
+        {nodes.length > 0 && !hasFlow ? (
+          // Nodes but nothing moving through them. Distinct from "no nodes":
+          // nothing is hidden by a filter here, the household simply has not
+          // recorded anything yet — so the honest thing to show is the way in,
+          // not a "clear the lens" hint that would send them looking for a
+          // filter that is not the problem.
+          <div className="flex min-h-56 flex-col items-center justify-center gap-2 py-12 text-center">
+            <span className="text-3xl">🌱</span>
+            <p className="text-sm font-medium">{tr("g.noflow.title")}</p>
+            <p className="max-w-xs text-xs text-zinc-500">{tr("g.noflow.hint")}</p>
+            {!isDemo && (
+              <Link
+                href="/record"
+                className="mt-1 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+              >
+                ➕ {tr("g.noflow.cta")}
+              </Link>
+            )}
+          </div>
+        ) : nodes.length === 0 ? (
           <div className="flex min-h-56 flex-col items-center justify-center gap-2 py-12 text-center">
             <span className="text-3xl">{view.focusBadge}</span>
             <p className="text-sm font-medium">{tr("g.empty.title", { label: view.focusLabel })}</p>

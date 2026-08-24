@@ -499,6 +499,12 @@ const en: Dict = {
   "g.empty.title": "No spend attributed to {label} this month.",
   "g.empty.hint": "Their transactions may be in earlier months — clear the lens to see the whole graph.",
   "g.empty.wholeGraph": "Whole graph",
+  // A brand-new household is seeded with starter buckets and no transactions, so
+  // it has NODES but no flow. The `g.empty.*` copy above assumes a filter hid
+  // something; this set is for the case where there is genuinely nothing yet.
+  "g.noflow.title": "Nothing to chart yet",
+  "g.noflow.hint": "Your buckets are set up. Add a spend or two and the graph fills in — it draws itself from your records.",
+  "g.noflow.cta": "Add your first spend",
   "g.closing": "This is the same graph the AI reasons over: when the red spending edges thicken faster than their bucket's amber allocation, Honey can see — structurally — which green goal edge gets squeezed, and warns the household before it happens.",
   "g.sankey.income": "INCOME",
   "g.sankey.buckets": "BUCKETS",
@@ -1460,6 +1466,9 @@ const ms: Dict = {
   "g.empty.title": "Tiada perbelanjaan dikaitkan dengan {label} bulan ini.",
   "g.empty.hint": "Transaksi mereka mungkin dalam bulan terdahulu — kosongkan lensa untuk melihat seluruh graf.",
   "g.empty.wholeGraph": "Seluruh graf",
+  "g.noflow.title": "Belum ada apa-apa untuk dicarta",
+  "g.noflow.hint": "Baldi anda sudah sedia. Tambah satu dua perbelanjaan dan graf akan terisi — ia melukis dirinya daripada rekod anda.",
+  "g.noflow.cta": "Tambah perbelanjaan pertama anda",
   "g.closing": "Ini graf yang sama yang ditaakul oleh AI: apabila tepi perbelanjaan merah menebal lebih pantas daripada peruntukan ambar baldinya, Honey dapat melihat — secara struktur — tepi matlamat hijau mana yang terhimpit, dan memberi amaran kepada isi rumah sebelum ia berlaku.",
   "g.sankey.income": "PENDAPATAN",
   "g.sankey.buckets": "BALDI",
