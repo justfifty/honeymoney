@@ -63,6 +63,45 @@ function EnvValue($key) {
 
 $sshArgs = @('-i', $KeyFile, '-p', $SshPort, '-o', 'StrictHostKeyChecking=accept-new')
 
+# Windows OpenSSH refuses a private key whose ACL lets anyone else read it, and
+# a file created in a repo folder inherits exactly such an ACL. It then falls
+# back to asking for a PASSWORD, which in a non-interactive run means hanging
+# until something times out rather than failing. Git Bash's ssh does not check
+# this, so the same key can work from one shell and be rejected in another.
+# Repairing it is idempotent and costs nothing when already correct.
+if (Test-Path $KeyFile) {
+  $acl = (icacls $KeyFile) -join ' '
+  if ($acl -match 'BUILTIN\\Users|Authenticated Users|Everyone') {
+    Write-Host "==> tightening ACL on $KeyFile (was readable by others)" -ForegroundColor Cyan
+    icacls $KeyFile /inheritance:r  | Out-Null
+    icacls $KeyFile /grant:r "$($env:USERNAME):(R)" | Out-Null
+  }
+}
+
+# PowerShell's pipeline emits UTF-8 WITH a BOM, and `"text" | ssh 'cat > file'`
+# therefore writes EF BB BF ahead of the first character. It broke this script
+# in two places on the first real migration:
+#   • ~/.env.pocketbase became "﻿PB_ENCRYPTION_KEY=...", so the variable
+#     the shell defined was named ﻿PB_ENCRYPTION_KEY, PB_ENCRYPTION_KEY was
+#     empty, pb-start.sh omitted --encryptionEnv, and PocketBase refused to open
+#     the encrypted pb_data. The restore was fine; it just could not be opened.
+#   • the restore script piped to `bash -s` began "﻿set -euo pipefail",
+#     which bash reported as "set: command not found" and carried on WITHOUT
+#     error handling — during the one operation that most needs it.
+# So: write with an explicit BOM-less encoder and scp the file, never pipe it.
+function Copy-TextNoBom([string]$Content, [string]$RemotePath) {
+  $tmp = [IO.Path]::GetTempFileName()
+  try {
+    [IO.File]::WriteAllText($tmp, $Content, (New-Object System.Text.UTF8Encoding $false))
+    $bytes = [IO.File]::ReadAllBytes($tmp)
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+      throw "refusing to ship a file that still starts with a BOM"
+    }
+    scp -i $KeyFile -P $SshPort -o StrictHostKeyChecking=accept-new $tmp "${SshTarget}:$RemotePath"
+    if ($LASTEXITCODE -ne 0) { throw "scp of $RemotePath failed" }
+  } finally { Remove-Item $tmp -Force -ErrorAction SilentlyContinue }
+}
+
 # -- 1. Fresh backup from the local PocketBase -------------------------------
 Write-Host "==> asking the local PocketBase for a fresh backup" -ForegroundColor Cyan
 $email = EnvValue 'POCKETBASE_ADMIN_EMAIL'; $password = EnvValue 'POCKETBASE_ADMIN_PASSWORD'
@@ -88,8 +127,14 @@ if (-not (Test-Path $keyPath)) {
 }
 $key = (Get-Content $keyPath -Raw).Trim()
 Write-Host "==> shipping the settings-encryption key" -ForegroundColor Cyan
-"PB_ENCRYPTION_KEY=$key" | ssh @sshArgs $SshTarget "cat > ~/.env.pocketbase && chmod 600 ~/.env.pocketbase && echo 'key installed'"
+Copy-TextNoBom "PB_ENCRYPTION_KEY=$key`n" '~/.env.pocketbase'
+# Prove the remote shell can actually READ the variable back, rather than
+# assuming the file arrived intact. An unreadable key is indistinguishable from
+# a missing one at PocketBase startup, and both are silent until the 500.
+$keyLen = (ssh @sshArgs $SshTarget 'chmod 600 ~/.env.pocketbase; set -a; . ~/.env.pocketbase; set +a; printf %s "${#PB_ENCRYPTION_KEY}"')
 if ($LASTEXITCODE -ne 0) { throw "could not install the encryption key" }
+if ([int]$keyLen -lt 1) { throw "the encryption key did not survive the trip: the remote shell reads PB_ENCRYPTION_KEY as empty (length $keyLen). Ship it again before restoring, or the restored pb_data cannot be opened." }
+Write-Host "    key installed and readable ($keyLen chars)" -ForegroundColor DarkGray
 
 # -- 3. Ship and restore ----------------------------------------------------
 Write-Host "==> shipping the backup" -ForegroundColor Cyan
@@ -115,7 +160,8 @@ rm -f ~/pb-migrate.zip pb.pid
 ls -la pb_data | head
 echo "restored"
 '@
-$remote | ssh @sshArgs $SshTarget 'bash -s'
+Copy-TextNoBom $remote '~/pb-restore.sh'
+ssh @sshArgs $SshTarget 'bash ~/pb-restore.sh; rc=$?; rm -f ~/pb-restore.sh; exit $rc'
 if ($LASTEXITCODE -ne 0) { throw "remote restore failed" }
 
 Write-Host "==> restarting the remote PocketBase" -ForegroundColor Cyan

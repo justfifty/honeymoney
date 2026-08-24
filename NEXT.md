@@ -1914,10 +1914,50 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
     curl its own `/api/backups`. If it does, the laptop leaves the backup loop entirely on
     Lite. The docs do not say either way, and this has not been tested — do not plan on it.
 
-    ⬜ **Still the same three dashboard steps, and they are the whole remaining blocker.**
-    This machine holds no credential for the DOM Cloud account — no username, no host, no
-    `.host` file, and nothing in `secrets/`. `app.honeymoney.app` and `pb.honeymoney.app`
-    do not resolve, so nothing has been deployed. Everything that can be automated is.
+    ### 2026-08-24 (later) — PocketBase is LIVE on DOM Cloud, and the ledger is on it
+
+    ✅ **`honeymoney-pb.domcloud.dev` is serving**, Lite plan, `sgp` (ARM64). `/api/health`
+    200, valid Let's Encrypt chain, `robots.txt` in place, SSH by key as `honeymoney-pb`,
+    PocketBase reporting **0.39.6** — the pin held on a host that would otherwise have
+    taken the current release.
+
+    ✅ **The ledger is migrated and VERIFIED BY READING IT BACK**, not by trusting the
+    restore's exit code. Every collection matched local counts: transactions 242, nodes
+    155, edges 77, ledger 20, members 13, tenants 9, app_users 8, hscore_snapshots 5,
+    costs 1. 24 collections restored including `tenant_ai_keys`. The laptop's `pb_data` was
+    never touched and the remote's previous copy is kept as `pb_data.replaced.<ts>`.
+
+    🛑 **Five defects were found by deploying rather than by reading.** In order:
+    `set -e` (the runner injects it, so the version guard's `HAVE=$(test -x …)` aborted the
+    deploy on a fresh host and left Passenger serving *"bash: ./pb-start.sh: No such file
+    or directory"*); **no SSH-keys page exists** in DOM Cloud, so the key now installs
+    itself from the deployment script; `min_instances` and `add_header` are **silently
+    dropped** by the runner's allowlists, the latter meaning the superuser UI was never
+    actually `noindex` — a `robots.txt` does that job now; and two **BOM** bugs below.
+
+    🛑 **PowerShell's pipeline writes a UTF-8 BOM, and it broke the migration twice.**
+    `"text" | ssh 'cat > file'` prepends `EF BB BF`. So `~/.env.pocketbase` began
+    `﻿PB_ENCRYPTION_KEY=…`, which defines a variable *named* `﻿PB_ENCRYPTION_KEY`
+    while `PB_ENCRYPTION_KEY` stays empty — `pb-start.sh` then omitted `--encryptionEnv`
+    and PocketBase refused to open the encrypted `pb_data`. The restore had worked
+    perfectly; it simply could not be opened. The same BOM turned the restore script's
+    first line into `set: command not found`, so the restore ran **without** error handling
+    during the one operation that most needs it. Both now write via an explicit BOM-less
+    encoder and `scp`, never a pipe, and the script refuses to ship a file that still
+    starts with a BOM. It also verifies the remote shell can *read* the key back, since an
+    unreadable key and a missing one are indistinguishable until the 500.
+
+    ⚠️ **Windows OpenSSH rejects a key whose ACL others can read** and then falls back to
+    prompting for a password — which in an unattended run is a hang, not an error. A key
+    generated inside the repo folder inherits exactly that ACL, and Git Bash's ssh does not
+    check it, so the same key worked from one shell and hung in another. The migration
+    script now repairs the ACL itself, idempotently.
+
+    ⬜ **Remaining:** the Next.js app site (a second DOM Cloud website — `app.deploy.yml`
+    still carries the `ssl letsencrypt` fix but has not been deployed), then repoint
+    `POCKETBASE_URL`, then add `-PbUrl` to the `HoneyMoney-Backup` task. Until that repoint
+    happens the live site still reads the laptop's PocketBase, and the DOM Cloud copy is a
+    verified standby — which is the reversible order this was supposed to go in.
 
 15. [ ] **Per-household AI keys — Ask Honey without an admin.** Raised 2026-08-23.
 
