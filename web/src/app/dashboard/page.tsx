@@ -99,12 +99,12 @@ export default async function Dashboard() {
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <PrivacyToggle hideLabel={tr("dash.privacy.hide")} showLabel={tr("dash.privacy.show")} />
-            {/* The four-link nav that used to sit here duplicated the tab bar
-                and More, on the one screen that should be quiet. Graph is the
-                one worth a shortcut: it is this page's own drill-down. */}
-            <Link href="/graph" className="text-sm text-amber-600 hover:underline">
-              🕸️ {tr("nav.graph")}
-            </Link>
+            {/* The in-page Graph shortcut that used to sit here is gone: Graph
+                is now a first-class tab beside Dashboard in both the header and
+                the bottom bar, so a link here would duplicate a control that is
+                permanently on screen. The empty-buckets state further down still
+                links to the graph, because there the point is not navigation —
+                it is "you have no buckets yet, here is where you build them". */}
           </div>
         </header>
 

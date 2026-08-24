@@ -62,6 +62,9 @@ export default function AddTransaction({
   // overwhelming common case, so that is where the form opens.
   const [category, setCategory] = useState<Category>(MINUS_CATEGORIES[0]);
   const direction = signOf(category);
+  // Income does not come FROM a bucket, so it is not asked for. `savings` is on
+  // the `+` side but is a TRANSFER into a tier-2 bucket, so it still needs one.
+  const isIncome = direction === "in" && category !== "savings";
   // Task 6. Both are remembered defaults in spirit — the common case is one
   // person logging their own routine spending, and that costs zero extra taps
   // because the control does not render for a household of one.
@@ -125,7 +128,9 @@ export default function AddTransaction({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          walletNodeId: bucket,
+          // Omitted for income: the API accepts an inflow with no bucket, and
+          // sending buckets[0] is what filed every salary against Must-paid.
+          ...(isIncome ? {} : { walletNodeId: bucket }),
           vendorLabel: vendor,
           amount: base,
           direction,
@@ -248,6 +253,15 @@ export default function AddTransaction({
         )}
       </div>
 
+      {/* DIRECTION FIRST. This sat BELOW the amount row, so the form asked
+          "how much?" before "in or out?" — and the answer changes what every
+          field under it means: the categories, and whether a Savings bucket is
+          a deposit or a withdrawal. Deciding the sign first also means the
+          number pad opens onto a form whose shape is already settled. */}
+      <div className="mt-3">
+        <SignPicker category={category} onChange={setCategory} lang={lang} />
+      </div>
+
       {/* The two things the app cannot guess, and the button. Amount leads: it is
           what the user came holding, and on a phone it opens the number pad. */}
       <div className="flex flex-wrap items-end gap-2">
@@ -278,19 +292,13 @@ export default function AddTransaction({
         </label>
         <button
           type="submit"
-          disabled={busy || !bucket}
+          disabled={busy || (!bucket && !isIncome)}
           className="min-h-11 rounded-lg bg-amber-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
         >
-          {busy ? tr("dash.add.saving") : tr("dash.add.submit")}
+          {busy ? tr("dash.add.saving") : tr(isIncome ? "dash.add.submitIn" : "dash.add.submit")}
         </button>
       </div>
 
-      {/* Task 1: the two buttons, and the categories behind them. Above the
-          bucket row because the sign decides what the bucket choices MEAN — a
-          Savings bucket reached via `+` is a deposit, via `−` a withdrawal. */}
-      <div className="mt-3">
-        <SignPicker category={category} onChange={setCategory} lang={lang} />
-      </div>
 
       {/* Task 6. Renders nothing at all for a household of one — see
           AttributionPicker on why a one-option control is furniture. */}
@@ -319,7 +327,16 @@ export default function AddTransaction({
 
       {/* Which bucket — one tap, not a dropdown. This is the 3-bucket model made
           visible at the moment of filing, and it is where a correction becomes
-          the household's own training data. */}
+          the household's own training data.
+          ⚠️ HIDDEN FOR INCOME. `tierFor()` in lib/recordKind.ts already returns
+          null for income and income_other — income does not come FROM a bucket,
+          it arrives from outside and the household's ALLOCATES edges decide where
+          it goes. This fieldset rendered regardless and defaulted to buckets[0],
+          so every salary was filed against Must-paid: the graph then showed a
+          household's pay originating inside its own rent bucket. `savings` keeps
+          the picker, because a savings deposit genuinely lands in a tier-2
+          bucket — it is a transfer, not an inflow. */}
+      {!isIncome && (
       <fieldset className="mt-3">
         <legend className="text-xs text-zinc-500">{tr("dash.add.bucketLabel")}</legend>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -344,6 +361,7 @@ export default function AddTransaction({
           })}
         </div>
       </fieldset>
+      )}
 
       {/* Defaults, disclosed. The label is the current value, not just "More". */}
       <div className="mt-3">

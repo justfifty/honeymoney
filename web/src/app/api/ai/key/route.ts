@@ -56,6 +56,42 @@ export async function GET() {
   }
 }
 
+/**
+ * Turn a provider's rejection into something a person can act on.
+ *
+ * lib/ai.ts throws `Groq 401: {"error":{"message":"Invalid API Key","type":…}}`,
+ * which is the right thing for a log and the wrong thing for a settings panel:
+ * the person pasting a key was shown raw provider JSON and had to infer that
+ * they had mistyped it. The status code carries the whole diagnosis, so use it,
+ * and keep the original text appended for anyone debugging.
+ */
+function explainProviderFailure(provider: AiProvider, raw: string): string {
+  const name = provider === "gemini" ? "Gemini" : provider === "groq" ? "Groq" : "Ollama";
+  const code = /\b(4\d\d|5\d\d)\b/.exec(raw)?.[1];
+  const detail = raw.slice(0, 200);
+
+  if (code === "401" || code === "403") {
+    return provider === "ollama"
+      ? `${name} refused the connection. Check the URL and that Ollama is running. (${detail})`
+      : `${name} rejected that key. Copy it again from the provider's console — keys are long and a truncated paste looks identical to a wrong one. (${detail})`;
+  }
+  if (code === "404") {
+    return `${name} does not recognise that model name. Leave the model field empty to use the default. (${detail})`;
+  }
+  if (code === "429") {
+    return `${name} is rate-limiting this key right now. The key is probably fine — try again in a minute. (${detail})`;
+  }
+  if (code && code.startsWith("5")) {
+    return `${name} had a server error, so the key could not be checked. Try again shortly. (${detail})`;
+  }
+  if (/fetch|ENOTFOUND|ECONNREFUSED|timeout|network/i.test(raw)) {
+    return provider === "ollama"
+      ? `Could not reach Ollama at that URL. It must be reachable from the server, not just from your own machine. (${detail})`
+      : `Could not reach ${name}. Check the server's internet access and try again. (${detail})`;
+  }
+  return `${name} rejected the request. (${detail})`;
+}
+
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
@@ -105,7 +141,10 @@ export async function POST(request: Request) {
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : "The engine rejected the request.";
-      return NextResponse.json({ error: scrub(raw, apiKey).slice(0, 300) }, { status: 400 });
+      return NextResponse.json(
+        { error: explainProviderFailure(provider, scrub(raw, apiKey)) },
+        { status: 400 },
+      );
     }
 
     const info = await setTenantAiKey(ctx.tenant.id, { provider, apiKey, url, model });

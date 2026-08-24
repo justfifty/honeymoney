@@ -129,6 +129,7 @@ export default async function RootLayout({
             labels={{
               record: tr("nav.record"),
               dashboard: tr("nav.dashboard"),
+              graph: tr("nav.graph"),
               hscore: tr("nav.hscore"),
               more: tr("more.title"),
             }}

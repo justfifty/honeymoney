@@ -164,7 +164,20 @@ export async function addManualTransaction(
   input: {
     vendorLabel: string;
     amount: number;
-    walletNodeId: string;
+    /**
+     * OPTIONAL, and only legitimately absent for an INFLOW.
+     *
+     * Income does not come from a bucket — it arrives from outside the household
+     * and the ALLOCATES edges decide where it goes. This was a required string,
+     * so the capture form had to send something, defaulted to buckets[0], and
+     * every salary was filed against Must-paid: the graph then showed a
+     * household's pay originating inside its own rent bucket, and per-bucket
+     * views counted it as bucket activity.
+     *
+     * A savings deposit still passes one, because it is a TRANSFER into a tier-2
+     * bucket rather than an inflow.
+     */
+    walletNodeId?: string;
     occurredAt?: string;
     memberId?: string;
     source?: string;
@@ -186,17 +199,26 @@ export async function addManualTransaction(
   actor?: Actor,
 ): Promise<IngestResult> {
   const vendorNodeId = await ensureVendorNode(tenantId, input.vendorLabel);
-  const wallet = await pbFirst<PBNode>(
-    "nodes",
-    `id = ${pbStr(input.walletNodeId)} && tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
-  );
-  if (!wallet) throw new Error("Unknown bucket for this household.");
-  const edgeId = await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId);
+
+  // A bucket is still REQUIRED for anything that leaves a bucket, and still
+  // verified to belong to this tenant. It is only optional for money coming in.
+  const wallet = input.walletNodeId
+    ? await pbFirst<PBNode>(
+        "nodes",
+        `id = ${pbStr(input.walletNodeId)} && tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
+      )
+    : null;
+  if (input.walletNodeId && !wallet) throw new Error("Unknown bucket for this household.");
+
+  // No SPENT_AT edge for an inflow, and that is the point: SPENT_AT means
+  // "this bucket paid this vendor". Income paid nobody, so inventing an edge
+  // from a bucket it never came from is what drew salaries as spending.
+  const edgeId = wallet ? await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId) : "";
 
   const body: Record<string, unknown> = {
     tenant: tenantId,
-    edge: edgeId,
-    wallet_node: wallet.id,
+    ...(edgeId ? { edge: edgeId } : {}),
+    ...(wallet ? { wallet_node: wallet.id } : {}),
     vendor_node: vendorNodeId,
     ...(input.memberId ? { member: input.memberId } : {}),
     amount: input.amount,
@@ -251,7 +273,7 @@ export async function addManualTransaction(
     // attached to this spend" is exactly the kind of fact an audit trail is for.
     after: {
       ...body,
-      vendor_label: wallet.label && input.vendorLabel,
+      vendor_label: input.vendorLabel,
       ...(attachments.length ? { attachments } : {}),
     },
     actorId: actor?.id,
@@ -260,9 +282,11 @@ export async function addManualTransaction(
 
   return {
     transactionId: tx.id,
-    walletNodeId: wallet.id,
+    // Empty for an inflow: there is no bucket, and the caller's success message
+    // says "income" rather than naming one. Callers must not assume a label.
+    walletNodeId: wallet?.id ?? "",
     vendorNodeId,
-    walletLabel: wallet.label,
+    walletLabel: wallet?.label ?? "",
     attachments,
     attachmentError,
   };

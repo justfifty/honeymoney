@@ -141,4 +141,31 @@ if ($LASTEXITCODE -ne 0) { throw "remote extract failed" }
 
 Remove-Item $stage -Recurse -Force
 Remove-Item $tarball -Force
+
+# ⚠️ WAIT FOR THE NEW PROCESS TO ACTUALLY SERVE, before anything reads the origin.
+#
+# touch tmp/restart.txt does not restart Passenger; it tells Passenger to respawn
+# on the NEXT request. So for a few seconds after this script "succeeds", the
+# origin is still answering from the OLD bundle. Anything that renders from it in
+# that window captures stale HTML and looks like the deploy silently did nothing
+# — which is exactly what happened twice on 2026-08-24: site:build snapshotted
+# the previous homepage, published it to the edge, and every check passed while
+# honeymoney.app showed the old page and the origin showed the new one.
+#
+# One request is enough to trigger the respawn; waiting for its response is what
+# proves the new process answered. The settle pause covers Next's own lazy
+# route compilation on first hit.
+if ($SshTarget -match '^([^@]+)@') {
+  $originGuess = $env:DEMO_SITE
+  if (-not $originGuess) { $originGuess = "https://$($Matches[1] -replace '_','-').domcloud.dev" }
+  Write-Host "==> warming $originGuess so the next reader sees the new build" -ForegroundColor Cyan
+  for ($i = 1; $i -le 12; $i++) {
+    try {
+      $r = Invoke-WebRequest -UseBasicParsing -Uri $originGuess -TimeoutSec 30
+      if ($r.StatusCode -eq 200) { Write-Host "    origin answered 200 on attempt $i" -ForegroundColor DarkGray; break }
+    } catch { }
+    Start-Sleep -Seconds 4
+  }
+  Start-Sleep -Seconds 3   # let lazily-compiled routes settle
+}
 Write-Host "==> done. Verify: curl -sI https://<your-host>/ " -ForegroundColor Green

@@ -56,25 +56,14 @@ export default async function Home() {
             ))}
           </ul>
 
-          {/* ONE primary CTA. This was three same-weight text links in a row —
-              demo, guide, log in — which is three ways of saying "you decide".
-              /demo, not /dashboard: it needs no login and no origin machine, so
-              it is the one destination here that still works when the laptop
-              serving the app is off. */}
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <Link
-              href="/demo"
-              className="inline-flex min-h-[3rem] items-center justify-center gap-2 rounded-full bg-amber-400 px-7 text-base font-bold text-zinc-950 shadow-lg shadow-amber-500/25 transition hover:bg-amber-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
-            >
-              {tr("home.ctaDemo")} <span aria-hidden>→</span>
-            </Link>
-            <p className="text-xs text-zinc-500">{tr("home.heroNote")}</p>
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
-              <Link href="/guide" className="text-zinc-500 hover:text-zinc-700 hover:underline dark:hover:text-zinc-300">{tr("home.ctaGuide")}</Link>
-              <span aria-hidden className="text-zinc-300 dark:text-zinc-700">·</span>
-              <Link href="/login" className="text-zinc-500 hover:text-zinc-700 hover:underline dark:hover:text-zinc-300">{tr("auth.login")}</Link>
-            </div>
-          </div>
+          {/* NO CTA BLOCK HERE, deliberately. "Open the live demo", the
+              "no sign-up needed" note, "How it works" and "Log in" all sat here
+              and were removed on request. TryItNow above is the primary action
+              and it needs no navigation at all — the visitor is already doing
+              the thing. The header still carries Log in and Sign up, and the
+              footer still links the demo and the guide, so nothing became
+              unreachable; the fold just stopped offering four alternatives to
+              the one control that matters. */}
 
           {/* The competition badge, demoted from the top of the fold to a
               credential under the CTA. It is a signal for judges, and it was
@@ -112,6 +101,19 @@ export default async function Home() {
             {tr("home.shot.caption")}
           </figcaption>
         </figure>
+
+        {/* The Sankey above is one of six views. Saying so directly under it is
+            the only place on the page where that claim is legible — a visitor
+            has just looked at the picture and is primed to ask "is this all of
+            it?". /gallery answers with the other five. */}
+        <div className="mx-auto mt-3 max-w-4xl text-center">
+          <Link
+            href="/gallery"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-zinc-300 bg-white px-5 text-sm font-semibold text-zinc-700 transition-colors hover:border-amber-400 hover:bg-amber-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-amber-700"
+          >
+            🕸️ {tr("home.shot.gallery")} <span aria-hidden>→</span>
+          </Link>
+        </div>
       </section>
 
       {/* ---------- HOW IT WORKS ---------- */}
@@ -177,59 +179,13 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ---------- FINAL CTA ---------- */}
-      <section className="px-6 py-16 text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">{tr("home.finalCta.title")}</h2>
-        <p className="mx-auto mt-3 max-w-md text-zinc-600">{tr("home.finalCta.body")}</p>
-        <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          {/* /demo, not /dashboard. This carries the same label as the hero CTA
-              — "Open the live demo" — and pointed somewhere else, so the two
-              buttons on the page promising the identical thing delivered
-              different pages. A first-time visitor who clicks it is not signed
-              in, so /dashboard gave them an empty shell of someone else's
-              household instead of the four seeded Malaysian families the label
-              offered. The demo is also the one public page that keeps working
-              with the origin switched off, which is exactly what a judge
-              following a link at 2am needs. */}
-          <Link
-            href="/demo"
-            className="w-full rounded-full bg-amber-400 px-7 py-3 text-base font-bold text-zinc-950 shadow-sm transition-colors hover:bg-amber-300 sm:w-auto"
-          >
-            {tr("home.ctaDemo")} →
-          </Link>
-          <Link
-            href="/graph"
-            className="w-full rounded-full border border-zinc-300 bg-white px-7 py-3 text-base font-semibold text-zinc-800 transition-colors hover:bg-zinc-50 sm:w-auto"
-          >
-            🕸️ {tr("nav.graph")}
-          </Link>
-        </div>
-
-        {/* Three ways in. These used to sit in the hero, where they were three
-            extra decisions competing with the one that mattered. */}
-        <div className="mx-auto mt-10 grid max-w-xl grid-cols-3 gap-3">
-          {[
-            // /record, not /graph. This card is a camera icon labelled "Capture"
-            // and it used to open the graph — which has the flexible-input box
-            // but no Scan receipt or Photo button anywhere on it. A visitor who
-            // tapped the camera got a page with no camera on it, which reads as
-            // a missing feature rather than a wrong link.
-            { href: "/record", emoji: "📷", title: tr("nav.capture"), desc: tr("home.do.captureDesc") },
-            { href: "/dashboard", emoji: "📊", title: tr("nav.dashboard"), desc: tr("home.do.dashboardDesc") },
-            { href: "/goals", emoji: "🎯", title: tr("nav.goals"), desc: tr("home.do.goalsDesc") },
-          ].map((c) => (
-            <Link
-              key={c.href}
-              href={c.href}
-              className="rounded-2xl border border-zinc-200 bg-white/70 p-4 text-center transition-colors hover:border-amber-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-amber-800"
-            >
-              <div className="text-2xl" aria-hidden="true">{c.emoji}</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-800 dark:text-zinc-100">{c.title}</div>
-              <div className="mt-0.5 text-xs text-zinc-500">{c.desc}</div>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* NO FINAL CTA SECTION. "See it working — it's live" lived here with a
+          second "Open the live demo", a 🕸️ Graph button, and three cards
+          (Capture / Dashboard / Goals). Removed on request: it repeated the
+          hero's promise at the bottom of the page, and the three cards were
+          three more decisions after the visitor had already been given one.
+          Those destinations remain in the header, the bottom nav and the
+          footer, which is where navigation belongs. */}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { addManualTransaction } from "@/lib/graph";
 import { AuthError, requirePermission } from "@/lib/household";
 import { apiError } from "@/lib/apiError";
 import { decodeAttachments, type IncomingAttachment } from "@/lib/attachments";
+import type { Category } from "@/lib/recordKind";
+import type { Visibility } from "@/lib/attribution";
 
 export const runtime = "nodejs";
 
@@ -32,6 +34,18 @@ export async function POST(request: Request) {
       confidence?: number;
       entered?: { amount: number; currency: string; perMYR: number; rateSource: string };
       attachments?: IncomingAttachment[];
+      // ⚠️ THESE WERE SENT BY THE FORM AND SILENTLY DISCARDED. The dashboard has
+      // posted category, paidBy, visibility and attributionAsserted since Task 1
+      // and Task 6, and this route neither typed nor forwarded them — so `kind`
+      // was inferred from `direction` alone, `category` was never stored (every
+      // existing row reads "(none)"), and the attribution and privacy the user
+      // chose were dropped on the floor. The one that matters most: a `+ Savings`
+      // deposit needs its category to be recorded as a TRANSFER instead of an
+      // inflow, which is the whole point of lib/recordKind.ts.
+      category?: Category;
+      paidBy?: string;
+      visibility?: Visibility;
+      attributionAsserted?: boolean;
     };
     try {
       body = await request.json();
@@ -40,9 +54,21 @@ export async function POST(request: Request) {
     }
 
     const amount = Number(body.amount);
-    if (!body.walletNodeId || !body.vendorLabel?.trim()) {
+    // A bucket is required for money LEAVING a bucket, and not for money coming
+    // in: income arrives from outside the household and the ALLOCATES edges
+    // decide where it lands. Requiring it unconditionally is why the capture
+    // form had to send something and defaulted to Must-paid, filing every salary
+    // against the rent bucket. `savings` still carries one — it is a transfer
+    // into a tier-2 bucket, and it arrives here as direction "in", so the test
+    // is on the CATEGORY, not the direction.
+    const isInflowWithoutBucket =
+      body.direction === "in" && body.category !== "savings";
+    if (!body.vendorLabel?.trim()) {
+      return NextResponse.json({ error: "vendorLabel is required" }, { status: 400 });
+    }
+    if (!body.walletNodeId && !isInflowWithoutBucket) {
       return NextResponse.json(
-        { error: "walletNodeId and vendorLabel are required" },
+        { error: "walletNodeId is required for money leaving a bucket" },
         { status: 400 },
       );
     }
@@ -77,6 +103,10 @@ export async function POST(request: Request) {
         note: body.note,
         confidence: body.confidence,
         entered: body.entered,
+        category: body.category,
+        paidBy: body.paidBy,
+        visibility: body.visibility,
+        attributionAsserted: body.attributionAsserted,
       },
       { id: ctx.user.id, email: ctx.user.email },
     );

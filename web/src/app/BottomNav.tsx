@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// The app's four tabs, in the thumb zone: Record · Dashboard · H-Score · More.
+// The app's five tabs, in the thumb zone: Record · Dashboard · Graph · H-Score · More.
+//
+// Graph sits beside Dashboard because it is the same money as a picture rather
+// than a list — summary, then shape. It replaced an in-page shortcut in the
+// dashboard header, which duplicated a control now permanently on screen.
 //
 // Record is first and is the default landing, because capture is the only thing
 // this app asks of a user every day. The other three are read-or-occasional, so
@@ -33,6 +37,7 @@ import { usePathname } from "next/navigation";
 export interface BottomNavLabels {
   record: string;
   dashboard: string;
+  graph: string;
   hscore: string;
   more: string;
 }
@@ -54,6 +59,14 @@ export default function BottomNav({ labels }: { labels: BottomNavLabels }) {
         </Tab>
         <Tab href="/dashboard" label={labels.dashboard} on={active("/dashboard")}>
           <path d="M4 13h7V4H4v9Zm9 7h7v-9h-7v9ZM4 20h7v-5H4v5Zm9-16v5h7V4h-7Z" />
+        </Tab>
+        <Tab href="/graph" label={labels.graph} on={active("/graph")}>
+          {/* Three nodes and two edges — the smallest mark that reads as a graph
+              rather than as a chart, at 22px. */}
+          <circle cx="6" cy="7" r="2.4" />
+          <circle cx="18" cy="10" r="2.4" />
+          <circle cx="10" cy="18" r="2.4" />
+          <path d="M7.9 8.2 16.1 9.4M16.6 12.1 11.5 16.3" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
         </Tab>
         <Tab href="/hscore" label={labels.hscore} on={active("/hscore")}>
           <circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.35" />

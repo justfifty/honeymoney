@@ -14,6 +14,10 @@ import Logo from "./Logo";
 const NAV = [
   { href: "/record", key: "nav.record" },
   { href: "/dashboard", key: "nav.dashboard" },
+  // Graph sits immediately after Dashboard on purpose: it is the same money seen
+  // as a picture rather than a list, so the pair reads as "summary, then shape".
+  // It replaces the in-page shortcut that used to live in the dashboard header.
+  { href: "/graph", key: "nav.graph" },
   { href: "/hscore", key: "nav.hscore" },
   { href: "/more", key: "more.title" },
 ];
