@@ -49,8 +49,28 @@ export default {
     const url = new URL(request.url);
     const pathname = normalize(url.pathname);
 
-    // 1. Files we shipped — never worth a round trip to the laptop.
-    if (isAsset(pathname)) return env.ASSETS.fetch(request);
+    // 1. Files we shipped — never worth a round trip to the origin.
+    if (isAsset(pathname)) {
+      const res = await env.ASSETS.fetch(request);
+
+      // A MISSING content-hashed asset must 404, not fall back to index.html.
+      // Pages answers an unknown path with the site's HTML at status 200, and
+      // for /_next/static that is actively poisonous: those URLs are served
+      // `immutable, max-age=14400`, so a browser stores HTML under a .js URL
+      // and then tries to execute it for four hours. React never hydrates and
+      // the page looks fine while nothing responds to a click — which is
+      // exactly how a snapshot/origin build mismatch presented on 2026-08-24,
+      // long after the files themselves had been fixed at the edge.
+      //
+      // 404 makes the same mistake loud and, crucially, not cached as valid.
+      if (pathname.startsWith("/_next/static/") && res.status === 200) {
+        const type = res.headers.get("content-type") || "";
+        if (!/javascript|css|font|image|json|octet-stream|wasm|video|audio/i.test(type)) {
+          return new Response(null, { status: 404 });
+        }
+      }
+      return res;
+    }
 
     // 2. Public pages. Anonymous English visitors (which is every first-time
     //    visitor, and every judge following a link) get the edge copy: instant,
