@@ -25,6 +25,17 @@ export interface ParsedVoice {
   amount?: number;
   currency?: string;
   occurredAt?: string;
+  /**
+   * The itemised lines, when the receipt has any.
+   *
+   * lib/receipt.ts has produced these from the AI path since Task 6 and nothing
+   * ever rendered them, so an itemised receipt looked exactly like a single
+   * total. Producing them HERE too matters more than it sounds: the AI path
+   * needs a configured key and 501s without one, while this runs in the browser
+   * on Tesseract output and costs nothing. Itemisation is now a property of
+   * scanning a receipt, not of having paid for an AI provider.
+   */
+  lineItems?: { label: string; amount: number }[];
   /** How confident the *local* parser is. The AI path reports its own. */
   confidence: number;
 }
@@ -152,11 +163,31 @@ export function extractAmount(raw: string): number | undefined {
   const text = stripNonMoney(raw);
   const t = text.toLowerCase();
 
-  // 1) next to a total/paid keyword — the strongest signal on a receipt
-  const near = t.match(
-    /(?:total|jumlah|amount|bayar|paid|spent|harga|price|合计|總計|總共|मूल्य|மொத்தம்)\D{0,12}(\d+(?:[.,]\d{1,2})?)/iu,
-  );
-  if (near) return parseFloat(near[1].replace(",", "."));
+  // 1) next to a total/paid keyword — the strongest signal on a receipt.
+  //
+  // TWO THINGS THIS GETS WRONG IF YOU ARE NOT CAREFUL, both measured against a
+  // printed Malaysian receipt:
+  //
+  //   • The gap used to be \D{0,12}. On a till roll the total sits across a
+  //     whitespace COLUMN — "TOTAL" then seventeen spaces then "21.73" — so the
+  //     match failed, execution fell through to the currency rule below, and it
+  //     returned the first RM-prefixed number on the page. A receipt totalling
+  //     RM21.73 was filed as RM4.80, the price of the drink. Widened to 40, and
+  //     restricted to non-newline so it cannot jump to the next line's figure.
+  //
+  //   • "SUBTOTAL" contains "total". Matching the first hit takes the subtotal
+  //     and quietly under-reports every receipt that lists tax separately. So
+  //     collect every hit, drop the sub- prefixed ones when a real total exists,
+  //     and take the LAST — receipts print running totals, and the final one is
+  //     the amount actually paid.
+  const hits = [
+    ...t.matchAll(
+      /((?:sub)?)(?:total|jumlah|amount|bayar|paid|spent|harga|price|合计|總計|總共|मूल्य|மொத்தம்)[^\d\n]{0,40}(\d+(?:[.,]\d{1,2})?)/giu,
+    ),
+  ];
+  const totals = hits.filter((h) => !h[1]);
+  const chosen = (totals.length ? totals : hits).at(-1);
+  if (chosen) return parseFloat(chosen[2].replace(",", "."));
 
   // 2) adjacent to a currency marker, either side: "RM 12.50" or "12.50 ringgit"
   const before = t.match(/(?:rm|myr|ringgit|s\$|sgd|usd|\$|£|฿|¥)\s*(\d+(?:[.,]\d{1,2})?)/iu);
@@ -426,6 +457,70 @@ function receiptDate(text: string): string | undefined {
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 }
 
+/**
+ * Pull the itemised lines out of raw OCR text.
+ *
+ * The shape being matched is "some words, then a price at the end of the line" —
+ * which is what a printed receipt looks like in every language on it, because
+ * the price column is positional rather than labelled.
+ *
+ * Three rules keep the noise out, each earning its place:
+ *
+ *   • RECEIPT_CHROME excludes the furniture — TOTAL, SUBTOTAL, SST, CHANGE,
+ *     CASH. Those all match the same pattern as an item and are emphatically
+ *     not items; a "total" line captured as an item double-counts the receipt.
+ *   • The label must hold at least two letters, which drops phone numbers,
+ *     receipt IDs and table numbers.
+ *   • Nothing may exceed the receipt total. An OCR misread turning 4.50 into
+ *     450.00 is common, and one wrong line is worse than no lines because it
+ *     looks authoritative.
+ *
+ * Returns undefined rather than [] when nothing qualifies, so a caller can tell
+ * "this receipt was not itemised" from "this receipt had zero items".
+ */
+// Tender and settlement lines, which look exactly like items and are not.
+//
+// Kept SEPARATE from RECEIPT_CHROME on purpose: that regex is documented as
+// vendor-detection only, and widening it would change which line is read as the
+// shop name. This list is narrower and answers a different question -- "is this
+// row something the customer bought?" CASH is the one that motivated it: it
+// matches no part of `cashier`, so a 25.00 tender sailed through as the most
+// expensive item on a 21.73 receipt.
+const NOT_AN_ITEM =
+  /\bcash\b|\btunai\b|\bchange\b|\bbaki\b|\bbalance\b|\btendered\b|\bdebit\b|\bcredit\b|\bcard\b|\bqty\b|round(?:ing)?/i;
+
+export function receiptLineItems(text: string, total?: number): { label: string; amount: number }[] | undefined {
+  const items: { label: string; amount: number }[] = [];
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.length < 4 || RECEIPT_CHROME.test(line) || NOT_AN_ITEM.test(line)) continue;
+
+    // Label, then optionally a "2 x 3.50" quantity clause, then the price.
+    const m = line.match(
+      /^(.{2,40}?)\s+(?:\d+\s*[x×]\s*[\d.,]+\s+)?(?:RM\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2}))$/i,
+    );
+    if (!m) continue;
+
+    const label = m[1].replace(/[.•*_-]+$/, "").trim();
+    if ((label.match(/\p{L}/gu)?.length ?? 0) < 2) continue;
+
+    const amount = Number(m[2].replace(/,/g, ""));
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    items.push({ label, amount });
+    // A till roll can be long; past twenty lines this stops being a summary.
+    if (items.length >= 20) break;
+  }
+
+  // Apply the ceiling only if the total is credible — i.e. at least as large as
+  // the biggest line. A total smaller than one of its own items is a misread,
+  // and filtering by it would delete the real lines instead of the fake one.
+  const max = Math.max(...items.map((i) => i.amount), 0);
+  const kept = total !== undefined && total >= max ? items.filter((i) => i.amount <= total) : items;
+
+  return kept.length ? kept : undefined;
+}
+
 export function parseReceiptText(text: string, knownVendors: string[] = []): ParsedVoice {
   // Amount comes from the WHOLE text — the total is usually on a line labelled
   // "Total" / "Jumlah" / "Amount Paid", and extractAmount specifically looks for
@@ -456,5 +551,7 @@ export function parseReceiptText(text: string, knownVendors: string[] = []): Par
   if (currency) confidence += 0.1;
   if (occurredAt) confidence += 0.1;
 
-  return { vendor, amount, currency, occurredAt, confidence: Math.min(1, confidence) };
+  const lineItems = receiptLineItems(text, amount);
+
+  return { vendor, amount, currency, occurredAt, lineItems, confidence: Math.min(1, confidence) };
 }

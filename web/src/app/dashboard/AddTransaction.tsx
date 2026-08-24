@@ -71,6 +71,11 @@ export default function AddTransaction({
   const [paidBy, setPaidBy] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
+  // Shown, not stored. The itemised rows are what makes a scan checkable at a
+  // glance -- "did it read my receipt or just guess a number?" -- but the
+  // transaction itself is still one amount against one bucket, so these live in
+  // component state and never reach the API.
+  const [lineItems, setLineItems] = useState<{ label: string; amount: number }[] | null>(null);
   const [analysis, setAnalysis] = useState<CaptureAnalysis | null>(null);
   const [details, setDetails] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -105,6 +110,7 @@ export default function AddTransaction({
         setWhen(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
       }
     }
+    setLineItems(c.lineItems ?? null);
     setConfidence(c.confidence);
     // The picture rides with the draft until the user commits it. Capture never
     // saves on its own — the AI proposes, the human commits — so an image that
@@ -282,6 +288,34 @@ export default function AddTransaction({
           onResult={applyCapture}
           onAnalysis={setAnalysis}
         />
+
+        {/* The itemised rows the scan found. Collapsed by default because the
+            amount is what the form is for -- but one tap proves the OCR read the
+            receipt rather than guessing a total, which is the question anyone
+            asks the first time they scan one. The sum is shown against the
+            captured amount so a misread is visible instead of merely present. */}
+        {lineItems && lineItems.length > 0 && (
+          <details className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
+            <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
+              🧾 {lineItems.length} {lineItems.length === 1 ? "item" : "items"} read from the receipt
+            </summary>
+            <ul className="border-t border-zinc-200 px-3 py-2 dark:border-zinc-800">
+              {lineItems.map((it, i) => (
+                <li key={i} className="flex justify-between gap-3 py-0.5 text-[11px]">
+                  <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">{it.label}</span>
+                  <span className="shrink-0 tabular-nums text-zinc-500">{it.amount.toFixed(2)}</span>
+                </li>
+              ))}
+              <li className="mt-1 flex justify-between gap-3 border-t border-zinc-200 pt-1 text-[11px] font-medium dark:border-zinc-800">
+                <span className="text-zinc-500">Items total</span>
+                <span className="tabular-nums">
+                  {lineItems.reduce((sum, it) => sum + it.amount, 0).toFixed(2)}
+                </span>
+              </li>
+            </ul>
+          </details>
+        )}
+
         {analysis?.duplicateOf && (
           <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
             🔁{" "}

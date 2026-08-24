@@ -42,6 +42,15 @@ export interface Captured {
   occurredAt?: string;
   bucketNodeId?: string;
   note?: string;
+  /**
+   * The itemised rows, when the receipt had any.
+   *
+   * lib/receipt.ts has parsed these from the AI path since Task 6 and no
+   * component ever read them, so an itemised receipt looked identical to a bare
+   * total. They now also come from the on-device parser, which means itemisation
+   * works with no AI key configured -- the AI route 501s without one.
+   */
+  lineItems?: { label: string; amount: number }[];
   confidence?: number;
   /**
    * The image itself, downscaled and ready to store. Until 2026-08-22 this was
