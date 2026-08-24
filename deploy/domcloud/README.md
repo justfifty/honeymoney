@@ -113,11 +113,17 @@ generous one.
 
 ### 0. One-time, in the DOM Cloud dashboard (the only manual part)
 
-Everything else here is scripted. These three cannot be, because they need the
+Everything else here is scripted. These cannot be, because they need the
 account this machine has no credential for:
 
-1. **Add the deploy key.** Profile -> SSH Keys, paste the **public** half of
-   `id_domcloud.pub`. The private half never leaves this laptop and is gitignored.
+1. ~~**Add the deploy key.** Profile -> SSH Keys.~~ **There is no such page.**
+   DOM Cloud has no account-level SSH-keys screen for login keys — the dashboard
+   dialog that mentions SSH keys is for *GitHub* deploy keys, a different thing —
+   and their own docs say to append to `~/.ssh/authorized_keys` yourself. This
+   step was written from assumption and sent people looking for a screen that
+   does not exist. `pb.deploy.yml` now installs the key itself, idempotently,
+   from the public half embedded in it; the private half never leaves this
+   laptop and is the only gitignored part of the pair. Nothing to do here.
 2. **Create two websites** — one for the app, one for PocketBase. Note the SSH
    username and host shown for each.
 3. **Paste the deployment script** into each site's Setup -> Deploy tab:

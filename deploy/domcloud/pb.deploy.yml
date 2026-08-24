@@ -139,6 +139,28 @@ commands:
       unzip -o pb.zip pocketbase && rm pb.zip && chmod +x ./pocketbase
     fi
   - touch ~/.env.pocketbase && chmod 600 ~/.env.pocketbase
+  # Install the deploy key. DOM Cloud has NO account-level SSH-keys page for
+  # login keys — the dashboard's key dialog is for GitHub deploy keys, a
+  # different thing — and their docs say to append to authorized_keys yourself.
+  # An earlier revision of the README sent people to "Profile -> SSH Keys",
+  # which does not exist. Doing it here means the one manual step left is this
+  # paste, which is already happening.
+  #
+  # This is the PUBLIC half. It is safe in a repo by definition: it authorises
+  # nothing without the private half, which stays on the laptop and is
+  # gitignored. Idempotent — re-running must not append a second copy.
+  - |
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXyiwvmelwe328gSn3drqRNL0SV4pOG+hN7WqE/VxLa honeymoney-deploy@DIGI'
+    if grep -qF "$KEY" ~/.ssh/authorized_keys; then
+      echo "deploy key already present"
+    else
+      printf '%s\n' "$KEY" >> ~/.ssh/authorized_keys
+      echo "deploy key installed"
+    fi
   # Passenger runs bash ./pb-start.sh below, and nothing else on this host
   # would ever have created that file: the repo is private, so there is no
   # `source:` git clone, and an scp cannot happen before this script runs.
