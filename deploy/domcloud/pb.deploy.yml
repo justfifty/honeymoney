@@ -82,6 +82,26 @@ nginx:
 # said otherwise. robots.txt below is the part that actually applies; if you
 # want the header too, add it as a Cloudflare Transform Rule, which is in front
 # of this origin anyway.
+#
+# `locations` IS honoured, for the keys in that allowlist -- `return` is one of
+# them -- so the superuser UI is shut off at the edge below.
+  locations:
+    # 403 the superuser WEB UI. It is the one door that can export the whole
+    # ledger from a browser, and it was answering 200 to the open internet:
+    # password-protected, but an unauthenticated login form on a public host is
+    # attack surface and a fingerprint, for a screen only we ever use.
+    #
+    # This blocks /_/ ONLY. It deliberately does NOT touch
+    # /api/collections/_superusers/auth-with-password, which is how the Next app
+    # authenticates on every request (web/src/lib/pocketbase.ts:25) -- blocking
+    # that path would take the whole product down.
+    #
+    # Honest about what this is: partial. It removes the browser door, not the
+    # ability to POST at the auth endpoint, so the rotated superuser password is
+    # still what actually holds. To get the UI back for maintenance, delete this
+    # block and redeploy, or tunnel in over SSH.
+    - match: /_/
+      return: 403
 
 commands:
   # Pinned to the version that wrote pb_data on the laptop. A NEWER PocketBase
