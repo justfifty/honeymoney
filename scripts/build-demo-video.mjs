@@ -36,9 +36,19 @@ const WORK = path.join(ROOT, ".demo-video");
 const OUT = path.join(ROOT, "docs", "deck", "HoneyMoney_Demo_MAIC2026.mp4");
 const DECK = "file:///" + path.join(ROOT, "docs", "deck", "PITCH_DECK.html").replace(/\\/g, "/");
 const SITE = process.env.DEMO_SITE || "https://honeymoney.app";
-const VOICE = process.env.DEMO_VOICE || "en-SG-LunaNeural";
+// en-US-EmmaMultilingualNeural is one of the newer "Conversation/Copilot" voices
+// (Cheerful, Clear, Conversational). The older *Neural voices — including the
+// regionally-apt en-SG pair — read noticeably flatter and more announcer-like,
+// which is the wrong register for a 3-minute explainer. Accent origin matters
+// less here than not sounding synthetic.
+const VOICE = process.env.DEMO_VOICE || "en-US-EmmaMultilingualNeural";
+// Default TTS pace is slower than a person pitching. +12% is brisk without
+// clipping consonants; the video shortens automatically because timing is
+// driven by the measured audio.
+const RATE = process.env.DEMO_RATE || "+12%";
 const shoot = !process.argv.includes("--no-shoot");
 const narrate = !process.argv.includes("--no-vo");
+const samplesOnly = process.argv.includes("--samples");
 
 const CHROME =
   process.env.CHROME ||
@@ -133,9 +143,15 @@ const SHOTS = [
 const slug = (s) => s.replace(/[^a-z0-9]+/gi, "_").slice(0, 60);
 const pageFile = (p) => path.join(WORK, "pg_" + slug(p) + ".png");
 const deckStrip = path.join(WORK, "deck_strip.png");
-const voFile = (i) => path.join(WORK, `vo${String(i).padStart(2, "0")}.mp3`);
+// The voice and rate are part of the filename. Keying the cache on beat index
+// alone meant changing DEMO_VOICE or DEMO_RATE silently reused the previous
+// narration — the video would rebuild and sound identical.
+const voTag = (VOICE + RATE).replace(/[^a-z0-9]+/gi, "").toLowerCase();
+const voFile = (i) => path.join(WORK, `vo_${voTag}_${String(i).padStart(2, "0")}.mp3`);
 
-if (shoot) rmSync(WORK, { recursive: true, force: true });
+// NOT when --samples: that run only writes audition clips, and wiping the work
+// dir there deletes the captured frames a subsequent --no-shoot build needs.
+if (shoot && !samplesOnly) rmSync(WORK, { recursive: true, force: true });
 if (!existsSync(WORK)) mkdirSync(WORK, { recursive: true });
 
 const capture = (url, out, width, height, scale) => {
@@ -152,6 +168,36 @@ const capture = (url, out, width, height, scale) => {
   if (!existsSync(out)) throw new Error(`capture failed: ${url}`);
 };
 
+const dur = (f) => parseFloat(execFileSync("ffprobe",
+  ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f], { encoding: "utf8" }).trim());
+
+// --samples: write the same two lines in every candidate voice so a human can
+// pick by ear. Necessary because nothing in this pipeline can judge a voice —
+// duration and dB are measurable, "does this sound like a person" is not.
+if (samplesOnly) {
+  const dir = path.join(WORK, "samples");
+  mkdirSync(dir, { recursive: true });
+  const line =
+    "In Malaysian households, money is the number one source of conflict. " +
+    "HoneyMoney makes recording a spend take one line. Snap a receipt, or simply type it.";
+  const candidates = [
+    "en-US-EmmaMultilingualNeural", "en-US-AvaMultilingualNeural",
+    "en-US-AndrewMultilingualNeural", "en-US-BrianMultilingualNeural",
+    "en-SG-LunaNeural", "en-SG-WayneNeural", "en-GB-SoniaNeural",
+  ];
+  for (const v of candidates) {
+    for (const r of ["+0%", "+12%", "+20%"]) {
+      const f = path.join(dir, `${v}_${r.replace(/[+%]/g, "")}.mp3`);
+      execFileSync("python", ["-m", "edge_tts", "--voice", v, "--rate", r,
+        "--text", line, "--write-media", f], { stdio: "ignore" });
+      console.log(`  ${v.padEnd(34)} ${r.padStart(5)}  ${(dur(f)).toFixed(1)}s`);
+    }
+  }
+  console.log(`\n  samples in ${path.relative(ROOT, dir)} — play them, then rebuild with:`);
+  console.log(`    DEMO_VOICE=<voice> DEMO_RATE=<rate> node scripts/build-demo-video.mjs --no-shoot`);
+  process.exit(0);
+}
+
 const webPages = [...new Set(SHOTS.filter((s) => s.page).map((s) => s.page))];
 if (shoot) {
   for (const p of webPages) { capture(SITE + p, pageFile(p), W, PAGE_H); console.log(`  captured ${p}`); }
@@ -163,14 +209,12 @@ if (shoot) {
 for (const p of webPages) if (!existsSync(pageFile(p))) throw new Error(`missing frame: ${p} — run without --no-shoot`);
 
 // ── Narration, and the timing it dictates ───────────────────────────────────
-const dur = (f) => parseFloat(execFileSync("ffprobe",
-  ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", f], { encoding: "utf8" }).trim());
 
 SHOTS.forEach((s, i) => {
   if (!narrate) { s.hold = MIN_HOLD + 1.4; return; }
   if (!existsSync(voFile(i)))
-    execFileSync("python", ["-m", "edge_tts", "--voice", VOICE, "--text", s.vo, "--write-media", voFile(i)],
-      { stdio: "ignore" });
+    execFileSync("python", ["-m", "edge_tts", "--voice", VOICE, "--rate", RATE,
+      "--text", s.vo, "--write-media", voFile(i)], { stdio: "ignore" });
   if (!existsSync(voFile(i))) throw new Error(`TTS failed for beat ${i}`);
   s.voDur = dur(voFile(i));
   s.hold = Math.max(MIN_HOLD, s.voDur + PAD);
@@ -228,7 +272,8 @@ if (narrate) args.push("-map", "[aout]", "-c:a", "aac", "-b:a", "160k");
 args.push("-c:v", "libx264", "-preset", "medium", "-crf", "21", "-pix_fmt", "yuv420p",
   "-movflags", "+faststart", "-r", String(FPS), "-shortest", "-y", OUT);
 
-const mins = Math.floor(acc / 60), secs = Math.round(acc % 60);
+// Round FIRST, then split: Math.round(acc % 60) can yield 60 and print "1:60".
+const total = Math.round(acc), mins = Math.floor(total / 60), secs = total % 60;
 console.log(`\n  encoding ${SHOTS.length} beats → ${path.relative(ROOT, OUT)}  (${mins}:${String(secs).padStart(2, "0")}${narrate ? `, ${VOICE}` : ", silent"})`);
 if (acc > 175) console.warn(`  ⚠️ ${mins}:${String(secs).padStart(2, "0")} — the skill's hard cap is 3:00 and target 2:50. Trim beats.`);
 execFileSync("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
