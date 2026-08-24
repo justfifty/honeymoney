@@ -113,6 +113,19 @@ def effective_dpi(pix_w: int, pix_h: int, rect) -> float:
     return max(pix_w / w_in, pix_h / h_in)
 
 
+# Below this, downsampling cannot meaningfully help the file and can visibly
+# hurt it. Logos and icons are small in bytes and precise in appearance: their
+# edges and lettering are the first thing resampling destroys. The first version
+# of this script shrank ten of them on a 7 MB deck, saved about 0.1 MB, and blurred
+# every logo on the page -- all of the cost, none of the benefit.
+MIN_IMAGE_BYTES = 64 * 1024
+
+# An image drawn smaller than this on the page is furniture -- a logo, an icon, a
+# bullet. Extra pixels in a small box are what keep its edges crisp on a retina
+# screen and in print, so they are not waste.
+MIN_DISPLAY_INCHES = 2.0
+
+
 def image_pass(path: str, target_dpi: int, quality: int, verbose: bool) -> int:
     """Downsample over-resolution images in place. Returns images changed."""
     if Image is None:
@@ -121,6 +134,7 @@ def image_pass(path: str, target_dpi: int, quality: int, verbose: bool) -> int:
 
     doc = fitz.open(path)
     changed = 0
+    skipped_small = 0
 
     for pno in range(doc.page_count):
         page = doc[pno]
@@ -142,6 +156,15 @@ def image_pass(path: str, target_dpi: int, quality: int, verbose: bool) -> int:
                 continue
             data, w, h = raw.get("image"), raw.get("width", 0), raw.get("height", 0)
             if not data or not w or not h:
+                continue
+
+            # Two guards before DPI is even considered, because a high DPI on a
+            # small graphic is a FEATURE, not slack to reclaim.
+            if len(data) < MIN_IMAGE_BYTES:
+                skipped_small += 1
+                continue
+            if rect.width / 72.0 < MIN_DISPLAY_INCHES and rect.height / 72.0 < MIN_DISPLAY_INCHES:
+                skipped_small += 1
                 continue
 
             dpi = effective_dpi(w, h, rect)
@@ -181,6 +204,9 @@ def image_pass(path: str, target_dpi: int, quality: int, verbose: bool) -> int:
             if verbose:
                 print(f"   p{pno + 1}  {w}x{h} @{dpi:.0f}dpi -> {new_w}x{new_h}  "
                       f"{mb(len(data))} -> {mb(len(new_data))}")
+
+    if verbose and skipped_small:
+        print(f"   {skipped_small} logo/icon(s) left untouched")
 
     if changed:
         doc.saveIncr() if doc.can_save_incrementally() else doc.save(path + ".tmp")
