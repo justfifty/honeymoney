@@ -60,7 +60,11 @@ const BASE = (argBase > -1 ? process.argv[argBase + 1] : "https://honeymoney-app
 // page that is a working product rather than a description of one, and it holds
 // its data in memory, so it stays fully interactive from the snapshot with the
 // origin machine switched off.
-const ROUTES = ["/", "/demo", "/guide", "/learn", "/gallery", "/deck"];
+// /privacy is in here for a reason that is not performance: a privacy notice
+// that is only reachable while the origin happens to be up is not, in any
+// meaningful sense, given. It renders from the snapshot so it survives the
+// laptop being off, exactly like the pages a first-time visitor lands on.
+const ROUTES = ["/", "/demo", "/guide", "/learn", "/gallery", "/deck", "/privacy"];
 
 const log = (...a) => console.log("  ", ...a);
 

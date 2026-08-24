@@ -9,6 +9,7 @@ import IosInstallGuide from "../IosInstallGuide";
 import ProfileSettings from "../account/ProfileSettings";
 import AccountActions from "../account/AccountActions";
 import AiStatus from "./AiStatus";
+import PrivacyControls from "./PrivacyControls";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -68,6 +69,13 @@ export default async function SetupPage() {
               <dd className="font-medium capitalize">{ctx.accessRole}</dd>
             </dl>
             <ProfileSettings initialName={ctx.user.name} email={ctx.user.email} />
+          </Section>
+
+          {/* Privacy sits ABOVE delete deliberately: withdrawing one purpose is
+              the proportionate action, and a user who can only find the nuclear
+              option will use the nuclear option. */}
+          <Section title="🔒 Privacy & your data" tone="plain">
+            <PrivacyControls />
           </Section>
 
           {/* Delete / restore — reuses the guarded, reversible flow. */}

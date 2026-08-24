@@ -20,6 +20,15 @@ function SignupForm() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Every optional purpose starts FALSE and there is no "select all". Opt-in
+  // that arrives pre-ticked is not opt-in, and a bundled agreement to unrelated
+  // purposes is the single most-fined pattern in modern privacy enforcement.
+  // Keeping these as three independent booleans rather than one object makes it
+  // structurally impossible to flip them together by accident.
+  const [aiOk, setAiOk] = useState(false);
+  const [partnerOk, setPartnerOk] = useState(false);
+  const [researchOk, setResearchOk] = useState(false);
+
   const strength = scorePassword(password);
   const tooShort = password.length > 0 && password.length < 8;
   const mismatch = confirm.length > 0 && password !== confirm;
@@ -38,7 +47,17 @@ function SignupForm() {
       const r = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name, inviteCode: code.trim() || undefined }),
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          inviteCode: code.trim() || undefined,
+          consents: {
+            ai_processing: aiOk,
+            partner_offers: partnerOk,
+            research_aggregate: researchOk,
+          },
+        }),
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Sign-up failed");
@@ -102,6 +121,46 @@ function SignupForm() {
           }
         />
 
+        {/* ── What we do with your records ────────────────────────────────
+            Three separate asks, all off, none of them a condition of signing
+            up. The required processing is stated as a term above them because
+            presenting "agree or the app does nothing" as a tickbox is the
+            forced-consent pattern, not a choice. */}
+        <fieldset className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            Your records
+          </legend>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            To run the app we record and score the money you enter. That is what
+            HoneyMoney is, so it comes with the account — you can end it at any
+            time by closing the account, and export everything first.{" "}
+            <Link href="/privacy" className="font-medium text-amber-600 hover:underline">
+              What we collect, and why
+            </Link>
+          </p>
+
+          <div className="mt-3 space-y-2.5">
+            <Consent
+              checked={aiOk}
+              onChange={setAiOk}
+              label="Let Honey use AI"
+              help="Ask Honey and receipt scanning send the text you capture to an AI provider. Off means both stay switched off."
+            />
+            <Consent
+              checked={partnerOk}
+              onChange={setPartnerOk}
+              label="Show me matched financial products"
+              help="Shares your spending tier — never your records — with licensed partners so they can offer relevant products. Off by default. You can withdraw this at any time and we stop immediately."
+            />
+            <Consent
+              checked={researchOk}
+              onChange={setResearchOk}
+              label="Include me in anonymous statistics"
+              help="Counts your household in aggregate figures like “spending power across Klang Valley”. Nothing that identifies you leaves in this form."
+            />
+          </div>
+        </fieldset>
+
         {err && (
           <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
             {err}
@@ -131,6 +190,40 @@ function SignupForm() {
         </Link>
       </p>
     </div>
+  );
+}
+
+/**
+ * One optional purpose, with its explanation always visible.
+ *
+ * The help text is not behind a tooltip or a "learn more" on purpose. Consent
+ * is only as valid as what the person was actually shown, and text that
+ * requires a hover to read was, in practice, not shown.
+ */
+function Consent({
+  checked,
+  onChange,
+  label,
+  help,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  help: string;
+}) {
+  return (
+    <label className="flex cursor-pointer gap-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 h-4 w-4 flex-none accent-amber-500"
+      />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-xs leading-relaxed text-zinc-500">{help}</span>
+      </span>
+    </label>
   );
 }
 
