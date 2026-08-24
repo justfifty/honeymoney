@@ -77,24 +77,32 @@
   Spendings bucket where tracking stops</strong>. Because the graph knows how income flows
   into buckets and out to real spending, our AI companion <strong>"Honey"</strong> can see &mdash;
   structurally &mdash; when one bucket's spending velocity is about to push a shared goal weeks
-  later, and nudge the couple <em>before</em> it happens. Capture is frictionless and
+  later, and nudge the household <em>before</em> it happens &mdash; whether that is one person
+  watching their own buffer, two partners sharing a mortgage, or a family with school fees
+  and ageing parents to carry. Capture is frictionless and
   privacy-first: forward an e-wallet or receipt screenshot to a Telegram bot, or use
   <strong>on-device OCR and voice that consume no AI tokens</strong> and never leave the device.</p>
 
   <h2>Why it's technically credible</h2>
-  <p>The same graph engine serves a <strong>household, a family, and a small business</strong>
-  with zero schema changes (three live personas in the product). AI is <strong>swappable and
-  optional</strong> across Google Gemini Flash, Groq, and local Ollama, with a per-call token
-  ledger for cost transparency. The app is <strong>local-first</strong>: data stays on the
-  user's own machine, which is both a privacy moat and a genuine PDPA story. A
-  graph-path-consistency signal offers an alternative reliability measure &mdash; a foundation
-  for inclusive credit.</p>
+  <p>The same graph engine serves <strong>a solo earner with freelance and shop income, a
+  couple, and a family</strong> with zero schema changes &mdash; three live personas in the
+  product. The public demo at honeymoney.app/demo additionally shows a household in
+  <strong>each of the four H-Score bands</strong>, so the top band is visibly a reachable
+  state rather than a marketing promise, and the squeeze band is not hidden. AI is <strong>swappable and optional</strong> across
+  Google Gemini Flash, Groq and local Ollama, with a per-call token ledger for cost
+  transparency, and every figure a household reads is produced by a deterministic function
+  rather than by the model. The stack is <strong>self-hostable and portable</strong>: a single
+  PocketBase binary plus a Next.js app, which is exactly how it was moved between hosts in one
+  afternoon &mdash; so an employer or a household can run it on infrastructure they control.
+  The database keeps its settings <strong>encrypted at rest</strong>, household-supplied AI
+  keys are encrypted (AES-256-GCM) before storage, and backups are encrypted and held
+  off-site.</p>
 
   <h2>Market &amp; model</h2>
   <p>We lead with a free consumer/household tier (family-referral growth) and monetise via
   <strong>B2B2C employee financial wellness</strong>, where employers sponsor seats &mdash; a
-  category with strong demand and no incumbent occupying the Malaysia + couples + cross
-  e-wallet cell. Infra cost is effectively zero, so gross margin is near-100%;
+  category with strong demand and no incumbent occupying the Malaysia + shared-household +
+  cross e-wallet cell. Infra cost is effectively zero, so gross margin is near-100%;
   <strong>Cradle CIP Spark</strong> is our realistic non-dilutive entry.</p>
 
   <h2>Impact</h2>
@@ -103,16 +111,26 @@
   the <strong>BNM financial-inclusion agenda</strong>, and Malaysia's <strong>MADANI</strong> agenda.</p>
 
   <h2>Status</h2>
-  <p>Working product live at <strong>honeymoney.app</strong> &mdash; dashboard, six-view
-  knowledge-graph gallery, time-schedule spending audit, multi-currency/-language capture,
-  admin analytics, and a cost/AI-token ledger &mdash; with a genuine, non-backdated commit
-  history. Source: <strong>github.com/justfifty/honeymoney</strong> (access granted to judges
-  at submission).</p>
+  <p>Working product live at <strong>honeymoney.app</strong>, served <strong>24/7</strong>
+  from Cloudflare's Singapore edge with a hosted application origin &mdash; no personal
+  machine in the serving path. Shipped: dashboard, six-view knowledge-graph gallery,
+  <strong>H-Score</strong> financial-health scoring, <strong>Ask Honey</strong> (natural
+  questions answered from computed figures), time-schedule spending audit,
+  multi-currency and multi-language capture, receipt scanning with an on-device zero-token
+  path, household-supplied AI keys, encrypted off-site backups, admin analytics and a
+  cost/AI-token ledger &mdash; with a genuine, non-backdated commit history. Source:
+  <strong>github.com/justfifty/honeymoney</strong> (access granted to judges at
+  submission).</p>
 
   <h2>Team &amp; ask</h2>
-  <p>[Name] &mdash; [role]; [Name] &mdash; [role] (<strong>Malaysian citizen, MyKad</strong>);
-  [Name] &mdash; [role]. <strong>Ask:</strong> pilot employers for employee-wellness
-  deployment, fintech go-to-market mentorship, and visibility to impact-aligned partners.</p>
+  <!-- ⚠️ TEAM NAMES STILL TO BE FILLED IN. The three "[Name] — [role]" placeholders that
+       stood here were removed on 2026-08-24 rather than left in place: an unfilled template
+       marker in a submitted document reads worse than a shorter line. Replace the sentence
+       below with the real roster before submission. -->
+  <p><strong>Team:</strong> founder-led and Malaysian (<strong>MyKad</strong> holder), building
+  in the open &mdash; the public commit history is the record of the work.
+  <strong>Ask:</strong> pilot employers for employee-wellness deployment, fintech
+  go-to-market mentorship, and visibility to impact-aligned partners.</p>
 
   <div class="meta">
     <span>Live: honeymoney.app &middot; Repo: github.com/justfifty/honeymoney</span>
