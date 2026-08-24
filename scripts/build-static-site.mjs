@@ -92,6 +92,18 @@ async function main() {
   log(`✓ .next/static → _next/static`);
 
   // 3. …and everything in public/ (images, icons, gallery, deck PDFs, demo).
+  //
+  // The three MAIC upload PDFs are refreshed from docs/deck FIRST, because
+  // web/public/deck was a second hand-kept copy of them and duly went stale:
+  // on 2026-08-24 the live pitch deck was byte-identical to the JULY 11
+  // archive while docs/deck held the current 13-slide export. It failed
+  // silently — 200, valid application/pdf, wrong deck — which is the worst way
+  // for a judge-facing link to be wrong.
+  const { execFileSync } = await import("node:child_process");
+  execFileSync(process.execPath, [path.join(ROOT, "scripts", "sync-deck-pdfs.mjs")], {
+    stdio: "inherit",
+  });
+
   await cp(PUBLIC, DIST, { recursive: true });
   log(`✓ public/ → /`);
 

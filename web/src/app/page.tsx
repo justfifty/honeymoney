@@ -182,8 +182,17 @@ export default async function Home() {
         <h2 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">{tr("home.finalCta.title")}</h2>
         <p className="mx-auto mt-3 max-w-md text-zinc-600">{tr("home.finalCta.body")}</p>
         <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          {/* /demo, not /dashboard. This carries the same label as the hero CTA
+              — "Open the live demo" — and pointed somewhere else, so the two
+              buttons on the page promising the identical thing delivered
+              different pages. A first-time visitor who clicks it is not signed
+              in, so /dashboard gave them an empty shell of someone else's
+              household instead of the four seeded Malaysian families the label
+              offered. The demo is also the one public page that keeps working
+              with the origin switched off, which is exactly what a judge
+              following a link at 2am needs. */}
           <Link
-            href="/dashboard"
+            href="/demo"
             className="w-full rounded-full bg-amber-400 px-7 py-3 text-base font-bold text-zinc-950 shadow-sm transition-colors hover:bg-amber-300 sm:w-auto"
           >
             {tr("home.ctaDemo")} →
