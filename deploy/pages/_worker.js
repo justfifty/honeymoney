@@ -1,19 +1,31 @@
 // honeymoney.app front door, running on Cloudflare's edge.
 //
-// The app itself lives on a laptop behind a Cloudflare Tunnel, so it is only
-// up while that laptop is. This worker splits the site in two:
+// The app runs on DOM Cloud (Lite, sgp, ARM64) as of 2026-08-24. It used to run
+// on a laptop behind a Cloudflare Tunnel and was therefore only up while that
+// laptop was. This worker splits the site in two:
 //
 //   • the public pages (pitch, guide, Academy, gallery, deck) are served from
 //     a static snapshot at the edge — always up, always fast;
 //   • everything genuinely dynamic (dashboard, graph, auth, /api/*) is proxied
-//     to the tunnel, and degrades to a friendly page when it can't be reached.
+//     to the origin, and degrades to a friendly page when it can't be reached.
 //
 // The snapshot is built by scripts/build-static-site.mjs. Keep SNAPSHOT below
 // in step with the ROUTES list there.
 
-// Where the laptop answers. This must be a hostname the tunnel publishes and
-// that is NOT this worker's own route, or requests would loop back here.
-const ORIGIN_HOST = "origin.honeymoney.app";
+// Where the app answers. Must NOT be this worker's own route, or requests would
+// loop back here.
+//
+// 2026-08-24: moved from origin.honeymoney.app — the tunnel to the laptop — to
+// the DOM Cloud site. That single line is what makes the SIGNED-IN half of
+// honeymoney.app 24/7; the public half already was. The laptop path is left
+// entirely intact: `origin` still resolves, the tunnel still runs, and putting
+// the old value back and redeploying is the whole rollback.
+//
+// The fallback below still matters. DOM Cloud Lite has no `docker` feature, so
+// the app is spawned by Passenger on demand rather than sitting resident, and
+// the first request after an idle spell pays a cold start (~3s measured). That
+// is well inside ORIGIN_TIMEOUT_MS, but the snapshot remains the safety net.
+const ORIGIN_HOST = "honeymoney-app.domcloud.dev";
 
 // Public pages that exist in the snapshot. The build script rewrites this line
 // from its own ROUTES list, so the two can never drift; the literal here is
