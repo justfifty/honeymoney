@@ -750,6 +750,41 @@ const en: Dict = {
   "hscore.goal.emergencyBuffer": "Build a 3-month emergency buffer",
   "hscore.goal.personalCap": "Stay inside your own personal-spending cap",
 
+  // ── Goals, graded by how weak the component actually is ────────────────────
+  //
+  // The five keys above are the FALLBACK. On their own they gave every household
+  // the same sentence for the same weak component, so a Thriving household whose
+  // softest area was the buffer read "Build a 3-month emergency buffer" — the
+  // identical wording shown to a Building household with no buffer at all. Same
+  // words, opposite situations, and across the four demo bands the three goals
+  // repeated almost verbatim.
+  //
+  // `.low` / `.mid` / `.high` are chosen from points ÷ max for that component,
+  // not from the overall band: a band is an average, and averages hide which
+  // part is actually hurting. A household can be Thriving overall and still have
+  // one thin component worth a first-step sentence rather than a maintenance one.
+  //
+  // Wording stays educational, never advisory, and never names a product.
+  "hscore.goal.savingsRate.low": "Start saving something every month — consistency matters more than the amount",
+  "hscore.goal.savingsRate.mid": "Nudge the share you save up by a percent or two",
+  "hscore.goal.savingsRate.high": "Protect the savings rate you already have when income moves",
+
+  "hscore.goal.essentialBurden.low": "Must-paid is taking most of what comes in — start with the largest one or two lines",
+  "hscore.goal.essentialBurden.mid": "Trim one recurring essential to loosen the month",
+  "hscore.goal.essentialBurden.high": "Essentials are well contained — keep new commitments out of Must-paid",
+
+  "hscore.goal.debtService.low": "Repayments are heavy — find which loan ends soonest",
+  "hscore.goal.debtService.mid": "Chip at the costliest loan while the others tick down",
+  "hscore.goal.debtService.high": "Debt is light — the main risk now is adding a new repayment",
+
+  "hscore.goal.emergencyBuffer.low": "Start a buffer — even two weeks changes what a bad month costs",
+  "hscore.goal.emergencyBuffer.mid": "Grow the buffer toward three months of must-paid",
+  "hscore.goal.emergencyBuffer.high": "Top the buffer up as your costs rise",
+
+  "hscore.goal.personalCap.low": "Personal spending is past its cap — revisit whichever is wrong, the cap or the spending",
+  "hscore.goal.personalCap.mid": "You finish most months close to your personal cap",
+  "hscore.goal.personalCap.high": "Comfortably inside your personal cap",
+
   // ── Product directory ──────────────────────────────────────────────────────
   "dir.title": "Product directory",
   "dir.back": "Back to your score",

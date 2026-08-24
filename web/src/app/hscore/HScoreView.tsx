@@ -472,6 +472,31 @@ function ThrivingStars({ tr }: { tr: Tr }) {
 
 // ── 5. goals → the directory ────────────────────────────────────────────────
 
+/**
+ * The sentence for one goal, graded by how weak that component actually is.
+ *
+ * There used to be exactly one sentence per component, so the same words were
+ * shown to households in opposite situations: a Thriving household whose softest
+ * area was the buffer read "Build a 3-month emergency buffer" — identical to a
+ * Building household that had no buffer at all. Across the four demo bands the
+ * three goals came out nearly verbatim, which is what made the advice look
+ * canned.
+ *
+ * Graded on points ÷ max for THAT component rather than the overall band,
+ * because a band is an average and averages hide which part is hurting.
+ *
+ * Falls back to the ungraded key when a variant is missing — t() returns the key
+ * itself when nothing matches, so comparing against it is how we tell "no
+ * translation" from "a translation that happens to look like a key".
+ */
+function goalText(s: SubScore, tr: Tr): string {
+  const ratio = s.max ? s.points / s.max : 0;
+  const band = ratio < 0.34 ? "low" : ratio < 0.67 ? "mid" : "high";
+  const graded = `hscore.goal.${s.key}.${band}`;
+  const text = tr(graded);
+  return text === graded ? tr(`hscore.goal.${s.key}`) : text;
+}
+
 function Goals({
   subScores,
   onOpen,
@@ -502,7 +527,7 @@ function Goals({
                 disabled={!cat}
                 className="flex w-full items-center justify-between gap-3 rounded-2xl border border-zinc-200 px-4 py-3 text-left text-sm transition hover:border-amber-400 hover:bg-amber-50/50 disabled:cursor-default disabled:opacity-60 dark:border-zinc-800 dark:hover:border-amber-600 dark:hover:bg-amber-950/20"
               >
-                <span className="font-medium">{tr(`hscore.goal.${s.key}`)}</span>
+                <span className="font-medium">{goalText(s, tr)}</span>
                 {cat ? <span aria-hidden className="text-zinc-400">›</span> : null}
               </button>
             </li>

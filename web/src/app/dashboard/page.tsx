@@ -108,16 +108,6 @@ export default async function Dashboard() {
           </div>
         </header>
 
-        {/* Honey insight */}
-        <section className="mt-8 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg">
-          <div className="flex items-center gap-2 text-sm font-medium opacity-90">
-            <span>{tr("dash.honeySays")}</span>
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-              {insight.source === "gemini" ? tr("dash.badge.ai") : tr("dash.badge.insight")}
-            </span>
-          </div>
-          <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
-        </section>
 
         {/* Capture moved to /record, which is the default landing and the first
             tab. This page views and edits what already exists; creating a new
@@ -144,25 +134,6 @@ export default async function Dashboard() {
             )}
           </p>
         )}
-
-        {/* What-if co-pilot */}
-        <HoneyAsk
-          labels={{
-            title: tr("dash.ask.title"),
-            placeholder: tr("dash.ask.placeholder"),
-            button: tr("dash.ask.button"),
-            thinking: tr("dash.ask.thinking"),
-            // Both say CALCULATED, because both are — the numbers come from
-            // lib/askCompute.ts either way. Only the wording differs.
-            aiBadge: tr("ask.badge.ai"),
-            ruleBadge: tr("ask.badge.computed"),
-            disclaimer: tr("ask.scopeNotice"),
-            suggestions: [tr("dash.ask.s1"), tr("dash.ask.s2"), tr("dash.ask.s3"), tr("dash.ask.s4")],
-            confHigh: tr("ask.conf.label.high"),
-            confFair: tr("ask.conf.label.fair"),
-            confThin: tr("ask.conf.label.thin"),
-          }}
-        />
 
         {/* Summary */}
         <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -298,6 +269,42 @@ export default async function Dashboard() {
             ))}
           </div>
         </section>
+
+        {/* ⚠️ ORDER IS DELIBERATE: Honey comments AFTER the numbers it is
+            commenting on. Both blocks used to open the page, so someone who
+            came to check their buckets read an opinion about figures they had
+            not seen yet, and scrolled past both to reach the data. Summary ->
+            buckets -> subscriptions -> recent, THEN what Honey makes of it. */}
+        {/* Honey insight */}
+        <section className="mt-8 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg">
+          <div className="flex items-center gap-2 text-sm font-medium opacity-90">
+            <span>{tr("dash.honeySays")}</span>
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+              {insight.source === "gemini" ? tr("dash.badge.ai") : tr("dash.badge.insight")}
+            </span>
+          </div>
+          <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
+        </section>
+
+        {/* What-if co-pilot */}
+        <HoneyAsk
+          labels={{
+            title: tr("dash.ask.title"),
+            placeholder: tr("dash.ask.placeholder"),
+            button: tr("dash.ask.button"),
+            thinking: tr("dash.ask.thinking"),
+            // Both say CALCULATED, because both are — the numbers come from
+            // lib/askCompute.ts either way. Only the wording differs.
+            aiBadge: tr("ask.badge.ai"),
+            ruleBadge: tr("ask.badge.computed"),
+            disclaimer: tr("ask.scopeNotice"),
+            suggestions: [tr("dash.ask.s1"), tr("dash.ask.s2"), tr("dash.ask.s3"), tr("dash.ask.s4")],
+            confHigh: tr("ask.conf.label.high"),
+            confFair: tr("ask.conf.label.fair"),
+            confThin: tr("ask.conf.label.thin"),
+          }}
+        />
+
       </main>
     );
   } catch (err) {

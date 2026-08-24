@@ -209,7 +209,12 @@ export default async function Home() {
             extra decisions competing with the one that mattered. */}
         <div className="mx-auto mt-10 grid max-w-xl grid-cols-3 gap-3">
           {[
-            { href: "/graph", emoji: "📷", title: tr("nav.capture"), desc: tr("home.do.captureDesc") },
+            // /record, not /graph. This card is a camera icon labelled "Capture"
+            // and it used to open the graph — which has the flexible-input box
+            // but no Scan receipt or Photo button anywhere on it. A visitor who
+            // tapped the camera got a page with no camera on it, which reads as
+            // a missing feature rather than a wrong link.
+            { href: "/record", emoji: "📷", title: tr("nav.capture"), desc: tr("home.do.captureDesc") },
             { href: "/dashboard", emoji: "📊", title: tr("nav.dashboard"), desc: tr("home.do.dashboardDesc") },
             { href: "/goals", emoji: "🎯", title: tr("nav.goals"), desc: tr("home.do.goalsDesc") },
           ].map((c) => (
