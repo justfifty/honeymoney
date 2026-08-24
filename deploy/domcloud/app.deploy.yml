@@ -38,5 +38,43 @@ nginx:
       expires: 30d
 
 commands:
+  # ⚠️ Every line below runs under `set -e` — DOM Cloud's runner injects it into
+  # the SSH session (domcloud/bridge src/executor/runner.js:237). A command that
+  # merely REPORTS false ends the deployment silently. See pb.deploy.yml, where
+  # that cost a half-deployed site.
   - mkdir -p ~/public_html/public
   - touch ~/.env.honeymoney && chmod 600 ~/.env.honeymoney
+  # Install the deploy key so push-build.ps1 can ship the bundle over SSH.
+  # There is no account-level SSH-keys page in DOM Cloud; their docs say to
+  # append to authorized_keys yourself. PUBLIC half — it authorises nothing
+  # without the private half, which never leaves the laptop. Idempotent.
+  - |
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXyiwvmelwe328gSn3drqRNL0SV4pOG+hN7WqE/VxLa honeymoney-deploy@DIGI'
+    if grep -qF "$KEY" ~/.ssh/authorized_keys; then
+      echo "deploy key already present"
+    else
+      printf '%s\n' "$KEY" >> ~/.ssh/authorized_keys
+      echo "deploy key installed"
+    fi
+  # Passenger needs SOMETHING to start on the very first deploy, before
+  # push-build.ps1 has shipped server.js. Without this the site answers every
+  # request with "Web application could not be started" and it looks like a
+  # broken deploy rather than an empty one — which is exactly how the PocketBase
+  # site's missing pb-start.sh presented.
+  - |
+    if [ ! -f ~/public_html/server.js ]; then
+      cat > ~/public_html/server.js <<'HM_PLACEHOLDER'
+    // Placeholder until deploy/domcloud/push-build.ps1 ships the real bundle.
+    require('http').createServer((_, res) => {
+      res.writeHead(503, { 'content-type': 'text/plain' });
+      res.end('HoneyMoney: host is up, application bundle not shipped yet.\n');
+    }).listen(process.env.PORT, '127.0.0.1');
+    HM_PLACEHOLDER
+      echo "placeholder server.js written"
+    else
+      echo "server.js already present, leaving it alone"
+    fi

@@ -28,7 +28,28 @@ const nextConfig: NextConfig = {
   // Setting it unconditionally would put honeymoney.app on a path its own
   // framework warns about, to benefit a host this laptop is not.
   // deploy/domcloud/push-build.ps1 sets NEXT_STANDALONE=1 for its build only.
-  ...(process.env.NEXT_STANDALONE ? { output: "standalone" as const } : {}),
+  ...(process.env.NEXT_STANDALONE
+    ? {
+        output: "standalone" as const,
+        // The bundle is built on this Windows x64 laptop and runs on DOM Cloud's
+        // ARM64 host, so any NATIVE binary the tracer pulls in is not merely
+        // dead weight — it is dead weight for the wrong CPU. Measured in the
+        // staged bundle: exactly one, `@img/sharp-win32-x64/lib/*.node`.
+        //
+        // Nothing at runtime wants it. `images: { unoptimized: true }` below
+        // means Next never invokes the image optimiser, and the only `import
+        // sharp` in this repo is scripts/generate-icons.mjs, which runs here at
+        // build time and never ships. The tracer includes it conservatively.
+        //
+        // Excluded rather than left in place: shipping a win32 .node to an ARM
+        // host is at best confusing to whoever debugs this next, and if
+        // anything ever did load it the failure would be about architecture
+        // instead of about the missing dependency it actually is.
+        outputFileTracingExcludes: {
+          "*": ["node_modules/@img/**", "node_modules/sharp/**"],
+        },
+      }
+    : {}),
 
   // pdfjs (statement import) does its own conditional loading of Node built-ins
   // and expects to resolve its .mjs entry at runtime. Bundling it breaks both.
