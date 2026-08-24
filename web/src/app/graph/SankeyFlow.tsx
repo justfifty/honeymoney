@@ -191,8 +191,19 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale, 
     .map(([id, v]) => ({ id, label: byId.get(id)?.label ?? id, col: 0, value: v, color: AMBER }))
     .sort((a, b) => b.value - a.value);
 
-  const buckets = [...bucketIn.entries()]
-    .map(([id, inV]) => {
+  // A bucket belongs in the middle column if money moves through it in EITHER
+  // direction. This used to be built from bucketIn alone — buckets that receive
+  // an ALLOCATES edge — and ALLOCATES edges only exist once income is declared
+  // on this page. A household that types spends but never declares income (which
+  // is every real signup so far; income for scoring is a node, not a transaction)
+  // had an empty middle column while its SPENT_AT ribbons still pointed at those
+  // buckets: placed.get(src) came back undefined and the DEFAULT graph view
+  // crashed with a 500 for exactly the users with real data. The demo personas
+  // all declare income, which is why no persona ever reproduced it.
+  const bucketIds = [...new Set([...bucketIn.keys(), ...bucketOut.keys()])];
+  const buckets = bucketIds
+    .map((id) => {
+      const inV = bucketIn.get(id) ?? 0;
       const spent = bucketOut.get(id) ?? 0;
       return { id, label: byId.get(id)?.label ?? id, col: 1, value: Math.max(inV, spent), color: "#5B7DB1", inV, spent };
     })
@@ -291,8 +302,12 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale, 
   const emit = (l: typeof links[number]) => {
     if (emitted.has(l)) return;
     emitted.add(l);
-    const s = placed.get(l.src)!;
-    const t = placed.get(l.dst)!;
+    // Belt to the braces above: a link whose endpoint was never laid out is
+    // dropped, not drawn from undefined. Losing one ribbon is a display gap;
+    // throwing here is a blank 500 over the whole page.
+    const s = placed.get(l.src);
+    const t = placed.get(l.dst);
+    if (!s || !t) return;
     const w = l.flow * scale;
     const so = outCursor.get(l.src) ?? 0;
     const to = inCursor.get(l.dst) ?? 0;
