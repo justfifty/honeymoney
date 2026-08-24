@@ -116,6 +116,13 @@ export default async function SetupPage() {
         </span>
       </div>
 
+      {/* Bot-capture walkthrough, shown only when a bot is actually configured.
+          These sections used to render unconditionally, so /setup spent three
+          panels teaching a feature that answered nothing — a user could follow
+          every step and reach a bot that does not exist. The deck no longer
+          claims Telegram; the setup screen should not either, until the day
+          TELEGRAM_BOT_TOKEN is set and it quietly returns. */}
+      {telegramReady && (
       <Section title={`✨ ${tr("setup.what.title")}`} tone="plain">
         <ul className="list-disc space-y-2 pl-5">
           <li>{tr("setup.what.1")}</li>
@@ -124,6 +131,7 @@ export default async function SetupPage() {
           <li>{tr("setup.what.4")}</li>
         </ul>
       </Section>
+      )}
 
       {/* The AI engine section used to be three static bullets plus whichever
           provider an env var named. That told a user what the app *intends*,
@@ -169,6 +177,7 @@ export default async function SetupPage() {
         />
       </Section>
 
+      {telegramReady && (
       <Section title={`💬 ${tr("setup.connect.title")}`} tone="good">
         <ol className="list-decimal space-y-2 pl-5">
           <li>{tr("setup.connect.1")}</li>
@@ -188,6 +197,7 @@ export default async function SetupPage() {
           <p className="mt-3 text-xs text-zinc-500">{tr("setup.connect.noBot")}</p>
         )}
       </Section>
+      )}
 
       <Section title={`🛠️ ${tr("setup.admin.title")}`} tone="plain">
         <p>

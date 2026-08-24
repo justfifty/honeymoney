@@ -9,7 +9,7 @@
  * TWO FRAME SOURCES, both addressed rather than clicked. Chrome's --screenshot
  * cannot click or scroll, so:
  *   • web pages   — captured tall once per URL, cropped per beat at `y`.
- *   • deck slides — the deck is 13 slides of exactly 1280x720 stacked, so it is
+ *   • deck slides — the deck is 12 slides of exactly 1280x720 stacked, so it is
  *                   captured as one strip at 1.5x and cropped at slide*1080.
  * That is what makes the three personas and all six graph views reachable:
  * /graph takes ?tenantId= and ?mode=, so each is a URL, not an interaction.
@@ -58,6 +58,12 @@ const CHROME =
 if (!CHROME) throw new Error("No Chrome/Edge found. Set CHROME=<path>.");
 
 const W = 1920, H = 1080, FPS = 30, XFADE = 0.55;
+// Web pages are mounted at 90% on a near-black field rather than shown full
+// bleed. Full-bleed screenshots read as "the video IS the page" and every edge
+// artefact — a scrollbar shadow, a cut-off row — reads as a product bug; a
+// margin reads as "the video is SHOWING you the page". Deck slides stay full
+// bleed: they are 16:9 frames designed for exactly this canvas.
+const PAGE_W = 1728, PAGE_H_FRAME = 972, MOUNT = "0x0e1013";
 const PAD = 0.85;       // breath after each line
 const MIN_HOLD = 3.0;
 const PAGE_H = 3000;    // web pages: captured tall, cropped per beat
@@ -86,13 +92,13 @@ const SHOTS = [
   { deck: 1, cap: "Four e-wallets, cards and cash. Nothing adds them up.",
     vo: "Malaysian households run money across four or five e-wallets, plus cards and cash. Nothing adds them up." },
   { deck: 1, cap: "Tracking fatigue is the failure mode — not missing features.",
-    vo: "Traditional apps answer that with manual entry and surveillance, so people burn out and stop. Tracking fatigue is the failure mode, not missing features." },
+    vo: "Traditional apps answer with manual entry and surveillance, so people burn out and stop. Tracking fatigue is the failure mode, not missing features." },
   { page: "/", y: 0, cap: "HoneyMoney — live now at honeymoney.app",
     vo: "HoneyMoney is a working product, live today, and free to open." },
-  { deck: 3, cap: "The 3-Bucket Method: Must-paid · Savings · Spendings",
-    vo: "The solution is one simple method. Must-paid for rent and bills. A savings percentage taken automatically. And a private spendings bucket, where tracking deliberately stops." },
-  { page: "/", y: 250, cap: "Snap it or type it — one line, not a spreadsheet.",
-    vo: "Recording a spend takes one line. Snap a receipt, forward a screenshot, or simply type it." },
+  { deck: 3, cap: "The 3-Bucket Method: Must-Paid · Savings · Privacy",
+    vo: "The solution is one simple method. Must-paid for rent and bills, shared and visible. A savings percentage, moved before it can be spent. And a privacy bucket, where personal money stays private by default." },
+  { page: "/", y: 250, cap: "Photo, receipt scan, screenshot, or statement import.",
+    vo: "Recording a spend takes seconds. A photo, a receipt scan, a screenshot, or a statement import. No bank link, no forms, no spreadsheet." },
   { page: g(`tenantId=${AISHA}&mode=sankey`), y: 90,
     cap: "Aisha — Solo: freelance and shop income",
     vo: "The same engine serves very different households. Aisha is solo, with freelance and online shop income." },
@@ -117,26 +123,25 @@ const SHOTS = [
   { page: g(`tenantId=${RAHMAN}&mode=flow`), y: 90,
     cap: "Flow — income to buckets to spending",
     vo: "And flow, following income into buckets, and out to real spending." },
+  { page: "/dashboard", y: 0,
+    cap: "One consolidated dashboard — spend, forecast, and Honey's advice",
+    vo: "Everything consolidates into one dashboard: spending by day, week and month, a forward-looking forecast, and Honey's plain-language advice." },
   { page: "/demo", y: 60,
-    cap: "Four households, one in every H-Score band",
-    vo: "The public demo puts a household in each of the four H-Score bands." },
+    cap: "Tiered insights: Building · Steady · Strong · Thriving",
+    vo: "Insights are tiered. The public demo holds a household in each of the four bands." },
   { page: "/demo", y: 60,
-    cap: "Suria · Strong    Nadia & Faiz · Steady",
-    vo: "Suria is Strong. Nadia and Faiz are Steady." },
-  { page: "/demo", y: 60,
-    cap: "The Azlans · Building    Hafiz & Lina · Thriving",
-    vo: "The Azlans are Building, under real pressure. And Hafiz and Lina are Thriving, so the top band is visibly reachable, not a marketing promise." },
+    cap: "Suria · Strong   Nadia & Faiz · Steady   Azlans · Building   Hafiz & Lina · Thriving",
+    vo: "Suria is Strong. Nadia and Faiz are Steady. The Azlans are Building, under real pressure. And Hafiz and Lina are Thriving — so the top band is visibly reachable, not a marketing promise." },
   { page: "/demo", y: 520,
-    cap: "H-Score: one number, and what drives it",
-    vo: "Every score breaks down into what you save, what the essentials take, and how deep the buffer is." },
-  { deck: 7, cap: "Strategy: free for households, employers sponsor seats",
-    vo: "The strategy is free for households, growing by family referral, and monetised through employers who sponsor seats as a wellbeing benefit." },
-  { deck: 9, cap: "Malaysia fit: BNM inclusion · MADANI · SDG 1, 3, 8",
-    vo: "It is built for Malaysia, aligned to Bank Negara's financial inclusion agenda, the MADANI agenda, and three sustainable development goals." },
-  { page: "/guide", y: 200,
-    cap: "On-device receipt scanning. Zero AI tokens.",
+    cap: "Every tier's score shows its own arithmetic",
+    vo: "Each tier gets insight that fits it, and every score breaks down into what you save, what the essentials take, and how deep the buffer is." },
+  { deck: 7, cap: "Budgeting goals and insights, as a service",
+    vo: "The model is budgeting goals and insights, as a service. Employers sponsor seats like health cover, households never pay — and employers see trends, never records." },
+  { deck: 9, cap: "BNM literacy · MADANI · SDG 1 & 8 · bilingual PDPA notice",
+    vo: "Built for Malaysia: Bank Negara's financial literacy priorities, the MADANI agenda, and a bilingual privacy notice with per-purpose consent, live today." },
+  { page: "/guide", y: 200, cap: "On-device receipt scanning. Zero AI tokens.",
     vo: "Receipt scanning runs on your own device and spends no A I tokens at all. Private by design." },
-  { deck: 12, cap: "honeymoney.app · MAIC Nexus 2026 · Track T3",
+  { deck: 11, cap: "honeymoney.app · MAIC Nexus 2026 · Track T3",
     vo: "HoneyMoney. Happy wife, happy life. Live now at honeymoney dot app." },
 ];
 
@@ -206,8 +211,8 @@ const webPages = [...new Set(SHOTS.filter((s) => s.page).map((s) => s.page))];
 if (shoot) {
   for (const p of webPages) { capture(SITE + p, pageFile(p), W, PAGE_H); console.log(`  captured ${p}`); }
   if (SHOTS.some((s) => s.deck !== undefined)) {
-    capture(DECK, deckStrip, 1280, Math.ceil(13 * 720 * 1.02), DECK_SCALE);
-    console.log("  captured deck strip (13 slides)");
+    capture(DECK, deckStrip, 1280, Math.ceil(12 * 720 * 1.02), DECK_SCALE);
+    console.log("  captured deck strip (12 slides)");
   }
 }
 for (const p of webPages) if (!existsSync(pageFile(p))) throw new Error(`missing frame: ${p} — run without --no-shoot`);
@@ -226,11 +231,17 @@ SHOTS.forEach((s, i) => {
 if (narrate) console.log(`  narrated ${SHOTS.length} beats with ${VOICE}`);
 
 // ── Filter graph ────────────────────────────────────────────────────────────
-const esc = (t) => t.replace(/[\\:']/g, (c) => "\\" + c).replace(/,/g, "\\,");
+// Apostrophes become U+2019. Backslash-escaping ' inside drawtext's own
+// single-quoted string does not survive ffmpeg's filter parser on Windows —
+// the first caption to contain "Honey's" killed the whole encode with a bare
+// exit status and no stderr. The typographic quote renders identically in
+// Segoe UI and needs no escaping at all.
+const esc = (t) => t.replace(/'/g, "’").replace(/[\\:]/g, (c) => "\\" + c).replace(/,/g, "\\,");
 const filters = SHOTS.map((s, i) =>
   s.deck !== undefined
     ? `[${i}:v]crop=${W}:${H}:0:${s.deck * H},setsar=1,fps=${FPS},format=yuv420p[v${i}]`
-    : `[${i}:v]crop=${W}:${H}:0:${s.y},setsar=1,fps=${FPS},format=yuv420p[v${i}]`,
+    : `[${i}:v]crop=${W}:${H}:0:${s.y},scale=${PAGE_W}:${PAGE_H_FRAME},` +
+      `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=${MOUNT},setsar=1,fps=${FPS},format=yuv420p[v${i}]`,
 );
 
 let prev = "v0", acc = SHOTS[0].hold;
