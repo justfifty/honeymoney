@@ -133,7 +133,19 @@
     </tr>
   </table>
 
-  <h2>2. The AI does not do the arithmetic &mdash; and is not trusted not to</h2>
+  <h2>2. The AI explains the money. Exact code computes it.</h2>
+  <p>Honey uses AI for what language models are genuinely excellent at: making sense of
+  messy real-world input &mdash; a photographed receipt, a forwarded screenshot, a sentence
+  typed one-handed &mdash; and explaining a household&rsquo;s position in plain English or
+  Malay. That is real work, and it is why the product feels like talking to someone rather
+  than filling in a form.</p>
+  <p>The figures in that explanation come from a deterministic function &mdash; the same one
+  behind the H-Score screen &mdash; so a household gets both halves at once:
+  <strong>language that sounds human, and arithmetic that is exact and reproducible.</strong>
+  A final check confirms the wording matches the computed figures before anyone sees it, so
+  the two can never drift apart. Advice a family can act on has to be both understandable
+  and correct; this is how HoneyMoney delivers both rather than trading one for the
+  other.</p>
   <p>Ask Honey runs in three stages: <strong>parse &rarr; compute &rarr; narrate</strong>.</p>
   <ul>
     <li><strong>Stage 2 owns every number the user ever sees.</strong> It is a pure function:
@@ -142,20 +154,23 @@
     identical function behind the H-Score screen, not a parallel approximation of it. Two
     engines that disagree would tell one household two different truths with no way to tell
     which was real.</li>
-    <li><strong>Stage 3 phrases those numbers and is verified, not trusted.</strong>
-    &ldquo;Never invent figures&rdquo; is in the system prompt, but a system prompt is a
-    request made of a probabilistic system. So every figure in the model's prose is extracted
-    and checked against an allowlist that stage 2 published, and <strong>one unrecognised
-    number discards the whole answer</strong> in favour of a deterministic template. The
-    trade is deliberately one-sided: a false rejection costs a stiffer sentence, a false
-    acceptance costs a household acting on a figure nobody computed.</li>
-    <li><strong>Scope is held at the type level, not in the prompt.</strong> The set of
-    questions Honey can answer is an allowlist, so no code path answers &ldquo;which unit
-    trust should I buy?&rdquo; &mdash; not reluctantly, not hedged. Product questions route to
-    a licensed directory instead of dead-ending.</li>
-    <li><strong>An affordability question with no price asks for the price</strong> and says
-    why it will not invent one. A guessed price turns a budgeting tool into a product
-    recommender, and a looked-up price is someone else's TV.</li>
+    <li><strong>Stage 3 turns those numbers into language a family actually uses</strong>
+    &mdash; and every figure it writes is matched back against the ones stage 2 published
+    before the answer is shown. The guarantee this buys is a strong one and easy to state:
+    <strong>every number a household reads has been computed, never composed.</strong>
+    Where the check does not pass, Honey answers from a deterministic template, so the
+    household still gets an answer and it is still exact.</li>
+    <li><strong>Honey&rsquo;s scope is defined in code, so it stays a coach.</strong> The
+    questions it answers are an explicit set built around understanding your own money.
+    &ldquo;Which unit trust should I buy?&rdquo; is routed to a licensed directory, because
+    product recommendation is regulated advice and belongs with people who are licensed to
+    give it. That boundary is structural rather than a prompt instruction, which is what
+    makes it dependable.</li>
+    <li><strong>Honey asks rather than assumes.</strong> An affordability question with no
+    price gets a question back instead of a guessed figure &mdash; a guessed price would
+    quietly turn a budgeting tool into a product recommender, and a price looked up online is
+    someone else&rsquo;s TV, not yours. Asking takes one extra tap and keeps the answer
+    about your household.</li>
   </ul>
   <div class="pull"><strong>The 3-Bucket allocation is rules-based, not AI-decided.</strong>
   Money moves between Must-Paid, Savings and Privacy by user-configured rules. The AI helps
