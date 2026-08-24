@@ -52,3 +52,17 @@ touching every judging criterion.
 - **Title:** HoneyMoney — MAIC Nexus 2026 (Track T3) Demo
 - **Duration:** aim 2:15–2:50 (hard cap 3:00)
 - **Description:** one-line pitch + `https://honeymoney.app` + repo link.
+
+---
+
+## The generated explainer (2026-08-24)
+
+The shipped `HoneyMoney_Demo_MAIC2026.mp4` is built by `scripts/build-demo-video.mjs`,
+not recorded. **Its narration script is the `vo` strings in that file** — 21 beats
+running problem → solution → three personas → six graph views → four H-Score bands
+→ strategy → Malaysia impact → CTA, at 2:51 with an en-SG neural voice.
+
+The shot list below remains the target for a *human-recorded* version. Record over
+the same beat sheet: the `vo` lines are already timed, and the video regenerates
+from the live site with `node scripts/build-demo-video.mjs`, so the frames can
+never drift from what a judge sees.
