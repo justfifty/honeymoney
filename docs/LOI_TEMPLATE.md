@@ -58,8 +58,10 @@ HoneyMoney is an AI-powered financial-wellness benefit for employees. Participat
 
 - The Parties will handle all personal data in accordance with Malaysia's **Personal Data Protection Act 2010 (PDPA)**.
 - Participation is **voluntary** and based on each employee's own consent. Employees may withdraw at any time and request deletion of their data.
-- Individual employee financial data is **private to that employee**. The Employer will **never** receive any individual's spending data, screenshots, or personal financial details.
-- Any insight shared with the Employer will be **anonymised and aggregated** across the participant group (for example, "68% of participants reported feeling more in control of money"), and only where the group is large enough that no individual can be identified.
+- **Declining to take part, or withdrawing later, carries no consequence of any kind for the employee.** It will not be recorded in any employment file, communicated to a manager, or taken into account in any assessment, and the Employer will not be told who declined. Consent given to an employer is only meaningful if refusing it is genuinely free, and an employee who suspects otherwise has not consented in any sense worth relying on.
+- Individual employee financial data is **private to that employee**. The Employer will **never** receive any individual's spending data, screenshots, personal financial details, or Money Health Score.
+- Any insight shared with the Employer will be **anonymised and aggregated** across the participant group (for example, "68% of participants reported feeling more in control of money").
+- **Aggregates are reported only for groups of 10 or more participants.** Any figure covering fewer than 10 people is withheld entirely rather than rounded, blurred, or labelled "small sample" — in a team of six, "one participant is in financial difficulty" identifies that person to everyone who can count. This applies to every breakdown, including by department, site, age band or job grade, and to combinations of them.
 - The Provider will not sell participant personal data and will use it only to deliver and improve the service.
 
 ## 6. No Payment During Pilot
