@@ -30,6 +30,7 @@ Live at https://honeymoney.app/privacy
 - Money records you enter: amounts, dates, who paid, which bucket, any note or photo you attach, and any receipt text you scan.
 - Your H-Score: the score, the band, and the five sub-scores computed from those records.
 - Technical data needed to run the service: session cookies, and error logs that do not contain your records.
+- Basic visit analytics: the page visited, your approximate location from your IP address, and your browser type. We use this only to see whether the app works, and we are removing it in favour of counts that identify nobody.
 - We do not collect bank credentials, and HoneyMoney has no connection to your bank. Every record is one you entered.
 
 ### Apa yang kami kumpul
@@ -38,13 +39,14 @@ Live at https://honeymoney.app/privacy
 - Rekod kewangan yang anda masukkan: jumlah, tarikh, siapa yang membayar, baldi mana, sebarang nota atau gambar yang anda lampirkan, dan teks resit yang anda imbas.
 - H-Score anda: skor, band, dan lima sub-skor yang dikira daripada rekod tersebut.
 - Data teknikal untuk menjalankan perkhidmatan: kuki sesi, dan log ralat yang tidak mengandungi rekod anda.
+- Analitik lawatan asas: halaman yang dilawati, anggaran lokasi anda daripada alamat IP, dan jenis pelayar anda. Kami menggunakannya hanya untuk melihat sama ada aplikasi berfungsi, dan kami sedang menggantikannya dengan kiraan yang tidak mengenal pasti sesiapa.
 - Kami tidak mengumpul kelayakan perbankan, dan HoneyMoney tidak mempunyai sambungan kepada bank anda. Setiap rekod adalah rekod yang anda masukkan sendiri.
 
 ## Why we process it
 
 - To run the app: store your records, show your dashboard and graphs, and compute your H-Score. This is what the product does, so it comes with having an account.
 - AI features (only if you switch them on): Ask Honey and receipt scanning send the text you capture to a third-party AI provider. Off unless you agree.
-- Matched financial products (only if you switch them on): we share your spending tier — a band, never your records — with licensed partners so they can offer relevant products. Off unless you agree, and you can withdraw at any time.
+- Matched financial products: NOT CURRENTLY OFFERED. We are not asking for this and we are not doing it. If we ever do, it would share a spending band and never your records, it would be off until you switched it on, and we would ask you again under an updated version of this notice.
 - Anonymous statistics (only if you switch them on): we include your household in aggregate figures that cannot be traced back to you.
 - We do not sell your records. We do not give any third party your transactions.
 
@@ -52,26 +54,26 @@ Live at https://honeymoney.app/privacy
 
 - Untuk menjalankan aplikasi: menyimpan rekod anda, memaparkan papan pemuka dan graf, serta mengira H-Score anda. Inilah fungsi produk ini, jadi ia disertakan bersama akaun anda.
 - Ciri AI (hanya jika anda menghidupkannya): Ask Honey dan pengimbasan resit menghantar teks yang anda tangkap kepada penyedia AI pihak ketiga. Dimatikan melainkan anda bersetuju.
-- Produk kewangan yang dipadankan (hanya jika anda menghidupkannya): kami berkongsi tahap perbelanjaan anda — satu band, bukan rekod anda — dengan rakan kongsi berlesen supaya mereka boleh menawarkan produk yang berkaitan. Dimatikan melainkan anda bersetuju, dan anda boleh menariknya balik pada bila-bila masa.
+- Produk kewangan yang dipadankan: TIDAK DITAWARKAN BUAT MASA INI. Kami tidak memintanya dan kami tidak melakukannya. Jika kami berbuat demikian kelak, ia hanya akan berkongsi band perbelanjaan dan bukan rekod anda, ia akan dimatikan sehingga anda menghidupkannya, dan kami akan bertanya kepada anda semula di bawah versi notis ini yang dikemas kini.
 - Statistik tanpa nama (hanya jika anda menghidupkannya): kami memasukkan isi rumah anda dalam angka agregat yang tidak boleh dikesan kembali kepada anda.
 - Kami tidak menjual rekod anda. Kami tidak memberikan transaksi anda kepada mana-mana pihak ketiga.
 
 ## What is required, and what is your choice
 
 - Required: your email and password, because an account cannot exist without them, and the records you choose to enter, because there is nothing to show you otherwise. If you do not want this processing to continue, you can close your account and we will delete it.
-- Entirely your choice: AI features, matched financial products, and anonymous statistics. All three are off until you turn them on. Declining any of them does not reduce the rest of the app.
+- Entirely your choice: AI features and anonymous statistics. Both are off until you turn them on. Declining either does not reduce the rest of the app.
 
 ### Apa yang diwajibkan, dan apa yang menjadi pilihan anda
 
 - Diwajibkan: e-mel dan kata laluan anda, kerana akaun tidak boleh wujud tanpanya, dan rekod yang anda pilih untuk masukkan, kerana tiada apa yang boleh dipaparkan tanpanya. Jika anda tidak mahu pemprosesan ini diteruskan, anda boleh menutup akaun anda dan kami akan memadamkannya.
-- Sepenuhnya pilihan anda: ciri AI, produk kewangan yang dipadankan, dan statistik tanpa nama. Ketiga-tiganya dimatikan sehingga anda menghidupkannya. Menolak mana-mana daripadanya tidak mengurangkan fungsi aplikasi yang lain.
+- Sepenuhnya pilihan anda: ciri AI dan statistik tanpa nama. Kedua-duanya dimatikan sehingga anda menghidupkannya. Menolak mana-mana daripadanya tidak mengurangkan fungsi aplikasi yang lain.
 
 ## Who else sees it
 
 - Other members of your household see the household's shared records. Records in a Personal bucket are not shown to them.
 - Our hosting provider stores the database on our behalf and does not use it for anything else.
 - An AI provider receives the text you capture, only if you switched AI features on.
-- Licensed financial partners receive your spending tier, only if you switched matched products on. They never receive your transactions.
+- No financial partner receives anything today, because matched products are not offered.
 - We disclose data to authorities only where the law requires it.
 
 ### Siapa lagi yang melihatnya
@@ -79,7 +81,7 @@ Live at https://honeymoney.app/privacy
 - Ahli lain dalam isi rumah anda melihat rekod kongsi isi rumah. Rekod dalam baldi Peribadi tidak dipaparkan kepada mereka.
 - Penyedia pengehosan kami menyimpan pangkalan data bagi pihak kami dan tidak menggunakannya untuk tujuan lain.
 - Penyedia AI menerima teks yang anda tangkap, hanya jika anda menghidupkan ciri AI.
-- Rakan kongsi kewangan berlesen menerima tahap perbelanjaan anda, hanya jika anda menghidupkan produk yang dipadankan. Mereka tidak sekali-kali menerima transaksi anda.
+- Tiada rakan kongsi kewangan menerima apa-apa hari ini, kerana produk yang dipadankan tidak ditawarkan.
 - Kami mendedahkan data kepada pihak berkuasa hanya apabila dikehendaki oleh undang-undang.
 
 ## Where it is stored

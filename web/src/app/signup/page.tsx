@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "../Logo";
 import { Field, PasswordField, scorePassword } from "../AuthFields";
+import { PARTNER_OFFERS_ENABLED } from "@/lib/consent";
 
 function SignupForm() {
   const router = useRouter();
@@ -146,12 +147,17 @@ function SignupForm() {
               label="Let Honey use AI"
               help="Ask Honey and receipt scanning send the text you capture to an AI provider. Off means both stay switched off."
             />
+            {/* Not offered yet — see PARTNER_OFFERS_ENABLED in lib/consent.ts.
+                Asking for a purpose we are not licensed to act on would collect
+                consent we cannot lawfully use, which is worse than not asking. */}
+            {PARTNER_OFFERS_ENABLED && (
             <Consent
               checked={partnerOk}
               onChange={setPartnerOk}
               label="Show me matched financial products"
               help="Shares your spending tier — never your records — with licensed partners so they can offer relevant products. Off by default. You can withdraw this at any time and we stop immediately."
             />
+            )}
             <Consent
               checked={researchOk}
               onChange={setResearchOk}

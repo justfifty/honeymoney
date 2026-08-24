@@ -8,7 +8,8 @@ import {
   isPurpose,
   specFor,
   NOTICE_VERSION,
-  PURPOSES,
+  OFFERED_PURPOSES,
+  isOffered,
 } from "@/lib/consent";
 
 export const runtime = "nodejs";
@@ -37,7 +38,7 @@ export async function GET() {
       noticeVersion: NOTICE_VERSION,
       // The catalogue ships with the state so the settings UI cannot drift out
       // of sync with lib/consent.ts by hard-coding its own list of purposes.
-      purposes: PURPOSES.map((p) => ({
+      purposes: OFFERED_PURPOSES.map((p) => ({
         key: p.key,
         required: p.required,
         directMarketing: p.directMarketing,
@@ -67,6 +68,12 @@ export async function POST(request: Request) {
 
     if (!isPurpose(body.purpose)) {
       return NextResponse.json({ error: "Unknown purpose" }, { status: 400 });
+    }
+    // A purpose we do not currently offer cannot be consented to, even by a
+    // hand-crafted request. Otherwise PARTNER_OFFERS_ENABLED would be a UI
+    // preference rather than the legal switch it is meant to be.
+    if (!isOffered(body.purpose)) {
+      return NextResponse.json({ error: "That option is not available." }, { status: 400 });
     }
     const spec = specFor(body.purpose)!;
     const granted = body.granted === true;

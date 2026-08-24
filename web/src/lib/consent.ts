@@ -90,6 +90,41 @@ export const PURPOSES: PurposeSpec[] = [
   },
 ];
 
+/**
+ * Whether the app ASKS for partner_offers at all.
+ *
+ * OFF, and this is a legal switch rather than a product one. Disclosing a
+ * spending tier to a financial partner is what drags HoneyMoney from "an app
+ * that holds personal data" into three regimes it is not ready for: the
+ * Disclosure Principle, the s.43 direct-marketing right, and -- the expensive
+ * one -- whether introducing financial products needs a BNM or SC licence,
+ * which is criminal exposure rather than administrative.
+ *
+ * None of that is a reason to delete the code. The purpose, the ledger and the
+ * withdrawal path all stay built and tested; they are simply not offered. When
+ * counsel has cleared the licensing question and a licensed partner has papered
+ * the arrangement, this becomes true and the whole path lights up.
+ *
+ * Turning it on WITHOUT that clearance is the single most dangerous edit in
+ * this repository.
+ */
+export const PARTNER_OFFERS_ENABLED = false;
+
+/**
+ * The purposes actually offered to a user right now.
+ *
+ * Everything user-facing reads THIS, never PURPOSES: the signup form, the
+ * settings screen, and the consent API all agree by construction, so a purpose
+ * cannot be quietly askable on one screen and hidden on another.
+ */
+export const OFFERED_PURPOSES = PURPOSES.filter(
+  (p) => p.key !== "partner_offers" || PARTNER_OFFERS_ENABLED,
+);
+
+export function isOffered(purpose: Purpose): boolean {
+  return OFFERED_PURPOSES.some((p) => p.key === purpose);
+}
+
 export const PURPOSE_KEYS = PURPOSES.map((p) => p.key);
 export const OPTIONAL_PURPOSES = PURPOSES.filter((p) => !p.required);
 
@@ -202,7 +237,9 @@ export async function recordSignupConsents(input: {
   tenantId?: string;
   answers: Partial<Record<Purpose, boolean>>;
 }): Promise<void> {
-  for (const spec of PURPOSES) {
+  // Only the purposes we actually offered. A consent row for something the
+  // user was never shown is not evidence of anything.
+  for (const spec of OFFERED_PURPOSES) {
     const granted = spec.required ? true : input.answers[spec.key] === true;
     await recordConsent({
       userId: input.userId,
