@@ -256,9 +256,15 @@ export default function RecordRow({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Provenance chip. Raw channel ids leaked here as UI text — seeded
+              demo rows carry source "telegram", so the dashboard wore a badge
+              for a feature the product no longer sells. Channel ids are data;
+              what the chip owes the reader is "this arrived automatically",
+              and "auto" says that without naming plumbing. Manual entries have
+              no source and no chip, unchanged. */}
           {record.source && (
             <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs text-zinc-500 dark:bg-zinc-800">
-              {record.source}
+              {record.source === "telegram" ? "auto" : record.source}
             </span>
           )}
           {/* Both directions carry a sign and a colour. Money in used to be a
