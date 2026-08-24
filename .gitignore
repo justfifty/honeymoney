@@ -103,3 +103,4 @@ deploy/.r2-credentials.json
 # would only mislead whoever reads one and not the other.
 deploy/domcloud/id_domcloud
 deploy/domcloud/.host
+deploy/domcloud/.pbhost

@@ -61,20 +61,34 @@ commands:
       echo "deploy key installed"
     fi
   # Passenger needs SOMETHING to start on the very first deploy, before
-  # push-build.ps1 has shipped server.js. Without this the site answers every
-  # request with "Web application could not be started" and it looks like a
-  # broken deploy rather than an empty one — which is exactly how the PocketBase
-  # site's missing pb-start.sh presented.
+  # push-build.ps1 has shipped the bundle. Without it the site answers every
+  # request with "Web application could not be started", which reads as a broken
+  # deploy rather than an empty one — exactly how the PocketBase site's missing
+  # pb-start.sh presented, and it cost an hour to tell those apart.
+  #
+  # ⚠️ THE PLACEHOLDER MUST BE start-app.sh, NOT server.js. `app_start_command`
+  # above is `bash ./start-app.sh`; Passenger never runs server.js directly. The
+  # first version of this wrote a placeholder server.js and was therefore
+  # useless — verified on the real host, which had server.js and still failed
+  # with "bash: ./start-app.sh: No such file or directory". A placeholder at the
+  # wrong layer is worse than none, because it looks like cover.
+  #
+  # Both files are left alone if present, so a redeploy never overwrites the
+  # shipped bundle.
   - |
-    if [ ! -f ~/public_html/server.js ]; then
-      cat > ~/public_html/server.js <<'HM_PLACEHOLDER'
-    // Placeholder until deploy/domcloud/push-build.ps1 ships the real bundle.
-    require('http').createServer((_, res) => {
-      res.writeHead(503, { 'content-type': 'text/plain' });
-      res.end('HoneyMoney: host is up, application bundle not shipped yet.\n');
-    }).listen(process.env.PORT, '127.0.0.1');
-    HM_PLACEHOLDER
-      echo "placeholder server.js written"
+    if [ ! -f ~/public_html/start-app.sh ]; then
+      cat > ~/public_html/start-app.sh <<'HM_PLACEHOLDER_SH'
+    #!/usr/bin/env bash
+    # Placeholder until deploy/domcloud/push-build.ps1 ships the real start-app.sh.
+    exec node -e '
+      require("http").createServer((_, res) => {
+        res.writeHead(503, { "content-type": "text/plain" });
+        res.end("HoneyMoney: host is up, application bundle not shipped yet.\n");
+      }).listen(process.env.PORT, "127.0.0.1");
+    '
+    HM_PLACEHOLDER_SH
+      chmod +x ~/public_html/start-app.sh
+      echo "placeholder start-app.sh written"
     else
-      echo "server.js already present, leaving it alone"
+      echo "start-app.sh already present, leaving it alone"
     fi

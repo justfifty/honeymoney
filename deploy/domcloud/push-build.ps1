@@ -121,7 +121,22 @@ chmod +x ~/public_html/start-app.sh
 mkdir -p ~/public_html/tmp && touch ~/public_html/tmp/restart.txt   # Passenger picks this up
 echo "deployed: $(ls -1 ~/public_html | wc -l) entries in public_html"
 '@
-$remote | ssh @sshArgs $SshTarget 'bash -s'
+# NOT `$remote | ssh 'bash -s'`. PowerShell's pipeline emits UTF-8 WITH a BOM,
+# so the first line arrives as "﻿set -euo pipefail" and bash answers
+# "set: command not found" — then carries on WITHOUT error handling, which on a
+# deploy means a half-extracted bundle reporting success. The same bug hit
+# migrate-pocketbase.ps1 against the ledger. Write BOM-less and scp the file.
+$scriptTmp = [IO.Path]::GetTempFileName()
+try {
+  [IO.File]::WriteAllText($scriptTmp, $remote, (New-Object System.Text.UTF8Encoding $false))
+  $b = [IO.File]::ReadAllBytes($scriptTmp)
+  if ($b.Length -ge 3 -and $b[0] -eq 0xEF -and $b[1] -eq 0xBB -and $b[2] -eq 0xBF) {
+    throw "refusing to ship a script that still starts with a BOM"
+  }
+  scp -i $KeyFile -P $SshPort -o StrictHostKeyChecking=accept-new $scriptTmp "${SshTarget}:~/hm-extract.sh"
+  if ($LASTEXITCODE -ne 0) { throw "scp of the extract script failed" }
+} finally { Remove-Item $scriptTmp -Force -ErrorAction SilentlyContinue }
+ssh @sshArgs $SshTarget 'bash ~/hm-extract.sh; rc=$?; rm -f ~/hm-extract.sh; exit $rc'
 if ($LASTEXITCODE -ne 0) { throw "remote extract failed" }
 
 Remove-Item $stage -Recurse -Force

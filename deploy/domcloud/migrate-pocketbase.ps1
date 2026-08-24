@@ -40,11 +40,18 @@ $repo    = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 $envFile = Join-Path $repo 'web\.env.local'
 $keyPath = Join-Path $repo 'deploy\.pb-encryption-key'
 
+# .pbhost, NOT .host. There are two sites and they are not interchangeable:
+# .host is the APP site, which push-build.ps1 extracts a Next.js bundle into,
+# and .pbhost is the PocketBase site, which this script overwrites pb_data on.
+# They were briefly the same file, which meant whichever script ran second was
+# aimed at the wrong host — restoring a household ledger over the web app, or
+# unpacking the web app over the ledger. Separate files, and no cross-fallback:
+# guessing the target of a destructive operation is not a convenience.
 if (-not $SshTarget) {
-  $hostFile = Join-Path $PSScriptRoot '.host'
+  $hostFile = Join-Path $PSScriptRoot '.pbhost'
   if (Test-Path $hostFile) { $SshTarget = (Get-Content $hostFile -Raw).Trim() }
 }
-if (-not $SshTarget) { throw "No SSH target. Pass -SshTarget user@host or write $PSScriptRoot\.host" }
+if (-not $SshTarget) { throw "No SSH target. Pass -SshTarget user@host or write $PSScriptRoot\.pbhost (the PocketBase site — NOT .host, which is the app)." }
 
 if (-not $Confirm) {
   Write-Host @"
