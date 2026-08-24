@@ -31,8 +31,20 @@
 #     traffic this origin sees. Revisit if that stops being true.
 # ─────────────────────────────────────────────────────────────────────────────
 
-features:
-  - ssl letsencrypt
+features: []
+  # ⚠️ `ssl letsencrypt` is DELIBERATELY NOT SET WHILE THIS SITE IS ON A
+  # *.domcloud.dev NAME. DOM Cloud serves its own subdomains with a SHARED
+  # certificate, specifically so tenants do not exhaust Let's Encrypt's rate
+  # limits — and the feature's documented behaviour is to renew "forcibly".
+  # Forcing a per-name cert onto a name that already has shared SSL is asking
+  # the platform to undo its own arrangement. HTTPS already works here without
+  # it; there is nothing to gain and a failed deploy to lose.
+  #
+  # TURN IT ON when — and only when — this site is moved to pb.honeymoney.app,
+  # which is a real domain that needs its own certificate. At that point make
+  # this block:
+  #   features:
+  #     - ssl letsencrypt
 
 nginx:
   root: public_html/public

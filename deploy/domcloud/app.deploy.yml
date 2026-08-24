@@ -14,7 +14,10 @@
 
 features:
   - node lts        # Passenger needs a node on PATH; the bundle ships its own deps
-  - ssl letsencrypt
+  # ⚠️ `ssl letsencrypt` omitted while this site is on a *.domcloud.dev name —
+  # DOM Cloud serves those with a SHARED certificate to protect Let's Encrypt
+  # rate limits, and this feature renews "forcibly". Add it back only when the
+  # site moves to app.honeymoney.app. See pb.deploy.yml for the full note.
 
 nginx:
   # Next.js standalone serves its own /_next/* assets, so this root only ever
