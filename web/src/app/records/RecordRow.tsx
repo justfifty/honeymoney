@@ -261,16 +261,22 @@ export default function RecordRow({
               {record.source}
             </span>
           )}
+          {/* Both directions carry a sign and a colour. Money in used to be a
+              bare "+" in emerald and money out had NO sign at all, so the two
+              were told apart by the presence of a character — easy to miss in a
+              scanning list, and invisible to anyone who cannot separate green
+              from black. Now "+" in brand orange and "−" in dark grey: the sign
+              carries the meaning on its own, and the colour reinforces it. */}
           <span
-            className={`font-medium ${
+            className={`font-medium tabular-nums ${
               record.voided
                 ? "text-zinc-400 line-through"
                 : record.direction === "in"
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : ""
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-zinc-700 dark:text-zinc-300"
             }`}
           >
-            {record.direction === "in" ? "+" : ""}
+            {record.direction === "in" ? "+" : "−"}
             {fmtMoney(record.amount, ccy)}
           </span>
 

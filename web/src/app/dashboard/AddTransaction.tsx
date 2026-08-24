@@ -225,33 +225,6 @@ export default function AddTransaction({
       onSubmit={submit}
       className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
-      <div className="mb-3">
-        <SpendCapture
-          lang={lang}
-          knownVendors={knownVendors}
-          onResult={applyCapture}
-          onAnalysis={setAnalysis}
-        />
-        {analysis?.duplicateOf && (
-          <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
-            🔁{" "}
-            {tr(analysis.duplicateOf.certainty === "exact" ? "cap.duplicateExact" : "cap.duplicate", {
-              vendor: analysis.duplicateOf.vendor,
-              amount: analysis.duplicateOf.amount.toFixed(2),
-              when: new Date(analysis.duplicateOf.occurredAt).toLocaleDateString("en-MY", {
-                day: "numeric",
-                month: "short",
-              }),
-            })}
-          </p>
-        )}
-        {analysis?.insight && (
-          <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">🍯 {analysis.insight}</p>
-        )}
-        {confidence !== undefined && confidence < 0.6 && (
-          <p className="mt-1 text-[11px] text-amber-700">⚠️ {tr("cap.lowConfidence")}</p>
-        )}
-      </div>
 
       {/* DIRECTION FIRST. This sat BELOW the amount row, so the form asked
           "how much?" before "in or out?" — and the answer changes what every
@@ -293,10 +266,41 @@ export default function AddTransaction({
         <button
           type="submit"
           disabled={busy || (!bucket && !isIncome)}
-          className="min-h-11 rounded-lg bg-amber-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+          className="min-h-11 rounded-lg bg-zinc-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-600 dark:hover:bg-zinc-500"
         >
           {busy ? tr("dash.add.saving") : tr(isIncome ? "dash.add.submitIn" : "dash.add.submit")}
         </button>
+      </div>
+
+      {/* Capture sits BELOW the amount row on request. Typing is the fast
+          path and the receipt buttons are the alternative to it, so the form
+          leads with the field a returning user already has their thumb on. */}
+      <div className="mb-3">
+        <SpendCapture
+          lang={lang}
+          knownVendors={knownVendors}
+          onResult={applyCapture}
+          onAnalysis={setAnalysis}
+        />
+        {analysis?.duplicateOf && (
+          <p className="mt-2 rounded-lg border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300">
+            🔁{" "}
+            {tr(analysis.duplicateOf.certainty === "exact" ? "cap.duplicateExact" : "cap.duplicate", {
+              vendor: analysis.duplicateOf.vendor,
+              amount: analysis.duplicateOf.amount.toFixed(2),
+              when: new Date(analysis.duplicateOf.occurredAt).toLocaleDateString("en-MY", {
+                day: "numeric",
+                month: "short",
+              }),
+            })}
+          </p>
+        )}
+        {analysis?.insight && (
+          <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">🍯 {analysis.insight}</p>
+        )}
+        {confidence !== undefined && confidence < 0.6 && (
+          <p className="mt-1 text-[11px] text-amber-700">⚠️ {tr("cap.lowConfidence")}</p>
+        )}
       </div>
 
 
@@ -351,7 +355,7 @@ export default function AddTransaction({
                 className={
                   "min-h-11 rounded-full border px-3.5 text-xs font-medium transition " +
                   (on
-                    ? "border-amber-600 bg-amber-600 text-white"
+                    ? "border-zinc-700 bg-zinc-700 text-white dark:border-zinc-500 dark:bg-zinc-600"
                     : "border-zinc-300 text-zinc-700 hover:border-amber-400 hover:bg-amber-50 dark:border-zinc-700 dark:text-zinc-200")
                 }
               >

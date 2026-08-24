@@ -110,10 +110,14 @@ export default async function RecordsPage({
               {tr("rec.subtitle")} · {tr(activeRange.labelKey).toLowerCase()}
             </p>
           </div>
+          {/* Graph and Dashboard used to sit here and were removed: both are now
+              permanent tabs in the header and the bottom bar, so repeating them
+              in a page header is a second copy of a control that is already on
+              screen. Home stays — it is the one destination the tab bar does not
+              carry — and so does the currency switcher, which is page state
+              rather than navigation. */}
           <nav className="flex items-center gap-3 text-sm">
             <CurrencySwitcher current={ccy} />
-            <Link href="/graph" className="text-zinc-500 hover:underline">🕸️ {tr("nav.graph")}</Link>
-            <Link href="/dashboard" className="text-zinc-500 hover:underline">📊 {tr("nav.dashboard")}</Link>
             <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
           </nav>
         </header>

@@ -8,6 +8,7 @@
 // tapping a goal, which is what keeps "here is a product" downstream of "here is
 // what you're trying to fix" rather than downstream of "here is your score".
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   pointsToNextBand,
@@ -87,12 +88,25 @@ function ProvisionalNotice({ hscore, tr }: { hscore: HScore; tr: Tr }) {
     <div className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900">
       <p className="font-medium">{tr("hscore.provisional.why")}</p>
       <ul className="mt-2 space-y-1 text-zinc-500">
-        {hscore.confidence.missing.map((m) => (
-          <li key={m} className="flex gap-2">
-            <span aria-hidden>•</span>
-            <span>{tr(`hscore.missing.${m}`, { n: MIN_TXNS_30D, have: hscore.confidence.txns30d })}</span>
-          </li>
-        ))}
+        {/* Each item now LINKS to the screen that fixes it. "declare your monthly
+            income" was true, specific — and a dead end: it never said where, and
+            the one place that can do it is the income control on /graph, because
+            income for scoring is summed from income_source nodes and never from
+            transactions (see lib/hscoreExplain.ts). Someone who had just typed a
+            salary into the capture form had no way to know that, so they were
+            told to declare income by an app that had apparently just been given
+            it. */}
+        {hscore.confidence.missing.map((m) => {
+          const fix = m === "transactions" ? "/record" : "/graph";
+          return (
+            <li key={m} className="flex gap-2">
+              <span aria-hidden>•</span>
+              <Link href={fix} className="text-left underline decoration-dotted hover:text-amber-600">
+                {tr(`hscore.missing.${m}`, { n: MIN_TXNS_30D, have: hscore.confidence.txns30d })}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
