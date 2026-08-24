@@ -47,16 +47,18 @@ nginx:
 commands:
   - mkdir -p ~/public_html/public ~/public_html/pb_data ~/logs
   - touch ~/.env.pocketbase && chmod 600 ~/.env.pocketbase
-  # Pinned to the version that wrote pb_data on the laptop — see pb.deploy.yml
-  # for why a newer binary is a one-way door for the ledger.
   # Version-pinned, not presence-checked — see pb.deploy.yml for why a stray
-  # newer binary is the one unrecoverable failure for this database.
+  # newer binary is the one unrecoverable failure for this database, and for
+  # why every line here has to survive the runner's injected `set -e`.
   - |
     cd ~/public_html
     WANT=0.39.6
-    HAVE=$(test -x ./pocketbase && ./pocketbase --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    HAVE=
+    if [ -x ./pocketbase ]; then
+      HAVE=$(./pocketbase --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    fi
     if [ "$HAVE" != "$WANT" ]; then
-      [ -n "$HAVE" ] && echo "replacing PocketBase $HAVE with $WANT"
+      if [ -n "$HAVE" ]; then echo "replacing PocketBase $HAVE with $WANT"; fi
       ARCH=$(uname -m)
       case "$ARCH" in
         aarch64|arm64) PBARCH=arm64 ;;

@@ -102,14 +102,32 @@ commands:
   # current release sitting there. That binary would then open pb_data and run
   # its own one-way migrations, which for the household ledger is the one
   # failure with no way back. Wrong version now means REPLACE, not skip.
+  # ⚠️ EVERY line here runs under `set -e`. DOM Cloud's runner injects it into
+  # the SSH session (domcloud/bridge src/executor/runner.js:237, "early exit on
+  # error"), so any command that merely REPORTS false kills the whole
+  # deployment — silently, from the log's point of view, since the site is
+  # already created by then.
+  #
+  # This block was written without knowing that and it aborted here on the
+  # first real deploy: `HAVE=$(test -x ./pocketbase && ...)` returns non-zero on
+  # a fresh host, where there is no ./pocketbase yet. The deploy stopped
+  # mid-list — robots.txt existed, pb-start.sh did not, and Passenger answered
+  # every request with "bash: ./pb-start.sh: No such file or directory".
+  #
+  # So: no bare `cmd && cmd` as a statement, no unguarded command substitution,
+  # and `|| true` on anything allowed to find nothing. The `test -x foo || {…}`
+  # form this replaced was accidentally safe; this version is safe on purpose.
   - |
     cd ~/public_html
     WANT=0.39.6
-    HAVE=$(test -x ./pocketbase && ./pocketbase --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    HAVE=
+    if [ -x ./pocketbase ]; then
+      HAVE=$(./pocketbase --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    fi
     if [ "$HAVE" = "$WANT" ]; then
       echo "PocketBase $WANT already installed"
     else
-      [ -n "$HAVE" ] && echo "replacing PocketBase $HAVE with $WANT"
+      if [ -n "$HAVE" ]; then echo "replacing PocketBase $HAVE with $WANT"; fi
       ARCH=$(uname -m)
       case "$ARCH" in
         aarch64|arm64) PBARCH=arm64 ;;
