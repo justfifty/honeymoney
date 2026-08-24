@@ -135,6 +135,7 @@ export const NOTICE_SECTIONS: NoticeSection[] = [
         "Your data is stored on servers in Singapore. This is a transfer outside Malaysia, and we tell you plainly rather than leaving you to find out.",
         "Singapore has its own comparable data protection law. We rely on that, on our contract with the hosting provider, and on your consent to this notice.",
         "If you use AI features, the AI provider may process your text outside Malaysia and Singapore.",
+        "Daily backups are kept off-site with Cloudflare R2 in the Asia-Pacific region, so your records survive a server failure. We keep the last 14 and delete older ones automatically.",
       ],
     },
     ms: {
@@ -143,6 +144,7 @@ export const NOTICE_SECTIONS: NoticeSection[] = [
         "Data anda disimpan di pelayan di Singapura. Ini merupakan pemindahan ke luar Malaysia, dan kami menyatakannya dengan jelas dan bukan membiarkan anda mengetahuinya sendiri.",
         "Singapura mempunyai undang-undang perlindungan data yang setanding. Kami bergantung pada undang-undang tersebut, pada kontrak kami dengan penyedia pengehosan, dan pada persetujuan anda terhadap notis ini.",
         "Jika anda menggunakan ciri AI, penyedia AI mungkin memproses teks anda di luar Malaysia dan Singapura.",
+        "Sandaran harian disimpan di luar tapak dengan Cloudflare R2 di rantau Asia-Pasifik, supaya rekod anda kekal jika pelayan gagal. Kami menyimpan 14 yang terakhir dan memadam yang lebih lama secara automatik.",
       ],
     },
   },
@@ -152,7 +154,7 @@ export const NOTICE_SECTIONS: NoticeSection[] = [
       heading: "How long we keep it",
       body: [
         "Your records are kept while your account is open, because their whole value is the history.",
-        "When you close your account we mark it deleted immediately and purge it permanently within 30 days.",
+        "When you close your account we mark it deleted immediately and purge it permanently within 30 days. Backups made before that date are deleted on their own 14-day cycle, so the last trace is gone within about 45 days.",
         "Consent records — what you agreed to and when — are kept longer, because they are the evidence that we processed your data lawfully.",
       ],
     },
@@ -160,7 +162,7 @@ export const NOTICE_SECTIONS: NoticeSection[] = [
       heading: "Berapa lama kami menyimpannya",
       body: [
         "Rekod anda disimpan selagi akaun anda dibuka, kerana nilainya terletak pada sejarahnya.",
-        "Apabila anda menutup akaun, kami menandakannya sebagai dipadam serta-merta dan memusnahkannya secara kekal dalam tempoh 30 hari.",
+        "Apabila anda menutup akaun, kami menandakannya sebagai dipadam serta-merta dan memusnahkannya secara kekal dalam tempoh 30 hari. Sandaran yang dibuat sebelum tarikh itu dipadam mengikut kitaran 14 harinya sendiri, jadi kesan terakhir hilang dalam kira-kira 45 hari.",
         "Rekod persetujuan — apa yang anda persetujui dan bila — disimpan lebih lama, kerana ia adalah bukti bahawa kami memproses data anda secara sah.",
       ],
     },

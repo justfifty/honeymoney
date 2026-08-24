@@ -27,10 +27,11 @@
 // downscaling below is headroom for when a slide gains another photo.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, rmSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, extname, basename } from "node:path";
 import { tmpdir } from "node:os";
+import { clipped, pdfStats } from "./lib/pdf-check.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = dirname(here);
@@ -77,83 +78,17 @@ const MAGICK = ["magick", "convert"].find((bin) => {
   }
 });
 
-/**
- * Catch text the layout silently ATE.
- *
- * Every slide is a fixed 1280x720 box with `overflow: hidden`, so a card whose
- * copy grew by two lines does not push the page taller or spill visibly — it is
- * simply cut, mid-word, and the PDF still looks plausible. Editing the privacy
- * card produced exactly that: the sentence ended at "one-c" and nothing in the
- * build said so.
- *
- * The check is a set difference, not a rendering engine. Take every run of prose
- * in the HTML, take the text pdftotext can find, and report any sentence that
- * went in and did not come out. Short fragments are skipped because headings and
- * labels get re-flowed and re-ordered by extraction in ways that produce noise;
- * a full sentence surviving intact is the signal worth trusting.
- */
-function clipped(pdf) {
-  // BOTH reading orders. Slide 6 lays four cards side by side and pdftotext's
-  // default order walks across them, splicing a neighbour's words into the
-  // middle of a sentence that is perfectly intact on the page. -layout keeps
-  // columns together. A phrase found in either is present.
-  let pdfText = "";
-  try {
-    pdfText =
-      execFileSync("pdftotext", ["-q", pdf, "-"], { encoding: "utf8" }) +
-      execFileSync("pdftotext", ["-q", "-layout", pdf, "-"], { encoding: "utf8" });
-  } catch {
-    return [];
-  }
-  // Compare on LETTERS AND DIGITS ONLY. pdftotext renders an em dash as "--",
-  // breaks lines inside hyphenated words, and re-orders absolutely-positioned
-  // blocks. Every one of those produced a false "clipped" on the first run of
-  // this check, for text plainly present on the page. Stripping punctuation and
-  // case removes the whole class at once.
-  const norm = (t) => t.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const haystack = norm(pdfText);
-
-  const html = readFileSync(HTML, "utf8")
-    .replace(/<(script|style|svg)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ");
-
-  const misses = [];
-  for (const raw of html.split(/<[^>]+>/)) {
-    const readable = raw.replace(/&[a-z]+;/gi, " ").replace(/\s+/g, " ").trim();
-    const text = norm(readable);
-    // 60 chars is comfortably past headings and stat labels, and short enough to
-    // catch a single clipped sentence rather than only a whole missing card.
-    if (text.length < 50) continue;
-    // Compare on the TAIL. A clipped card keeps its opening words, so matching
-    // the start would pass; the end is the part that disappears.
-    if (!haystack.includes(text.slice(-40))) {
-      misses.push(`clipped: "...${readable.slice(-60)}"`);
-    }
-  }
-  return misses.slice(0, 6);
-}
-
 /** Verify a finished PDF is actually usable, not merely small. */
 function verify(pdf) {
   const size = statSync(pdf).size;
-  let words = 0;
-  let pages = 0;
-  try {
-    words = execFileSync("pdftotext", ["-q", pdf, "-"], { encoding: "utf8" })
-      .split(/\s+/)
-      .filter(Boolean).length;
-    const info = execFileSync("pdfinfo", [pdf], { encoding: "utf8" });
-    pages = Number(/Pages:\s*(\d+)/.exec(info)?.[1] ?? 0);
-  } catch {
-    console.warn("   (pdftotext/pdfinfo unavailable — text check skipped)");
-  }
+  const { words, pages } = pdfStats(pdf);
   console.log(`   size:  ${mb(size)}`);
   console.log(`   pages: ${pages}`);
   console.log(`   words: ${words}`);
 
   const problems = [];
   if (size > MAX_BYTES) problems.push(`over the ${mb(MAX_BYTES)} ceiling`);
-  problems.push(...clipped(pdf));
+  problems.push(...clipped(pdf, HTML));
   // The rasterisation tripwire. A deck that exports as pictures of text has no
   // extractable words, looks fine in a viewer, and is unreadable to anything
   // that indexes or reflows it. It has happened here once already.
@@ -258,7 +193,19 @@ if (problems.length) {
   process.exit(1);
 }
 
-copyFileSync(tmpPdf, OUT);
+// A PDF open in a viewer holds a Windows lock, and the raw EBUSY stack trace
+// buries the one thing that matters: close the file and run it again. The build
+// itself succeeded, so the temp copy is named rather than discarded.
+try {
+  copyFileSync(tmpPdf, OUT);
+} catch (err) {
+  if (err?.code === "EBUSY" || err?.code === "EPERM") {
+    console.error(`\n✗ ${basename(OUT)} is open in another program — close it and re-run.`);
+    console.error(`  The new PDF built fine and is waiting at: ${tmpPdf}`);
+    process.exit(1);
+  }
+  throw err;
+}
 rmSync(work, { recursive: true, force: true });
 const finalSize = statSync(OUT).size;
 console.log(`\n✅ Wrote ${OUT}`);
