@@ -5,6 +5,48 @@
 
 ---
 
+## ✅ Shipped — 2026-08-25 — submission set aligned, PDPA built, /graph fixed for real users
+
+**One story across every artefact.** The Submission deck's edits were folded back into
+`PITCH_DECK.html` (12 slides now, closer merged; RM384k and "layer across" kept
+corrected), the Project Summary and AI Disclosure re-written to match it (≤500 words,
+one page, verified), and the demo MP4 rebuilt end to end: 2:28, Ava voice, 21 beats —
+problem → 3-Bucket → 3 personas → six graphs → consolidated dashboard → 4 tiers as
+tiered insights → as-a-service model. Site screenshots now sit at 90% on a dark mount.
+Dated copies in `docs/deck/Submission/`.
+
+- [x] **/graph 500 for real users — root-caused and fixed.** Sankey's middle column was
+      built from ALLOCATES inflow only; every household that typed spends but never
+      declared income (all of them) crashed the DEFAULT view. Personas declare income,
+      so no persona test could ever catch it. Verified by impersonating all three team
+      accounts live: 200, chart renders.
+- [x] **PDPA, built not promised** — bilingual notice at `/privacy` (edge-served),
+      per-purpose consent ledger (append-only, withdrawal recorded), one-click export,
+      30-day purge + backup cycle disclosed, breach procedure + processor register in
+      `docs/`, restore PROVEN against a live backup, ledger emails scrubbed, analytics
+      cut to counts (no IP/UA/account; 3,093 rows scrubbed). Status board:
+      `docs/PDPA_STATUS.md`.
+- [x] **Partner referrals not offered** — `PARTNER_OFFERS_ENABLED = false`; consent API
+      rejects the purpose; deck/notice say "later, licensed, opt-in". The licensing
+      question (BNM/SC) is counsel's, not code's.
+- [x] **Telegram silenced everywhere** (deck, docs, video, app copy in 6 locales,
+      /setup panels gated, dashboard chip → "auto"); code stays behind the flag.
+- [x] **Capture** — on-device itemised line items (no AI key needed); receipt TOTAL no
+      longer misread as the first RM line; income entries: no bucket, orange
+      "Add income", +/− signed amounts on /record, /records and dashboard.
+- [x] **Tooling** — deck/doc PDF exporters with size + clipping + rasterise guards
+      (`build-deck-pdf.mjs`, `build-doc-pdfs.mjs`); interactive PDF compressor
+      (`compress_pdf.py`, levels + --target, logos never resampled); privacy-doc
+      generator with drift check.
+
+⬜ **Only-you items:** DOM Cloud portal redeploy of `pb.deploy.yml` (superuser UI /_/
+still public — last Security item) · name the DPO (Chua; MyKad NOT required —
+residency in MY is what matters) + notify JPDP · verify privacy@honeymoney.app routes ·
+accept Cloudflare + DOM Cloud DPAs · counsel once (certify BM notice, cross-border,
+licensing) · sign one pilot LOI — that line is Traction.
+
+---
+
 ## ✅ Shipped — 2026-07-10 (live app + accounts + admin analytics)
 
 **The app is LIVE at https://honeymoney.app** — served local-first from the team PC

@@ -165,6 +165,7 @@ export function projectBuckets(
 
 export interface RecentSpend {
   id: string;
+  direction: "out" | "in";
   amount: number;
   currency: string;
   occurred_at: string;
@@ -196,6 +197,7 @@ export async function getRecentSpend(
 
   const rows = txns.map((t) => ({
     id: t.id,
+    direction: (t.direction === "in" ? "in" : "out") as "out" | "in",
     amount: Number(t.amount),
     currency: t.currency || "MYR",
     occurred_at: t.occurred_at,

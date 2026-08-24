@@ -272,7 +272,16 @@ export default function AddTransaction({
         <button
           type="submit"
           disabled={busy || (!bucket && !isIncome)}
-          className="min-h-11 rounded-lg bg-zinc-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-600 dark:hover:bg-zinc-500"
+          // The submit button wears the direction's colour: amber for money in,
+          // matching the "+ Money in" toggle above it, dark grey for spends,
+          // matching the bucket chips. The button is the last thing pressed, so
+          // its colour is the final confirmation of WHICH form this was.
+          className={
+            "min-h-11 rounded-lg px-5 text-sm font-semibold text-white transition-colors disabled:opacity-50 " +
+            (isIncome
+              ? "bg-amber-500 hover:bg-amber-600"
+              : "bg-zinc-700 hover:bg-zinc-800 dark:bg-zinc-600 dark:hover:bg-zinc-500")
+          }
         >
           {busy ? tr("dash.add.saving") : tr(isIncome ? "dash.add.submitIn" : "dash.add.submit")}
         </button>

@@ -117,7 +117,22 @@ export default async function RecordPage() {
                   {r.vendor ?? tr("rec.unknownVendor")}
                 </span>
                 <span className="shrink-0 text-xs text-zinc-400">{shortDate(r.occurred_at)}</span>
-                <span className="shrink-0 tabular-nums">{fmtMoney(r.amount, r.currency)}</span>
+                {/* Same sign-and-colour scheme as RecordRow on /records: money
+                    in is +, amber; money out is −, dark grey. A bare figure in
+                    this list made a RM20,000 salary and a RM20,000 bill look
+                    identical at the exact moment the user is checking that what
+                    they typed landed the right way round. */}
+                <span
+                  className={
+                    "shrink-0 tabular-nums font-medium " +
+                    (r.direction === "in"
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-zinc-700 dark:text-zinc-300")
+                  }
+                >
+                  {r.direction === "in" ? "+" : "−"}
+                  {fmtMoney(r.amount, r.currency)}
+                </span>
               </li>
             ))}
           </ul>
