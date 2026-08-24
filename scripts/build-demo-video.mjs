@@ -36,12 +36,13 @@ const WORK = path.join(ROOT, ".demo-video");
 const OUT = path.join(ROOT, "docs", "deck", "HoneyMoney_Demo_MAIC2026.mp4");
 const DECK = "file:///" + path.join(ROOT, "docs", "deck", "PITCH_DECK.html").replace(/\\/g, "/");
 const SITE = process.env.DEMO_SITE || "https://honeymoney.app";
-// en-US-EmmaMultilingualNeural is one of the newer "Conversation/Copilot" voices
-// (Cheerful, Clear, Conversational). The older *Neural voices — including the
-// regionally-apt en-SG pair — read noticeably flatter and more announcer-like,
-// which is the wrong register for a 3-minute explainer. Accent origin matters
-// less here than not sounding synthetic.
-const VOICE = process.env.DEMO_VOICE || "en-US-EmmaMultilingualNeural";
+// en-US-AvaMultilingualNeural — chosen by ear from the --samples set, which is
+// the only way this can be chosen: duration and dB are measurable, "sounds like
+// a person" is not. One of the newer "Conversation/Copilot" voices (expressive,
+// caring, pleasant); the older *Neural voices, including the regionally-apt
+// en-SG pair, read flatter and more announcer-like, and en-SG is 24% slower for
+// the same line. Accent origin matters less here than not sounding synthetic.
+const VOICE = process.env.DEMO_VOICE || "en-US-AvaMultilingualNeural";
 // Default TTS pace is slower than a person pitching. +12% is brisk without
 // clipping consonants; the video shortens automatically because timing is
 // driven by the measured audio.
@@ -175,7 +176,10 @@ const dur = (f) => parseFloat(execFileSync("ffprobe",
 // pick by ear. Necessary because nothing in this pipeline can judge a voice —
 // duration and dB are measurable, "does this sound like a person" is not.
 if (samplesOnly) {
-  const dir = path.join(WORK, "samples");
+  // OUTSIDE the work dir. Samples used to live under .demo-video, which any
+  // capture run wipes — so auditions were destroyed by the very build they were
+  // meant to inform, and had to be regenerated to answer "which file was Sonia?".
+  const dir = path.join(ROOT, ".vo-samples");
   mkdirSync(dir, { recursive: true });
   const line =
     "In Malaysian households, money is the number one source of conflict. " +

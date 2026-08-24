@@ -108,3 +108,7 @@ deploy/domcloud/.pbhost
 # Working frames for scripts/build-demo-video.mjs. Regenerated from the live
 # site on every run; the MP4 in docs/deck is the artefact worth keeping.
 .demo-video/
+
+# Voice auditions from scripts/build-demo-video.mjs --samples. Disposable, and
+# kept OUT of .demo-video so a capture run cannot delete them.
+.vo-samples/
