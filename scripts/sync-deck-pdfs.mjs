@@ -35,6 +35,12 @@ const FILES = [
   "HoneyMoney_Pitch_Deck_MAIC2026.pdf",
   "HoneyMoney_Project_Summary_MAIC2026.pdf",
   "HoneyMoney_AI_Disclosure_MAIC2026.pdf",
+  // The demo video has exactly the same two-copies problem and it bit in the
+  // same way: web/src/app/deck/page.tsx embeds /deck/HoneyMoney_Demo_MAIC2026.mp4,
+  // and the copy under web/public was the 27 July build while docs/deck held a
+  // current one. The live page played a two-month-old video and returned 200
+  // doing it. Anything docs/deck is the source of belongs in this list.
+  "HoneyMoney_Demo_MAIC2026.mp4",
 ];
 
 const md5 = (b) => createHash("md5").update(b).digest("hex");

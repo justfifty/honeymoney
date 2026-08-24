@@ -40,7 +40,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 const SITE_URL = "https://honeymoney.app";
 const SITE_DESC =
-  "AI financial wellness for Malaysian individuals, couples and families — funding transparency, spending autonomy. A local-first knowledge-graph money engine. MAIC Nexus 2026, Track T3.";
+  "AI financial wellness for Malaysian individuals, couples and families — funding transparency, spending autonomy. A household knowledge-graph money engine, private by design. MAIC Nexus 2026, Track T3.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "HoneyMoney — AI Financial Wellness",
-    description: "Funding transparency, spending autonomy. Local-first, AI-supported, built for Malaysian couples and families.",
+    description: "Funding transparency, spending autonomy. AI-supported and private by design, built for Malaysian individuals, couples and families.",
     images: ["/product-sankey.png"],
   },
 };

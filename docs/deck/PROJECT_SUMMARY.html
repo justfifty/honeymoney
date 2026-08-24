@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HoneyMoney — Project Summary (MAIC Nexus 2026, Track T3)</title>
   <style>
-    @page { size: A4 portrait; margin: 18mm 16mm; }
+    @page { size: A4 portrait; margin: 13mm 14mm; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
       color: #1d1d1d;
-      line-height: 1.5;
-      font-size: 11pt;
+      line-height: 1.34;
+      font-size: 9.6pt;
     }
     .head {
       border-bottom: 3px solid #1f6f4a;
-      padding-bottom: 10px;
-      margin-bottom: 14px;
+      padding-bottom: 7px;
+      margin-bottom: 10px;
     }
     .badge {
       font-size: 9pt;
@@ -31,22 +31,22 @@
       display: inline-block;
       margin-bottom: 8px;
     }
-    h1 { margin: 0; font-size: 21pt; color: #112317; }
-    .tag { margin: 4px 0 0; font-size: 11.5pt; color: #325844; font-weight: 600; }
+    h1 { margin: 0; font-size: 18pt; color: #112317; }
+    .tag { margin: 4px 0 0; font-size: 10pt; color: #325844; font-weight: 600; }
     h2 {
-      font-size: 12.5pt;
+      font-size: 10.8pt;
       color: #123524;
-      margin: 16px 0 4px;
+      margin: 9px 0 3px;
       border-left: 4px solid #2b8a57;
       padding-left: 8px;
     }
-    p { margin: 4px 0 8px; }
+    p { margin: 3px 0 6px; }
     ul { margin: 4px 0 8px; padding-left: 20px; }
     li { margin-bottom: 3px; }
     strong { color: #123524; }
     .meta {
-      margin-top: 16px;
-      padding-top: 8px;
+      margin-top: 10px;
+      padding-top: 6px;
       border-top: 1px solid rgba(30,60,44,0.25);
       font-size: 9.5pt;
       color: #355948;
@@ -57,6 +57,10 @@
   </style>
 </head>
 <body>
+  <!-- ⚠️ HARD LIMIT: 500 WORDS of body copy. Checked with
+       `node scripts/check-summary-words.mjs`, which fails the build rather than
+       trusting a count done by eye. Cut prose before cutting facts: the 733-word
+       version this replaced lost nothing factual, only explanation of itself. -->
   <div class="head">
     <span class="badge">MAIC Nexus 2026 &middot; Track T3 &mdash; AI for Financial Services &amp; Fintech</span>
     <h1>HoneyMoney</h1>
@@ -64,79 +68,63 @@
   </div>
 
   <h2>The problem</h2>
-  <p>In Malaysian households, money is the <strong>#1 source of conflict</strong>, and that
-  stress follows people to work as lost productivity (an estimated ~9 lost productive days
-  per employee per year). Budgeting apps have failed to fix it: they surveil every ringgit,
-  demand manual entry until users quit, and store data too flat to warn anyone before a goal
-  slips.</p>
+  <p>Money is the <strong>#1 source of conflict</strong> in Malaysian households, and that
+  stress reaches work as lost productivity &mdash; an estimated <strong>~9 lost productive
+  days per employee per year</strong>. Budgeting apps surveil every ringgit, demand manual entry until
+  users quit, and store data too flat to warn before a goal slips.</p>
 
   <h2>Our solution</h2>
-  <p>HoneyMoney models a household's money as a <strong>living knowledge graph</strong> and
-  applies a simple, brandable <strong>3-Bucket method</strong>: <strong>Must-paid</strong> (rent,
-  bills), a <strong>Savings</strong> auto-allocation percentage, and a <strong>private
-  Spendings bucket where tracking stops</strong>. Because the graph knows how income flows
-  into buckets and out to real spending, our AI companion <strong>"Honey"</strong> can see &mdash;
-  structurally &mdash; when one bucket's spending velocity is about to push a shared goal weeks
-  later, and nudge the household <em>before</em> it happens &mdash; whether that is one person
-  watching their own buffer, two partners sharing a mortgage, or a family with school fees
-  and ageing parents to carry. Capture is frictionless and
-  privacy-first: forward an e-wallet or receipt screenshot to a Telegram bot, or use
-  <strong>on-device OCR and voice that consume no AI tokens</strong> and never leave the device.</p>
+  <p>HoneyMoney models a household's money as a <strong>living knowledge graph</strong> under a <strong>3-Bucket method</strong>: <strong>Must-paid</strong> (rent, bills), a
+  <strong>Savings</strong> auto-allocation percentage, and a <strong>private Spendings bucket
+  where tracking stops</strong>. Because the graph knows how income flows into buckets and out
+  to real spending, our AI companion <strong>&ldquo;Honey&rdquo;</strong> sees structurally
+  when one bucket's spending velocity will push a shared goal later &mdash; and nudges
+  <em>before</em> it happens, for one person, two partners, or a whole family. Capture is frictionless: forward an e-wallet or receipt screenshot to a Telegram bot,
+  or use <strong>on-device OCR and voice that consume no AI tokens</strong> and never leave
+  the device.</p>
 
   <h2>Why it's technically credible</h2>
-  <p>The same graph engine serves <strong>a solo earner with freelance and shop income, a
-  couple, and a family</strong> with zero schema changes &mdash; three live personas in the
-  product. The public demo at honeymoney.app/demo additionally shows a household in
-  <strong>each of the four H-Score bands</strong>, so the top band is visibly a reachable
-  state rather than a marketing promise, and the squeeze band is not hidden. AI is <strong>swappable and optional</strong> across
-  Google Gemini Flash, Groq and local Ollama, with a per-call token ledger for cost
-  transparency, and every figure a household reads is produced by a deterministic function
-  rather than by the model. The stack is <strong>self-hostable and portable</strong>: a single
-  PocketBase binary plus a Next.js app, which is exactly how it was moved between hosts in one
-  afternoon &mdash; so an employer or a household can run it on infrastructure they control.
-  The database keeps its settings <strong>encrypted at rest</strong>, household-supplied AI
-  keys are encrypted (AES-256-GCM) before storage, and backups are encrypted and held
-  off-site.</p>
+  <p>One graph engine serves <strong>a solo earner with freelance and shop income, a couple,
+  and a family</strong> with zero schema changes &mdash; three live personas; the demo
+  adds one household per <strong>H-Score band</strong>. AI is <strong>swappable
+  and optional</strong> across Google Gemini Flash, Groq and local Ollama, with a per-call
+  token ledger &mdash; and <strong>every figure a household reads is produced by a
+  deterministic function, not by the model</strong>. The stack is <strong>self-hostable</strong>:
+  one PocketBase binary plus a Next.js app. Settings are encrypted at rest, household-supplied
+  AI keys are encrypted (<strong>AES-256-GCM</strong>) before storage, and backups are
+  encrypted off-site.</p>
 
   <h2>Market &amp; model</h2>
-  <p>We lead with a free consumer/household tier (family-referral growth) and monetise via
-  <strong>B2B2C employee financial wellness</strong>, where employers sponsor seats &mdash; a
-  category with strong demand and no incumbent occupying the Malaysia + shared-household +
-  cross e-wallet cell. Infra cost is effectively zero, so gross margin is near-100%;
-  <strong>Cradle CIP Spark</strong> is our realistic non-dilutive entry.</p>
+  <p>A free consumer tier grows by family referral; revenue comes from <strong>B2B2C employee
+  financial wellness</strong>, where employers sponsor seats &mdash; no incumbent occupies the
+  Malaysia + shared-household + cross e-wallet cell. Infrastructure cost is effectively zero,
+  so gross margin is near-100%. <strong>Cradle CIP Spark</strong> is our non-dilutive entry.</p>
 
   <h2>Impact</h2>
-  <p>Financial resilience for underbanked households, less money-driven conflict, and healthier
-  workplaces &mdash; mapped to <strong>SDG 1 (No Poverty), 3 (Good Health), 8 (Decent Work)</strong>,
-  the <strong>BNM financial-inclusion agenda</strong>, and Malaysia's <strong>MADANI</strong> agenda.</p>
+  <p>Financial resilience for underbanked households, less money-driven conflict, healthier
+  workplaces &mdash; mapped to <strong>SDG 1 (No Poverty), 3 (Good Health), 8 (Decent
+  Work)</strong>, the <strong>BNM financial-inclusion agenda</strong> and Malaysia's
+  <strong>MADANI</strong> agenda.</p>
 
   <h2>Status</h2>
-  <p>Working product live at <strong>honeymoney.app</strong>, served <strong>24/7</strong>
-  from Cloudflare's Singapore edge with a hosted application origin &mdash; no personal
-  machine in the serving path. Shipped: dashboard, six-view knowledge-graph gallery,
-  <strong>H-Score</strong> financial-health scoring, <strong>Ask Honey</strong> (natural
-  questions answered from computed figures), time-schedule spending audit,
-  multi-currency and multi-language capture, receipt scanning with an on-device zero-token
-  path, household-supplied AI keys, encrypted off-site backups, admin analytics and a
-  cost/AI-token ledger &mdash; with a genuine, non-backdated commit history. Source:
-  <strong>github.com/justfifty/honeymoney</strong> (access granted to judges at
+  <p>Live at <strong>honeymoney.app</strong>, served <strong>24/7</strong> from Cloudflare's
+  Singapore edge with a hosted origin. Shipped: dashboard, six-view knowledge-graph gallery, <strong>H-Score</strong> scoring,
+  <strong>Ask Honey</strong>, time-schedule spending audit, multi-currency and multi-language
+  capture, zero-token on-device receipt scanning, household AI keys, encrypted off-site
+  backups, admin analytics and a cost/AI-token ledger &mdash; with a genuine, non-backdated
+  commit history. Source: <strong>github.com/justfifty/honeymoney</strong> (judge access at
   submission).</p>
 
   <h2>Team &amp; ask</h2>
-  <!-- Kept deliberately in step with slide 11 of PITCH_DECK.html ("Our Team — JUST50"):
-       same names, same roles, same three asks. Two documents describing one team in
-       different words is a question a judge should never have to ask. -->
-  <p><strong>Team JUST50</strong> &mdash; two people. <strong>Business Lead</strong>
-  (<strong>Malaysian citizen, MyKad holder</strong>): drives business strategy, partnerships
-  and growth, focused on making HoneyMoney the go-to expenditure tracking app for Malaysian
-  consumers, couples and families. <strong>AI Tech Lead</strong> (full-stack and AI engineer,
-  Singaporean): architects the platform, from the household knowledge graph to the AI
-  integrations, while keeping the system lean and resilient. Named profiles are in the pitch
-  deck and on the competition portal. Built in the open &mdash; the public commit history is
-  the record of the work.</p>
-  <p><strong>What we are looking for:</strong> pilot partners &mdash; employers and community
-  groups offering HoneyMoney as a wellbeing benefit; licensed fintech partners for the Year 3
-  referral layer; and impact-driven investors.</p>
+  <!-- Names deliberately omitted here and kept on slide 11 of the deck and on the portal:
+       this is the artefact most likely to be forwarded. "Malaysian citizen, MyKad holder"
+       stays because it is the competition's eligibility gate, not a biographical detail. -->
+  <p><strong>Team JUST50</strong> &mdash; two leads. <strong>Business Lead</strong>
+  (<strong>Malaysian citizen, MyKad holder</strong>) drives strategy, partnerships and growth.
+  <strong>AI Tech Lead</strong> (full-stack and AI engineer, Singaporean) architects the
+  platform. Built in the open. <strong>We are looking for:</strong> pilot partners &mdash;
+  employers and community groups offering HoneyMoney as a wellbeing benefit; licensed fintech
+  partners for the Year 3 referral layer; and impact-driven investors.</p>
 
   <div class="meta">
     <span>Live: honeymoney.app &middot; Repo: github.com/justfifty/honeymoney</span>

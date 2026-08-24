@@ -104,3 +104,7 @@ deploy/.r2-credentials.json
 deploy/domcloud/id_domcloud
 deploy/domcloud/.host
 deploy/domcloud/.pbhost
+
+# Working frames for scripts/build-demo-video.mjs. Regenerated from the live
+# site on every run; the MP4 in docs/deck is the artefact worth keeping.
+.demo-video/

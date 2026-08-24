@@ -1,5 +1,13 @@
 # The always-on front door for honeymoney.app
 
+> ⚠️ **Publish with `npm run site:publish` — never `site:build` and `site:deploy`
+> as two separate commands.** Nothing binds them, so a failed build leaves a
+> PARTIAL `dist/` on disk and a following deploy ships it. That happened twice on
+> 2026-08-24: once `dist` held a single file, once 57 of 90. Both times
+> honeymoney.app went half-broken (`/demo` and `/deck` answering 308) while every
+> command in the chain reported success. `site:publish` is `build && deploy`, so
+> a broken build cannot reach production.
+
 honeymoney.app runs on a laptop behind a Cloudflare Tunnel, so historically the
 **entire** site vanished whenever that laptop was off — in the week to
 2026-07-27 that was ~117 of 168 hours, including one unbroken 3-day outage.

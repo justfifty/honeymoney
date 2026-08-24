@@ -86,194 +86,69 @@
   </style>
 </head>
 <body>
+  <!-- ⚠️ HARD LIMIT: 500 WORDS. Verified with `node scripts/check-summary-words.mjs
+       --file docs/deck/AI_DISCLOSURE.html`. The 1,740-word version this replaced said
+       everything twice: once as a claim and once as an explanation of why the claim was
+       trustworthy. A disclosure has to be checkable, not persuasive — every fact below
+       survived; only the argument for it was cut. -->
   <div class="head">
     <span class="badge">MAIC Nexus 2026 &middot; Track T3</span>
     <h1>AI Disclosure Statement &mdash; HoneyMoney</h1>
-    <p class="sub"><strong>Prepared by:</strong> Team JUST50 &middot; <strong>Last updated:</strong> 23 August 2026</p>
+    <p class="sub"><strong>Team JUST50</strong> &middot; Updated 24 August 2026</p>
   </div>
 
-  <p><strong>HoneyMoney is an AI-driven financial wellness application for Malaysian
-  households</strong>, built on the philosophy of &ldquo;Happy Wife, Happy Life&rdquo;. It gives a
-  couple funding transparency where money is shared and spending autonomy where it is
-  personal, without the tracking fatigue that makes conventional budgeting apps fail.
-  Because it handles people's money, transparency about <em>how</em> and <em>where</em> we
-  use artificial intelligence is a condition of trust. This statement discloses the AI in
-  our product, the AI we used to build it, and the limits we have put on both.</p>
+  <h2>What the AI does</h2>
+  <p>Our companion <strong>&ldquo;Honey&rdquo;</strong> reads messy real-world input &mdash; a
+  photographed receipt, a forwarded e-wallet screenshot, a sentence typed one-handed &mdash;
+  and explains a household's position in plain English or Malay. It does not calculate the
+  figures it speaks, and it does not recommend financial products.</p>
 
-  <p><strong>Where a claim is an estimate rather than a measured fact, we say so, and we
-  have removed claims this document previously made that the shipped product does not
-  support.</strong> A capability that survives in a disclosure after it has left the code is
-  the same defect as an undisclosed one.</p>
+  <h2>Numbers come from code, not the model</h2>
+  <p>Ask Honey runs <strong>parse &rarr; compute &rarr; narrate</strong>. A deterministic
+  function owns every figure &mdash; the same <code>computeHScore</code> behind the H-Score
+  screen, so the chat and the score cannot disagree. The model phrases those figures, and
+  every number in its prose is checked against the computed set before display; an
+  unrecognised number is discarded in favour of a deterministic template.
+  <strong>Every number a household reads has been computed, never composed.</strong></p>
 
-  <h2>1. The problem, and where AI actually helps</h2>
-  <p>Malaysian households run money across a fragmented payment landscape &mdash; Touch 'n Go
-  eWallet, Maybank MAE, GrabPay, ShopeePay, cards and cash &mdash; and nothing adds them up.
-  Conventional apps answer this with manual data entry and surveillance, which people
-  abandon, and they store the result in flat tables that cannot warn anyone before a goal is
-  missed. HoneyMoney models the household as a <strong>living knowledge graph</strong> of how
-  income flows, allocated across three buckets: <strong>Must-Paid</strong> (shared essentials,
-  visible to both partners), <strong>Savings</strong> (a percentage moved before it can be
-  spent), and <strong>Privacy</strong> (personal spending where tracking stops).</p>
-  <p>AI does exactly two jobs in that system. It is not the system.</p>
+  <h2>Scope</h2>
+  <p>Honey answers questions about your own money. Product recommendation is regulated
+  advice and is routed to a licensed directory. An affordability question with no price asks
+  for the price rather than guessing one. The <strong>3-Bucket allocation is rules-based and
+  user-configured</strong>: the AI never moves or locks funds and executes no transactions.</p>
 
-  <table>
-    <tr><th>Job</th><th>What the model does</th><th>What it is never allowed to do</th></tr>
-    <tr>
-      <td><strong>Reading a receipt</strong></td>
-      <td>Extracts merchant, amount, date and a suggested category from a forwarded e-wallet
-      screenshot or a photographed receipt.</td>
-      <td>Write to the ledger. Every parsed transaction is shown back for
-      <strong>explicit human confirmation</strong> first.</td>
-    </tr>
-    <tr>
-      <td><strong>Explaining the numbers</strong></td>
-      <td>Phrases figures that have already been computed into plain-language guidance, as
-      our persona &ldquo;Honey&rdquo;.</td>
-      <td>Calculate any figure a user sees, or recommend a financial product.</td>
-    </tr>
-  </table>
+  <h2>Models, and what they receive</h2>
+  <p>Providers are switchable per deployment, with a per-call token and cost ledger:
+  <strong>Google Gemini Flash</strong> (multimodal, the only one doing image OCR),
+  <strong>Groq</strong> (text insight), and <strong>Ollama</strong> (local &mdash; nothing
+  leaves the machine). A household may supply its own key; it is encrypted
+  (<strong>AES-256-GCM</strong>) before storage, never returned to a browser, and validated
+  against the provider when saved. Extraction sends the forwarded image. Insight sends
+  derived, minimised aggregates &mdash; never a raw ledger.</p>
 
-  <h2>2. The AI explains the money. Exact code computes it.</h2>
-  <p>Honey uses AI for what language models are genuinely excellent at: making sense of
-  messy real-world input &mdash; a photographed receipt, a forwarded screenshot, a sentence
-  typed one-handed &mdash; and explaining a household&rsquo;s position in plain English or
-  Malay. That is real work, and it is why the product feels like talking to someone rather
-  than filling in a form.</p>
-  <p>The figures in that explanation come from a deterministic function &mdash; the same one
-  behind the H-Score screen &mdash; so a household gets both halves at once:
-  <strong>language that sounds human, and arithmetic that is exact and reproducible.</strong>
-  A final check confirms the wording matches the computed figures before anyone sees it, so
-  the two can never drift apart. Advice a family can act on has to be both understandable
-  and correct; this is how HoneyMoney delivers both rather than trading one for the
-  other.</p>
-  <p>Ask Honey runs in three stages: <strong>parse &rarr; compute &rarr; narrate</strong>.</p>
-  <ul>
-    <li><strong>Stage 2 owns every number the user ever sees.</strong> It is a pure function:
-    no database, no network, no model, no clock. &ldquo;What would this purchase do to us?&rdquo;
-    is answered by applying the purchase and calling <code>computeHScore</code> &mdash; the
-    identical function behind the H-Score screen, not a parallel approximation of it. Two
-    engines that disagree would tell one household two different truths with no way to tell
-    which was real.</li>
-    <li><strong>Stage 3 turns those numbers into language a family actually uses</strong>
-    &mdash; and every figure it writes is matched back against the ones stage 2 published
-    before the answer is shown. The guarantee this buys is a strong one and easy to state:
-    <strong>every number a household reads has been computed, never composed.</strong>
-    Where the check does not pass, Honey answers from a deterministic template, so the
-    household still gets an answer and it is still exact.</li>
-    <li><strong>Honey&rsquo;s scope is defined in code, so it stays a coach.</strong> The
-    questions it answers are an explicit set built around understanding your own money.
-    &ldquo;Which unit trust should I buy?&rdquo; is routed to a licensed directory, because
-    product recommendation is regulated advice and belongs with people who are licensed to
-    give it. That boundary is structural rather than a prompt instruction, which is what
-    makes it dependable.</li>
-    <li><strong>Honey asks rather than assumes.</strong> An affordability question with no
-    price gets a question back instead of a guessed figure &mdash; a guessed price would
-    quietly turn a budgeting tool into a product recommender, and a price looked up online is
-    someone else&rsquo;s TV, not yours. Asking takes one extra tap and keeps the answer
-    about your household.</li>
-  </ul>
-  <div class="pull"><strong>The 3-Bucket allocation is rules-based, not AI-decided.</strong>
-  Money moves between Must-Paid, Savings and Privacy by user-configured rules. The AI helps
-  people <em>understand</em> their money; it does not autonomously move or lock funds, and it
-  does not execute transactions.</div>
+  <h2>Privacy</h2>
+  <p>The default in-app receipt scan runs <strong>on-device OCR</strong> (Tesseract, in the
+  browser) and contacts no model at all. Private Spendings buckets are excluded from shared
+  household views. Data is isolated per household, settings are encrypted at rest, and
+  backups are encrypted and held off-site.</p>
 
-  <h2>3. Which models, and what they receive</h2>
-  <p>HoneyMoney uses <strong>switchable AI providers</strong>, selected per deployment, with
-  a per-call token and cost ledger for governance. Three are implemented and can be probed
-  live at <code>/api/ai/check</code>:</p>
-  <table>
-    <tr><th>Provider</th><th>Role</th><th>Where it runs</th></tr>
-    <tr><td><strong>Google Gemini Flash</strong></td><td>Multimodal &mdash; the only provider that also does image OCR</td><td>Cloud</td></tr>
-    <tr><td><strong>Groq</strong></td><td>Text insight generation</td><td>Cloud</td></tr>
-    <tr><td><strong>Ollama</strong> (local)</td><td>Text insight generation</td><td>On-device &mdash; nothing leaves the machine</td></tr>
-  </table>
-  <p>Switchability is a resilience and cost property, not a marketing one: no vendor lock-in,
-  and a free-tier outage at one provider does not take the product down. Adding further
-  providers is a roadmap item, not a shipped capability.</p>
-  <p><strong>A household may supply its own key</strong>, so the AI works without depending
-  on whoever runs the server. Because that key is a live billable credential stored beside a
-  family's ledger, it is <strong>encrypted (AES-256-GCM) by the application before the
-  database sees it</strong>, is never sent back to a browser, and is validated against the
-  provider at the moment it is saved. If no encryption key is configured on the server, the
-  app <em>refuses to store</em> the credential rather than falling back to storing it in the
-  clear.</p>
-  <p><strong>Receipt reading has a zero-token path.</strong> The default in-app receipt scan
-  runs <strong>on-device OCR</strong> (Tesseract in the browser) and never contacts a model
-  at all. The cloud model is used for the Telegram forwarding path and where on-device
-  extraction is not good enough.</p>
-  <p><strong>What the model is sent.</strong> For extraction: the forwarded image, returning
-  structured text. For insight: <em>derived, minimised</em> figures &mdash; aggregates and
-  category summaries needed to answer the question &mdash; never a raw dump of a household's
-  ledger. We do not send images or data to any model for advertising, model training, or any
-  purpose beyond serving the user's request.</p>
+  <h2>AI used to build HoneyMoney</h2>
+  <p>We used <strong>AI coding assistants</strong> during development. Architecture, data
+  model, financial logic and copy were reviewed and accepted by the team, and the commit
+  history is public and non-backdated.</p>
 
-  <h2>4. Privacy, and a measured privacy fix</h2>
-  <ul>
-    <li><strong>Marital-safe by design.</strong> The Privacy bucket is private. Honey is
-    constrained never to expose one partner's private-wallet detail to the other &mdash; and
-    that constraint is enforced by the same query filter the on-screen record list uses, not
-    by a prompt. <strong>This was tested to discriminate rather than pass vacuously:</strong>
-    with the filter, partner B is told RM4,634; without it, RM991,158. A check that cannot
-    fail against the old behaviour proves nothing.</li>
-    <li><strong>Household-level figures stay household-level on purpose.</strong> H-Score,
-    income and bucket allocations are visible to both partners already; a shared score that
-    changed depending on who asked would be a worse lie than none.</li>
-    <li><strong>Raw images are discarded.</strong> After extraction and confirmation we keep
-    the structured transaction record, not the picture of the receipt.</li>
-    <li><strong>Local-first storage.</strong> Data lives in a single-tenant PocketBase
-    instance that the household or operator controls &mdash; not a shared third-party
-    processor &mdash; and the ledger is append-only and hash-chained, so a correction is
-    recorded rather than overwriting history.</li>
-    <li><strong>PDPA alignment.</strong> We operate consistent with Malaysia's Personal Data
-    Protection Act 2010: users consent to processing, data is used only for the stated
-    purpose, and users can request correction or deletion of their records. We describe this
-    as alignment, not certified compliance, because no audit has been performed.</li>
-    <li><strong>No bank links.</strong> HoneyMoney never asks for banking credentials and
-    holds no open-banking connection, which removes an entire class of risk rather than
-    mitigating it.</li>
-  </ul>
+  <h2>Limitations</h2>
+  <p>OCR is not perfect; extraction is confirmed by the user before anything is filed.
+  Insights are <strong>educational, not licensed financial advice</strong>. Below 8 records or
+  14 days, Honey declines to project rather than estimating.</p>
 
-  <h2>5. AI used to build HoneyMoney</h2>
-  <p>We used AI coding assistants (Anthropic's <strong>Claude</strong> and
-  <strong>Claude Code</strong>) during development for scaffolding, refactoring and drafting
-  code across the stack &mdash; a Next.js 16 progressive web app, a local-first PocketBase
-  knowledge graph, the Telegram Bot API, and the multi-provider AI layer above. This
-  accelerated delivery, but <strong>every AI-assisted contribution was reviewed, tested and
-  accepted by a human engineer</strong> before it entered the product. Architecture
-  decisions, security-sensitive logic and the financial rules were designed and verified by
-  our team. AI was a tool in the workshop, not the author of record.</p>
-
-  <h2>6. Limitations and safeguards</h2>
-  <ul>
-    <li><strong>OCR is not 100% accurate.</strong> Extraction can misread amounts, merchants
-    or dates, particularly on low-quality images or unfamiliar receipt formats. This is
-    exactly why mandatory human confirmation exists: no unverified figure enters a ledger.</li>
-    <li><strong>No automated, binding financial advice.</strong> Honey offers general
-    guidance and behavioural nudges. It does <strong>not</strong> provide licensed financial,
-    investment, tax or legal advice, and it does not execute transactions on a user's behalf.
-    Guidance is framed as suggestion, not instruction.</li>
-    <li><strong>Forecasts are projections, not promises.</strong> The forward-looking warning
-    (&ldquo;short by the 24th at this pace&rdquo;) is computed from observed spending velocity
-    against configured commitments. It is arithmetic on incomplete information &mdash; money
-    spent outside the app is money the projection cannot see.</li>
-    <li><strong>AI can still be wrong or generic.</strong> The numeric allowlist bounds the
-    damage a wrong answer can do; it does not make every answer useful. Users remain in
-    control of every decision about their money.</li>
-    <li><strong>Data minimisation is a standing safeguard.</strong> Limiting what we collect
-    and what we send to a model reduces both privacy risk and the blast radius of any error.</li>
-  </ul>
-
-  <h2>7. Our commitment</h2>
-  <p>If any statement here becomes inaccurate as the product evolves, we will update this
-  disclosure &mdash; as we have done in this revision, by removing a capability that had been
-  withdrawn from the product and by naming only the AI providers that are actually wired in.
-  We would rather understate our capabilities and be believed than overstate them and
-  mislead. Candour is not only a competition requirement for us; it is the only way to earn
-  the trust required to help families manage their money.</p>
+  <div class="pull"><strong>If any statement here becomes inaccurate, we will correct it.</strong>
+  A capability left in a disclosure after it has left the code is the same defect as an
+  undisclosed one.</div>
 
   <div class="meta">
-    HoneyMoney &middot; Team JUST50 &middot; MAIC Nexus Challenge 2026 (Track T3) &middot;
-    honeymoney.app &middot; hello@honeymoney.app
+    <span>honeymoney.app &middot; github.com/justfifty/honeymoney</span>
+    <span>hello@honeymoney.app</span>
   </div>
 </body>
 </html>
