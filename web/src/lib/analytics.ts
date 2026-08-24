@@ -48,7 +48,6 @@ export interface Analytics {
   avgDurationMs: number;
   topPages: { path: string; count: number; avgMs: number }[];
   topCountries: { country: string; count: number }[];
-  topIps: { ip: string; count: number }[];
   recent: PageView[];
   costs: Cost[];
   costByCurrency: { currency: string; total: number }[];
@@ -86,11 +85,12 @@ export async function getAnalytics(): Promise<Analytics> {
   ]);
 
   const totalVisits = views.length;
-  const uniqueVisitors = new Set(views.map((v) => v.session || v.ip || v.id)).size;
+  // Old rows may still carry an ip; new ones never do. Session is a random
+  // per-visit id, so this counts visits-with-continuity, not people.
+  const uniqueVisitors = new Set(views.map((v) => v.session || v.id)).size;
 
   const countryCounts = count(views, (v) => v.country);
   const pageCounts = count(views, (v) => v.path);
-  const ipCounts = count(views, (v) => v.ip);
 
   // avg duration per page (only rows with a recorded duration)
   const durByPath = new Map<string, { sum: number; n: number }>();
@@ -152,7 +152,6 @@ export async function getAnalytics(): Promise<Analytics> {
     avgDurationMs,
     topPages,
     topCountries: topN(countryCounts, 12).map((c) => ({ country: c.key, count: c.count })),
-    topIps: topN(ipCounts, 12).map((c) => ({ ip: c.key, count: c.count })),
     recent: views.slice(0, 30),
     costs,
     costByCurrency,

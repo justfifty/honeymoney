@@ -138,13 +138,9 @@ export default async function AdminPage() {
             empty="No country data yet (comes from Cloudflare on live visits)."
           />
         </Section>
-        <Section title="🧭 Visitor IPs">
-          <List
-            rows={a.topIps.map((c) => ({ left: c.ip || "unknown", right: String(c.count) }))}
-            headers={["IP address", "Visits"]}
-            empty="No IPs yet."
-          />
-        </Section>
+        {/* The Visitor IPs card is gone because the data is: /api/track no
+            longer stores IPs, user-agents, or account ids. An admin screen
+            showing per-person rows was itself a disclosure surface. */}
         <Section title="🤖 AI usage by function">
           <List
             rows={a.ai.byFn.map((f) => ({ left: f.fn, mid: `${f.calls} calls`, right: f.total.toLocaleString() }))}
@@ -159,18 +155,17 @@ export default async function AdminPage() {
         <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-sm">
             <thead className="bg-zinc-50 text-left text-xs uppercase tracking-wide text-zinc-500 dark:bg-zinc-900">
-              <tr><Th>When</Th><Th>Page</Th><Th>Country</Th><Th>IP</Th><Th right>Duration</Th></tr>
+              <tr><Th>When</Th><Th>Page</Th><Th>Country</Th><Th right>Duration</Th></tr>
             </thead>
             <tbody>
               {a.recent.length === 0 && (
-                <tr><Td>—</Td><Td colSpan={4}>No visits recorded yet.</Td></tr>
+                <tr><Td>—</Td><Td colSpan={3}>No visits recorded yet.</Td></tr>
               )}
               {a.recent.map((v) => (
                 <tr key={v.id} className="border-t border-zinc-100 dark:border-zinc-800">
                   <Td>{fmtTime(v.created)}</Td>
                   <Td>{v.path}</Td>
                   <Td>{flag(v.country)} {v.country || "—"}</Td>
-                  <Td>{v.ip || "—"}</Td>
                   <Td right>{fmtDur(Number(v.duration_ms) || 0)}</Td>
                 </tr>
               ))}

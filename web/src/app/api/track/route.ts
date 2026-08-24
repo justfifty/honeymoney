@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/config";
 import { pbCreate, pbFirst, pbUpdate, pbStr } from "@/lib/pocketbase";
-import { getSessionUser } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -37,25 +36,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // new page view
-    const h = request.headers;
-    const ip =
-      h.get("cf-connecting-ip") ||
-      (h.get("x-forwarded-for") || "").split(",")[0].trim() ||
-      "";
-    const country = h.get("cf-ipcountry") || "";
-    const ua = (h.get("user-agent") || "").slice(0, 300);
-    const referrer = typeof body.referrer === "string" ? body.referrer.slice(0, 300) : "";
-    const user = await getSessionUser().catch(() => null);
+    // New page view — COUNTS, NOT PROFILES. This used to store the visitor's
+    // IP, full user-agent, and (when signed in) their account id, which is a
+    // per-person browsing history of a finance app: which household looked at
+    // /records, when, from where. The privacy notice now promises counts that
+    // identify nobody, so the row holds only what a count needs: the page, the
+    // country (Cloudflare's coarse header, no IP retained to derive it from),
+    // and a random per-visit session id for dedup and duration matching that
+    // is minted client-side and linked to no account.
+    //
+    // The referrer is kept for "where do visitors come from", but only its
+    // origin + path: query strings carry tokens and search terms, which are
+    // someone else's data leaking into ours.
+    const country = request.headers.get("cf-ipcountry") || "";
+    let referrer = "";
+    if (typeof body.referrer === "string" && body.referrer) {
+      try {
+        const u = new URL(body.referrer);
+        referrer = (u.origin + u.pathname).slice(0, 300);
+      } catch {
+        /* not a URL — drop it rather than store free text */
+      }
+    }
 
     await pbCreate("page_views", {
       path,
       referrer,
-      ip,
       country,
-      ua,
       session,
-      user: user?.id ?? "",
     });
     return NextResponse.json({ ok: true });
   } catch {
