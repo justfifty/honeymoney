@@ -11,6 +11,7 @@ Or drive it directly:
     python scripts/compress_pdf.py in.pdf --level 2
     python scripts/compress_pdf.py in.pdf --level 3 -o small.pdf
     python scripts/compress_pdf.py *.pdf --level 1 --in-place
+    python scripts/compress_pdf.py in.pdf --target 30      # gentlest way to -30%
 
 THE THREE LEVELS
 
@@ -25,6 +26,14 @@ is small in bytes and precise in appearance: resampling one costs almost nothing
 in file size and is immediately visible in its edges and lettering. Only large
 photographs — banners, backgrounds, full-bleed images — are ever touched, and
 only at levels 2 and 3.
+
+A TARGET INSTEAD OF A LEVEL. --target 30 (or answering "30%" at the prompt)
+finds the GENTLEST settings that reach that reduction: lossless first, then
+photos stepped down through 150 → 130 → 110 → 96 → 72 DPI, stopping at the
+first rung that gets there. The logo guards hold at every rung. If the target
+cannot be reached without touching logos or going below 72 DPI, the script says
+so plainly and keeps the best safe result rather than crossing either line —
+a target is an instruction about size, not permission to damage the artwork.
 
 WHY LEVEL 1 IS THE DEFAULT. Reducing a file and redesigning it are different
 decisions. Level 1 recompresses streams, drops unreferenced objects, merges
@@ -67,6 +76,15 @@ try:
     import fitz  # PyMuPDF
 except ImportError:
     sys.exit("PyMuPDF is required:  pip install pymupdf")
+
+# Hand-exported PDFs often carry slightly malformed font tables ("Bad loca
+# value" and friends). MuPDF repairs them and carries on, but prints the
+# complaint to stderr mid-report, which reads like the script failing when the
+# output is fine. The verification step is what decides success, not the log.
+try:
+    fitz.TOOLS.mupdf_display_errors(False)
+except Exception:
+    pass
 
 try:
     from PIL import Image
@@ -239,21 +257,29 @@ def ask_file() -> str | None:
             print("  No file at that path — try again, or press Enter to quit.")
 
 
-def ask_level() -> int | None:
+def ask_level() -> tuple[str, int] | None:
+    """Returns ("level", 1-3) or ("target", pct); None to quit."""
     print("\nHow far should it go?\n")
     for n, cfg in LEVELS.items():
         print(f"  {n}  {cfg['name']:<10} {cfg['blurb']}")
-    print("\n  Logos and icons are never resampled, at any level.")
+    print("\n  Or type a size target, like 30%, and the gentlest settings that")
+    print("  reach it will be found. Logos and icons are never resampled.")
     while True:
         try:
             raw = input("\n  level [1]> ").strip()
         except (EOFError, KeyboardInterrupt):
             return None
         if raw == "":
-            return 1
+            return ("level", 1)
         if raw in ("1", "2", "3"):
-            return int(raw)
-        print("  Enter 1, 2 or 3.")
+            return ("level", int(raw))
+        if raw.endswith("%") and raw[:-1].isdigit():
+            pct = int(raw[:-1])
+            if 1 <= pct <= 90:
+                return ("target", pct)
+            print("  A target between 1% and 90%, please.")
+            continue
+        print("  Enter 1, 2, 3 — or a target like 30%.")
 
 
 def ask_yes(question: str) -> bool:
@@ -327,6 +353,108 @@ def process(src: str, out: str | None, level: int, in_place: bool,
             os.remove(tmp)
 
 
+# The ladder --target walks down, gentlest first. Ordering is the correctness
+# property: because rungs only get more aggressive, the FIRST one that reaches
+# the target is also the least destructive way to reach it. 72 DPI is the floor
+# — below that, photos degrade visibly on an ordinary screen, and a target that
+# needs more than 72 DPI can buy is asking for damage, not compression.
+RUNGS: list[tuple[int | None, int | None]] = [
+    (None, None), (150, 85), (130, 82), (110, 80), (96, 78), (72, 74),
+]
+
+
+def process_to_target(src: str, out: str | None, target: int, in_place: bool,
+                      verbose: bool, confirm: bool) -> bool:
+    """Reach a percentage reduction with the gentlest settings that get there.
+
+    Each rung rebuilds from the ORIGINAL, not from the previous rung's output —
+    re-compressing an already re-compressed JPEG stacks generation loss, and the
+    whole point of stepping gently is to apply exactly one generation of it.
+    """
+    before = os.path.getsize(src)
+    fp_in = fingerprint(src)
+
+    dest = src if in_place else (out or os.path.splitext(src)[0] + ".min.pdf")
+    if not in_place and os.path.abspath(dest) == os.path.abspath(src):
+        print("  Refusing to overwrite the source. Use --in-place, or -o.")
+        return False
+
+    print(f"\n  {os.path.basename(src)}")
+    print(f"     in:     {mb(before)} · {fp_in[0]} pages · {fp_in[2]} images")
+    print(f"     target: {target}% smaller, logos untouched\n")
+
+    best: tuple[int, str, str] | None = None  # (size, tmp_path, description)
+    met = False
+    try:
+        for dpi, quality in RUNGS:
+            fd, tmp = tempfile.mkstemp(
+                suffix=".pdf", dir=os.path.dirname(os.path.abspath(dest)) or ".")
+            os.close(fd)
+
+            lossless(src, tmp)
+            desc = "lossless"
+            if dpi is not None:
+                downsample_photos(tmp, dpi, quality, verbose)
+                desc = f"photos at {dpi} DPI"
+                tmp2 = tmp + ".2"
+                lossless(tmp, tmp2, subset=False)
+                if os.path.getsize(tmp2) < os.path.getsize(tmp):
+                    os.replace(tmp2, tmp)
+                elif os.path.exists(tmp2):
+                    os.remove(tmp2)
+
+            # A rung that changes page, word or image count is not a candidate,
+            # whatever its size. Skip it and keep walking.
+            if fingerprint(tmp) != fp_in:
+                os.remove(tmp)
+                print(f"     {desc:<18} rejected — document changed, discarded")
+                continue
+
+            size = os.path.getsize(tmp)
+            pct = 100 * (1 - size / before) if before else 0
+            print(f"     {desc:<18} {mb(size)}   ({pct:.1f}% smaller)")
+
+            if best is None or size < best[0]:
+                if best is not None:
+                    os.remove(best[1])
+                best = (size, tmp, desc)
+            else:
+                os.remove(tmp)
+
+            if pct >= target:
+                met = True
+                break
+
+        if best is None:
+            print("\n     ✗ No rung produced a valid file. Original untouched.")
+            return False
+
+        size, tmp, desc = best
+        if size >= before:
+            print("\n     Nothing here is smaller than the original — left alone.")
+            return True
+
+        pct = 100 * (1 - size / before)
+        if not met:
+            print("\n     Target not reached. Best without touching logos or going")
+            print(f"     below 72 DPI: {pct:.1f}% ({desc}). Kept that rather than")
+            print("     crossing either line — if this file is still too big, the")
+            print("     size is in its page dimensions or its logos, and neither")
+            print("     is this script's to change.")
+
+        if confirm and in_place and not ask_yes(f"Overwrite {os.path.basename(src)}?"):
+            print("     cancelled — original untouched")
+            return True
+
+        shutil.move(tmp, dest)
+        best = None
+        print(f"\n     wrote: {dest}   {mb(before)} -> {mb(size)}  ({pct:.1f}% smaller, {desc})")
+        return met or True
+    finally:
+        if best is not None and os.path.exists(best[1]):
+            os.remove(best[1])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description="Reduce PDF file size. Logos and icons are never resampled.")
@@ -334,6 +462,9 @@ def main() -> int:
     ap.add_argument("-o", "--out", help="output path (single input only)")
     ap.add_argument("--level", type=int, choices=[1, 2, 3],
                     help="1 lossless (default) · 2 balanced · 3 smallest")
+    ap.add_argument("--target", type=int, metavar="PCT",
+                    help="aim for this %% reduction using the gentlest settings "
+                         "that reach it (logos still never touched)")
     ap.add_argument("--in-place", action="store_true",
                     help="overwrite the original, after verification")
     ap.add_argument("-v", "--verbose", action="store_true")
@@ -353,11 +484,23 @@ def main() -> int:
             return 0
         files = [f]
 
-    if level is None:
-        level = ask_level() if interactive else 1
-        if level is None:
-            print("\nNothing to do.\n")
-            return 0
+    target = args.target
+    if target is not None and not 1 <= target <= 90:
+        return print("--target takes a percentage between 1 and 90.") or 2
+
+    if level is None and target is None:
+        if interactive:
+            choice = ask_level()
+            if choice is None:
+                print("\nNothing to do.\n")
+                return 0
+            kind, value = choice
+            if kind == "level":
+                level = value
+            else:
+                target = value
+        else:
+            level = 1
 
     if args.out and len(files) > 1:
         return print("-o takes a single input file.") or 2
@@ -367,7 +510,13 @@ def main() -> int:
 
     ok = True
     for f in files:
-        ok = process(f, args.out, level, args.in_place, args.verbose, interactive) and ok
+        if target is not None:
+            # --target wins over --level: a size goal is more specific than a
+            # preset, and the ladder subsumes every preset anyway.
+            ok = process_to_target(f, args.out, target, args.in_place,
+                                   args.verbose, interactive) and ok
+        else:
+            ok = process(f, args.out, level, args.in_place, args.verbose, interactive) and ok
 
     print()
     if ok:
