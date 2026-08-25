@@ -1656,6 +1656,74 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
 > its order. This section keeps the competition-gate items: submission, artefacts, commercial,
 > ops. Where a §7 item is superseded, it says so and points at the task.
 
+### 🧭 Data-custody position — decided 2026-08-25, NOT yet built
+
+**Where we want to be: we sell the software, we are not the custodian of the household's
+money records.** Recorded here because the discussion that produced it also corrected a
+premise the team was carrying, and because saying it in the present tense before the code
+exists is the single most dangerous thing we can do in this submission.
+
+**The premise that was wrong.** "We cannot store private data, so we only store the trend"
+is not what HoneyMoney does. It stores full records — `transactions` carries amount,
+currency, vendor, date, category, `receipt_ref` and attachments — and `docs/PRIVACY.md`
+already says so, in English and Malay: *"Money records you enter: amounts, dates, who paid,
+which bucket, any note or photo you attach, and any receipt text you scan"* (§What we
+collect), *"store your records"* (§Why), *"servers in Singapore"* (§Where). It has to: the
+ledger, the audit trail, the H-Score, the graph and `/records` all read those rows. And
+`visibility: "private"` means private FROM THE PARTNER — a query filter
+(`visibility != 'private' || paid_by = you`), not encryption, not absence. Anyone asked
+"can you see my private spending?" answers "your partner cannot; we operate the database,
+and the notice says so." Volunteered it reads as rigour; extracted it reads as a gap.
+
+**"Trends under an anonymised opaque ID" does not get us there either.** That is
+PSEUDONYMISATION. A per-user trend row is a cohort of one, and our own
+`web/src/lib/aggregateDisclosure.ts` already states the standard we are held to:
+*"Anonymised does not mean 'the name column was removed'; it means the reader cannot work
+out who, and small groups defeat that on their own."* `MIN_COHORT = 10` in that file is a
+contractual promise in `docs/LOI_TEMPLATE.md` §5, not a tuning parameter. Spending patterns
+are near-fingerprints, so a per-user trend row stays personal data under PDPA — the full
+re-architecture cost, almost none of the legal relief.
+
+**So split the claim by RELATIONSHIP rather than trying to make one mechanism carry both:**
+
+| Relationship | Mechanism | The word we may use |
+|---|---|---|
+| User ↔ employer/sponsor | cross-user aggregates, suppressed below k=10 | **anonymised** — accurate, already coded, already in the LOI |
+| User ↔ HoneyMoney | end-to-end encryption; we hold ciphertext we cannot read | **we sell software, not access to your money** |
+
+End-to-end encryption, not local-only storage, is the version that ships. The hard part of
+"records live on the user's own phone" is not storage, it is THE HOUSEHOLD: two partners on
+two devices need a shared must-paid view AND private personal records, which needs sync,
+which needs something in the middle. Local-only also throws away the daily off-machine
+backup, cross-device access, and makes a lost phone a lost financial history. Encryption
+keeps all three and still answers "can you read it?" with no.
+
+**Hard rules until the code exists:**
+- [ ] **Do not edit `docs/PRIVACY.md` to describe the plan.** It is accurate today and it is
+      in the submission pack. A notice describing storage we have not built is a false
+      statement to real data subjects — a PDPA problem, not a pitch problem. Code first,
+      notice second.
+- [ ] **Nothing in the present tense in the deck.** Slide 11's "local-first knowledge graph"
+      is exactly this overclaim and is already on the punch list; it is the one place the
+      phrase survives after being removed everywhere else, and it contradicts the privacy
+      notice submitted beside it.
+- [ ] Roadmap wording, when we add it: *"Phase 2 — household records encrypted so we cannot
+      read them; employer reporting aggregate-only, suppressed below ten participants."*
+
+**Already true and worth saying today:** we have never held a bank credential and have no
+bank connection — every record is one the user entered; receipt OCR runs in the browser;
+no analytics SDKs or data brokers, visit counts only with no IP and no account link; and
+the k≥10 suppression rule exists as a function BEFORE the feature that needs it.
+
+- [ ] **Who are `Peter OKORONKWO` and `JENNIFER` (×2)?** The live database holds **16
+      households · 9 users · 249 transactions**. Three are the demo personas (Rahman,
+      Aisha, Nadia & Faiz) and most of the rest are ours (Just Fifty, kiawchua, ww.pong ×2,
+      Alvin Chua, Site Admin ×2, Diag ×2). Those three do not match the team. If they are
+      outside sign-ups on a live public site then we are not "only storing our own study"
+      — they are data subjects with access, correction and withdrawal rights against
+      records on the Singapore server, today. Identify them before saying anything public
+      about data custody.
+
 ### 🔴 Blocking the submission
 1. [~] **Chua Kia Wah's MyKad number** — the last eligibility field. Nothing else is
    outstanding on the team profile. *(Malaysian-citizen member confirmed.)*
