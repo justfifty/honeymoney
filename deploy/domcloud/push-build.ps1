@@ -168,4 +168,52 @@ if ($SshTarget -match '^([^@]+)@') {
   }
   Start-Sleep -Seconds 3   # let lazily-compiled routes settle
 }
+# -- 4. Prove the new ASSETS serve, at the origin, before the edge sees them ---
+#
+# WHY THIS EXISTS. Warming the origin above proves the new *page* answers. It
+# says nothing about /_next/static/*, and those are the files that decide whether
+# the site has a stylesheet. On 2026-08-25 the deploy "succeeded", the page
+# returned 200 through Cloudflare, and honeymoney.app served COMPLETELY UNSTYLED
+# for four hours: a stylesheet request reached the edge while Passenger was still
+# respawning, Cloudflare got a 404, and cached it under `max-age=14400`. The
+# origin was serving that exact file 200 the whole time.
+#
+# A cached 404 on a content-hashed asset cannot be rebuilt away — the hash is the
+# content, so the next build emits the same filename and inherits the poisoned
+# cache entry. It can only be purged. So the cheap thing is to never create one:
+# fetch every asset the new HTML references FROM THE ORIGIN, and only report
+# success once they all answer. Nothing here touches the public hostname, which
+# is the point — the edge must not see an asset URL the origin cannot yet serve.
+if ($originGuess) {
+  Write-Host "==> checking the new build's assets at the origin" -ForegroundColor Cyan
+  $bad = @()
+  try {
+    $html = (Invoke-WebRequest -UseBasicParsing -Uri "$originGuess/record" -TimeoutSec 30).Content
+    $assets = [regex]::Matches($html, '/_next/static/[^"'' ]+?\.(?:css|js)') |
+              ForEach-Object { $_.Value } | Sort-Object -Unique
+    Write-Host "    $($assets.Count) assets referenced" -ForegroundColor DarkGray
+    foreach ($a in $assets) {
+      $ok = $false
+      # Retry rather than fail on the first miss: a lazily-compiled route can be
+      # a beat behind, and THAT beat is the whole bug.
+      for ($i = 1; $i -le 5 -and -not $ok; $i++) {
+        try { if ((Invoke-WebRequest -UseBasicParsing -Uri "$originGuess$a" -TimeoutSec 30).StatusCode -eq 200) { $ok = $true } }
+        catch { Start-Sleep -Seconds 3 }
+      }
+      if (-not $ok) { $bad += $a }
+    }
+  } catch {
+    $bad += "could not read $originGuess/record : $_"
+  }
+  if ($bad.Count) {
+    Write-Host "==> ASSETS MISSING AT THE ORIGIN - do not send traffic yet:" -ForegroundColor Red
+    $bad | ForEach-Object { Write-Host "      $_" -ForegroundColor Red }
+    throw "deploy incomplete: $($bad.Count) asset(s) do not serve. Fix the origin BEFORE anything requests them through Cloudflare, or the edge will cache the 404 for 4 hours."
+  }
+  Write-Host "    all assets serve 200 at the origin" -ForegroundColor DarkGray
+}
+
 Write-Host "==> done. Verify: curl -sI https://<your-host>/ " -ForegroundColor Green
+Write-Host "    If a stylesheet ever 404s through Cloudflare while the origin serves it 200," -ForegroundColor DarkGray
+Write-Host "    the edge has cached a miss: purge that URL in the Cloudflare dashboard" -ForegroundColor DarkGray
+Write-Host "    (Caching -> Configuration -> Purge Everything). A rebuild cannot fix it." -ForegroundColor DarkGray

@@ -118,7 +118,31 @@ try {
     await rpc(ws, "Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE }, sessionId);
 
     await rpc(ws, "Page.navigate", { url: BASE + ROUTE }, sessionId);
-    await sleep(3500); // load + hydrate, at 4x throttle
+    // Wait for the bar to EXIST and be laid out, rather than sleeping a flat
+    // guess. A fixed wait is calibrated to localhost and is wrong the first time
+    // the script is pointed at the real site: over the network, with a 4x CPU
+    // throttle, honeymoney.app had not applied its stylesheet yet and the probe
+    // reported "no fixed primary nav" for a bar that was present in the HTML.
+    // A check that cries wolf against production is a check nobody runs.
+    const ready = await rpc(ws, "Runtime.evaluate", { expression: `new Promise((resolve) => {
+      const t0 = Date.now();
+      const look = () => {
+        const n = [...document.querySelectorAll('nav[aria-label="Primary"]')]
+          .find((n) => getComputedStyle(n).position === 'fixed');
+        if (n && n.getBoundingClientRect().height > 0) return resolve('ready');
+        if (Date.now() - t0 > 25000) return resolve('timeout');
+        setTimeout(look, 250);
+      };
+      look();
+    })`, awaitPromise: true, returnByValue: true }, sessionId);
+    if (ready.result.value === "timeout") {
+      console.log(`
+${BASE}${ROUTE}  no fixed primary nav after 25s`);
+      failed = true;
+      await rpc(ws, "Target.closeTarget", { targetId });
+      continue;
+    }
+    await sleep(1200); // let hydration settle before hit-testing
 
     const hit = (await rpc(ws, "Runtime.evaluate",
       { expression: HIT, returnByValue: true }, sessionId)).result.value;
