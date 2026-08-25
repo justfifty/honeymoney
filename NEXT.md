@@ -1656,6 +1656,69 @@ remaining risk is **stale deck artefacts** and the fact that the demo proves sha
 > its order. This section keeps the competition-gate items: submission, artefacts, commercial,
 > ops. Where a §7 item is superseded, it says so and points at the task.
 
+### ⏸ Where we left off — 2026-08-25, 11:00
+
+**Everything below is deployed and verified AT THE ORIGIN
+(`honeymoney-app.domcloud.dev`) and invisible at `honeymoney.app`, for one reason.**
+
+- [ ] 🛑 **PURGE THE CLOUDFLARE CACHE. Nothing else today reaches a judge until this is
+      done.** Dashboard → honeymoney.app → **Caching → Configuration → Purge Everything**.
+      Two separate poisonings, one fix:
+      - A stylesheet 404 was cached under `max-age=14400` while Passenger was respawning
+        mid-deploy, so **the site renders completely unstyled**. The origin serves that file
+        200. A cached 404 on a content-hashed asset cannot be rebuilt away — the hash IS the
+        content, so every later build emits the same filename and inherits the entry.
+      - `/deck` still hands out the **pre-merge PDF** — the one with `fatique` and RM348k.
+        Five correct deploys today; the edge has served none of them.
+      - `deploy/domcloud/push-build.ps1` now verifies every asset at the origin before
+        reporting success, so this cannot recur. It cannot clear what is already cached.
+      - Confirm after: `curl -s https://honeymoney.app/deck/HoneyMoney_Pitch_Deck_MAIC2026.pdf | md5sum`
+        → `c0a6330ba7b2579259208d8b47c8b872`, and `cd web && node scripts/check-tap.mjs https://honeymoney.app`.
+
+**Deck punch list — 10 items, 8 done.** Slide-by-slide reference, with the exact text for
+each: <https://claude.ai/code/artifact/04040f56-39de-4ff3-be8e-29a357497c2f>
+
+Fixed and shipped: `fatigue`; `local-first` → `household knowledge graph` in the Tech Lead
+bio (the last place that phrase survived — see the data-custody block below); the
+RinggitPlus statistic **with its source inline**; sponsored seats back on the Phase 2 card
+so slides 8 and 9 agree on Year-2 revenue; the redundant "mth"; slides 11 and 12 renumbered;
+RM384k and DeepSeek/Qwen preserved throughout. Current deck: 12 pages, 2.5 MB, 1,265
+extractable words, `c0a6330b`, identical in `docs/deck`, `web/public/deck` and `Submission/`.
+
+- [ ] **Slide 6 — the deck still has no answer to "how do you stop the AI inventing
+      numbers?"** The tagline edit went in instead of the verification claim. Drop this into
+      the empty band beside the "$300 credit" line: *"The AI proposes; the user commits —
+      nothing is saved until they confirm it. Our code works out every figure, and any number
+      it didn't produce discards the whole answer."* Both halves are true and both are in the
+      code (`SpendCapture`: capture never saves on its own · `askNarrate.ts`: numbers checked
+      against the compute stage's allowlist, one unrecognised figure discards the answer).
+      This is the strongest Technical Feasibility claim available and it is currently absent.
+- [ ] **Slide 6 — the tagline is set TWICE and the two copies now disagree.** The white pill
+      reads "…knowledge graph **for all user-verified inputs**."; the letter-spaced banner
+      under the title still ends "…KNOWLEDGE GRAPH." Match them or revert the pill. Note the
+      banner is tracked caps and grows fast — check it does not shrink or wrap.
+- [ ] **Slide 10 has no page number at all.** It used to be stamped `09` (a duplicate of
+      slide 9); the renumbering pass fixed 11 and 12 and deleted 10 rather than setting it.
+      Slides 2–9, 11, 12 are correct.
+- [ ] Slide 3 — "public pages served 24/7 from Cloudflare's edge" (the small half of the
+      restore-the-operational-facts item).
+- [ ] Polish, none of them costing a mark: `Must ‑Paid` carries a non-breaking hyphen plus a
+      stray space (retype the label, find-and-replace will not catch it); the closing slide
+      holds three stacked copies of the Problems/Solutions text box — it RENDERS correctly,
+      but copy-paste and screen readers get "FragmFragm ented, messy…".
+
+**Also shipped today, live and verified:** mobile `/record` unfrozen (see the Shipped block
+above — 372 KB → 49 KB, 4 450 → 255 DOM nodes, 43 → 61 fps under a 4× CPU throttle, all five
+tabs hit-tested tappable); `/graph`'s header reduced to the currency switcher; `npm run
+check:tap` added; `build-deck-pdf.mjs` now refuses to render the stale HTML over a Canva
+export (reads the Producer via `pdfinfo`, `--force` to override).
+
+- [ ] **Editorial source is now Canva, not `PITCH_DECK.html`.** The `.pptx` is committed.
+      The HTML deck and the shipped deck are different documents — the HTML one still carries
+      the RinggitPlus statistic and the "Honey never does the maths" paragraph. Decide whether
+      to retire `PITCH_DECK.html` or keep it in step; leaving it is fine now that the build
+      script refuses to clobber, but a stale second deck in the repo will confuse someone.
+
 ### 🧭 Data-custody position — decided 2026-08-25, NOT yet built
 
 **Where we want to be: we sell the software, we are not the custodian of the household's
