@@ -27,7 +27,7 @@
 // downscaling below is headroom for when a slide gains another photo.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, copyFileSync, readdirSync, statSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, copyFileSync, readdirSync, readFileSync, statSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, extname, basename } from "node:path";
 import { tmpdir } from "node:os";
@@ -106,6 +106,52 @@ if (process.argv.includes("--check")) {
   }
   console.log("\n✅ Deck PDF is within limits and not rasterised.");
   process.exit(0);
+}
+
+// ── DO NOT CLOBBER A DECK THIS SCRIPT DID NOT MAKE ──────────────────────────
+//
+// From 2026-08-25 the pitch deck is authored in Canva and exported by hand;
+// docs/deck/PITCH_DECK.html is no longer the source of what ships. A plain
+// `node scripts/build-deck-pdf.mjs` overwrites that export with a render of the
+// stale HTML, and the only visible sign is the file changing size. The two are
+// genuinely different documents now -- the HTML deck carries the RinggitPlus
+// statistic and the "Honey never does the maths" paragraph, the Canva deck does
+// not -- so this is not a cosmetic overwrite. It happened once, immediately,
+// while writing this guard.
+//
+// READ THE PRODUCER WITH pdfinfo, NOT BY GREPPING THE BYTES. The first version
+// of this check regex'd /Producer out of the raw file and silently passed: in
+// the Canva export that key lives inside a COMPRESSED OBJECT STREAM, so the
+// pattern matched nothing, `producer` came back empty, and the guard waved
+// through the exact overwrite it existed to stop. poppler is already required
+// here for pdfStats, and it decompresses.
+if (existsSync(OUT) && !process.argv.includes("--force")) {
+  let producer = "";
+  try {
+    producer = (/^Producer:\s*(.+)$/m.exec(
+      execFileSync("pdfinfo", [OUT], { encoding: "utf8" }),
+    )?.[1] ?? "").trim();
+  } catch { /* no poppler -- fall through rather than block the build */ }
+  // Chrome's print path writes "Skia/PDF"; Canva, PowerPoint and Ghostscript
+  // all name themselves. An empty answer means we could not tell, and a guard
+  // that cannot tell must not be the thing that stops a legitimate rebuild.
+  if (producer && !/skia/i.test(producer)) {
+    console.error(
+      `
+✗ ${basename(OUT)} was not produced by this script.
+` +
+      `   Its PDF Producer is "${producer}" -- Chrome's print path writes "Skia/PDF".
+` +
+      `   Rebuilding from PITCH_DECK.html would replace that export with a render of
+` +
+      `   the HTML, which is now a DIFFERENT deck. Nothing has been written.
+
+` +
+      `   Intending to go back to the HTML source?  node scripts/build-deck-pdf.mjs --force
+`,
+    );
+    process.exit(1);
+  }
 }
 
 if (!CHROME) throw new Error("No Chrome/Edge found. Set CHROME=<path>.");
