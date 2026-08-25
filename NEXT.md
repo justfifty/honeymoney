@@ -59,6 +59,15 @@ Dated copies in `docs/deck/Submission/`.
       permanent chrome (Dashboard is a top-bar AND bottom-nav tab; Records and Guide
       are in More), so the busiest page in the app opened with four competing links
       above the graph it exists to show.
+- [x] **Deck fork closed for real.** `docs/deck/Submission/` still held the PRE-merge
+      pitch deck — the hand-edited fork with `fatique` and the RM348k transposition —
+      so the 31 Aug upload would have carried errors the repo fixed on 25 Aug. The
+      merged deck is now the single artefact in all three places (`docs/deck`,
+      `web/public/deck`, `Submission/`), verified by hash. The fold-back had dropped
+      one real Submission line, restored here: Switchable AI now reads "and any model
+      it hosts, including DeepSeek and Qwen". Video, summary and AI disclosure were
+      already current — the summary and disclosure differed from Submission only in
+      the PDF `/CreationDate`, identical text and page count.
 - [x] **`npm run check:tap`** (`web/scripts/check-tap.mjs`) — `check:nav` proves the
       tabs are present, on-screen and 44 px, which a **covered** tab passes. This one
       hit-tests `elementFromPoint` at each tab centre (naming whatever steals the tap)
