@@ -60,7 +60,13 @@ export default async function RecordPage() {
           : "individual";
 
   return (
-    <main className="mx-auto min-h-full w-full max-w-lg px-4 py-5 sm:px-6">
+    // `min-w-0` is the same guard /graph documents at length: <main> is a flex
+    // item, `mx-auto` suppresses cross-axis stretch, and a flex item's default
+    // `min-width: auto` refuses to shrink below its min-content width. One
+    // unbreakable child — a long vendor label, a wide status line from the
+    // scanner — would otherwise widen the whole page past the viewport and take
+    // the header and tab bar sideways with it.
+    <main className="mx-auto min-h-full w-full min-w-0 max-w-lg px-4 py-5 sm:px-6">
       <header className="flex items-baseline justify-between gap-2">
         <h1 className="flex items-center gap-1.5 font-display text-xl font-semibold tracking-tight">
           <Logo size={22} /> {tr("cap.title")}

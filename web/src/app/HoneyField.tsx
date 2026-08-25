@@ -1,13 +1,38 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Interactive sunburst field — the HoneyMoney mark itself, dissolved into
 // particles in the single brand orange. It slowly rotates and tilts toward the
-// mouse cursor (3D parallax). Particles are generated deterministically (seeded
-// PRNG) so SSR and client markup match; the motion is applied post-mount and
-// disabled under prefers-reduced-motion. The ray geometry mirrors Logo.tsx —
-// keep the two in step.
+// mouse cursor (3D parallax). The ray geometry mirrors Logo.tsx — keep the two
+// in step.
+//
+// ── DESKTOP ONLY, AND BUILT IN THE BROWSER ─────────────────────────────────
+//
+// This is a POINTER effect: the only thing that moves it is `mousemove`, which
+// a touchscreen never fires. On a phone it was therefore pure cost, and the
+// cost was not small — measured on /record, 2026-08-25:
+//
+//   page HTML with the field   372 KB      4 208 DOM nodes
+//   page HTML without it        48 KB          8 DOM nodes
+//
+// 87% of every page's payload was a decoration no phone user could interact
+// with. Worse than the bytes: the 4 200-circle SVG carries a
+// `mask-image: radial-gradient(...)` and was re-composited by a
+// requestAnimationFrame loop that never stopped, so a mid-range phone spent
+// every frame rasterising a masked 104vmin layer. That is what made /record —
+// the default landing, and the one screen the app asks for every day — feel
+// frozen: taps and scrolls were being dropped by a busy main thread.
+//
+// So the particles are now built in an effect rather than during render. The
+// gate (`hover: hover and pointer: fine`, plus a width floor) can only be read
+// in the browser, and building client-side is what lets a phone skip the work
+// AND the bytes — a server-rendered field would have shipped the 324 KB
+// regardless of who could see it. Nothing is server-rendered, so the seeded
+// PRNG is no longer load-bearing for hydration; it is kept because a stable
+// mark is the point of the mark.
+//
+// To put the field back on phones, drop DESKTOP_ONLY below — and re-measure.
 
 function mulberry32(seed: number) {
   let a = seed;
@@ -59,7 +84,7 @@ function buildSvg() {
   // as a cloud that resolves into the logo rather than a stamped-out shape.
   const gauss = () => (rand() + rand() + rand() + rand() - 2) / 2;
 
-  const N = 4200;
+  const N = 2600;
   const dots: string[] = [];
   for (let i = 0; i < N; i++) {
     let x: number;
@@ -99,13 +124,31 @@ function buildSvg() {
 // How far the mark drifts toward the pointer, as a share of the viewport.
 const DRIFT = 0.06;
 
+// A real pointer, and room to show a 104vmin mark next to the content. Both
+// halves matter: a Surface in tablet mode reports a coarse pointer at 1280px,
+// and a phone plugged into a mouse reports a fine one at 390px.
+const DESKTOP_ONLY = "(hover: hover) and (pointer: fine) and (min-width: 768px)";
+
 export default function HoneyField() {
   const inner = useRef<HTMLDivElement>(null);
-  const svg = buildSvg();
+  // null until the browser has been asked. Never guess "desktop" here: a first
+  // paint that injects 2 600 circles and then removes them is the phone cost we
+  // are removing, paid anyway.
+  const [svg, setSvg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const mq = window.matchMedia(DESKTOP_ONLY);
+    const apply = () => setSvg(mq.matches ? buildSvg() : null);
+    apply();
+    // Rotating a tablet or docking a laptop changes the answer; the field should
+    // appear and disappear with it rather than being decided once at load.
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     const el = inner.current;
-    if (!el) return;
+    if (!el || !svg) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     let raf = 0;
@@ -143,13 +186,31 @@ export default function HoneyField() {
         ` rotateX(${cRotX.toFixed(2)}deg) rotateY(${cRotY.toFixed(2)}deg) rotateZ(${spin.toFixed(2)}deg)`;
       raf = requestAnimationFrame(loop);
     };
+    // Compositing a masked 104vmin layer 60 times a second is not free even on a
+    // desktop, and a background tab gets nothing for it. rAF already throttles
+    // when hidden in most browsers; stopping outright also drops the layer.
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      } else if (!raf) {
+        last = performance.now();
+        raf = requestAnimationFrame(loop);
+      }
+    };
     window.addEventListener("mousemove", onMove);
+    document.addEventListener("visibilitychange", onVisibility);
     raf = requestAnimationFrame(loop);
     return () => {
       window.removeEventListener("mousemove", onMove);
+      document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [svg]);
+
+  // Not merely hidden — not in the document at all. `display:none` would still
+  // have cost the parse, the nodes and the bytes, which is the whole problem.
+  if (!svg) return null;
 
   // Fixed to the viewport and behind every page's content, so the same mark
   // follows the cursor across the whole site rather than living in the hero.

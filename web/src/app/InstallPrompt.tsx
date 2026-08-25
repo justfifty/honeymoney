@@ -31,7 +31,16 @@ export default function InstallPrompt() {
   }
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-md rounded-2xl border border-amber-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:inset-x-auto sm:right-4 dark:border-amber-900 dark:bg-zinc-900/95">
+    // Sits ABOVE the bottom tab bar, not on top of it. At `bottom-3` this banner
+    // — z-50, and the full width of a phone — covered the whole of BottomNav
+    // (fixed, bottom-0, z-40) and swallowed every tap meant for Record,
+    // Dashboard, Graph, H-Score and More. Anyone who hadn't dismissed it was
+    // stranded on whatever page they landed on, which on a phone is /record.
+    // On iOS it is worse: the Add-to-Home-Screen steps render inside it, so it
+    // is several rows tall and also covers the form. The offset clears the bar
+    // (3.5rem) plus the home indicator, and collapses back to bottom-3 from md
+    // up where BottomNav is hidden.
+    <div className="fixed inset-x-3 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.75rem)] z-50 mx-auto max-w-md rounded-2xl border border-amber-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:inset-x-auto sm:right-4 md:bottom-3 dark:border-amber-900 dark:bg-zinc-900/95">
       <div className="flex items-center gap-3">
         <Logo size={24} />
         <div className="min-w-0 flex-1 text-sm">

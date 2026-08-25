@@ -154,11 +154,13 @@ export default async function GraphPage({
               : tr("app.focusedOn", { label: `${view.focusBadge} ${view.focusLabel}`, nodes: nodes.length, edges: edges.length })}
           </p>
         </div>
+        {/* Currency only. Records, Guide and Dashboard used to sit here too, and
+            all three are already permanent chrome: Dashboard is a top-bar tab and
+            a bottom-nav tab, Records and Guide are in the More menu. Repeating
+            them beside the title made the busiest page in the app open with four
+            competing links above the graph it exists to show. */}
         <nav className="flex items-center gap-3 text-sm">
           <CurrencySwitcher current={ccy} />
-          <Link href="/records" className="text-zinc-500 hover:underline">🧾 {tr("nav.records")}</Link>
-          <Link href="/guide" className="text-zinc-500 hover:underline">ℹ️ {tr("nav.guide")}</Link>
-          <Link href="/dashboard" className="text-zinc-500 hover:underline">{tr("nav.dashboard")} →</Link>
         </nav>
       </header>
 

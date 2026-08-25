@@ -38,6 +38,32 @@ Dated copies in `docs/deck/Submission/`.
       (`build-deck-pdf.mjs`, `build-doc-pdfs.mjs`); interactive PDF compressor
       (`compress_pdf.py`, levels + --target, logos never resampled); privacy-doc
       generator with drift check.
+- [x] **Mobile /record was frozen — four causes, all measured.** (1) The live site was
+      serving the **23 Aug build**: `next start` holds the build it booted with, so the
+      last three commits had never shipped and the phone's tab bar still had only four
+      tabs — **/graph did not exist on mobile**. (2) `HoneyField` injected **4 200 SVG
+      circles** into every page and re-composited them under a `mask-image` on a
+      never-ending rAF loop; it is driven by `mousemove`, which a touchscreen never
+      fires, so phones paid the whole cost for a decoration they could not move.
+      `/record` went **372 KB → 49 KB**, **4 450 → 255 DOM nodes**, **43 → 61 fps**
+      (390×844, 4× CPU throttle) — 43 fps is what "the screen is stuck" actually is.
+      It now builds client-side behind `(hover:hover) and (pointer:fine) and
+      (min-width:768px)` and stops when the tab is hidden. (3) `InstallPrompt` was
+      `bottom-3 z-50` over a `bottom-0 z-40` nav: measured, it covered **45 of the
+      bar's 57 px** — every label and most of each icon — stranding anyone who had not
+      dismissed it. (4) `body` reserved a flat `pb-16` for a bar that is `3.5rem +
+      env(safe-area-inset-bottom)`, so the last ~1.6 rem of every page sat under it on
+      a notched phone.
+- [x] **/graph header simplified** — 🧾 Records, ℹ️ Guide and Dashboard → removed from
+      beside the title; only the currency switcher stays. All three were already
+      permanent chrome (Dashboard is a top-bar AND bottom-nav tab; Records and Guide
+      are in More), so the busiest page in the app opened with four competing links
+      above the graph it exists to show.
+- [x] **`npm run check:tap`** (`web/scripts/check-tap.mjs`) — `check:nav` proves the
+      tabs are present, on-screen and 44 px, which a **covered** tab passes. This one
+      hit-tests `elementFromPoint` at each tab centre (naming whatever steals the tap)
+      and measures frame throughput under a 4× CPU throttle. It is the check that
+      caught both the missing /graph tab and the banner.
 
 ⬜ **Only-you items:** DOM Cloud portal redeploy of `pb.deploy.yml` (superuser UI /_/
 still public — last Security item) · name the DPO (Chua; MyKad NOT required —

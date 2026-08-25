@@ -12,6 +12,7 @@
     "pb:start": "node ../scripts/start-pocketbase.mjs",
     "check:demo": "npx --yes tsx scripts/check-demo-bands.mts",
     "check:nav": "node scripts/check-nav.mjs",
+    "check:tap": "node scripts/check-tap.mjs",
     "check:mic": "node scripts/check-no-mic.mjs",
     "check:attachments": "node scripts/check-attachments.mjs",
     "check:csv": "npx --yes tsx scripts/check-csv.mts",

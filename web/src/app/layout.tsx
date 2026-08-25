@@ -112,10 +112,18 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
     >
-      {/* pb-16 on mobile so content clears the fixed bottom nav; none on desktop */}
-      <body className="min-h-full flex flex-col pb-16 md:pb-0">
+      {/* Clear the fixed bottom nav on mobile; nothing on desktop, where it is
+          hidden. The safe-area term is not decoration: BottomNav is 3.5rem of
+          tabs PLUS `pb-[env(safe-area-inset-bottom)]`, so on a phone with a home
+          indicator the bar is ~5.6rem tall while a flat `pb-16` reserved 4rem —
+          and the last ~1.6rem of every page sat underneath it, unreachable.
+          Keep the two in step: change one, change the other. */}
+      <body className="min-h-full flex flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
         <FxRates table={table} />
-        {/* dotted sunburst that trails the cursor behind every page */}
+        {/* dotted sunburst that trails the cursor behind every page.
+            Renders nothing on touch devices — it is a pointer effect, and it was
+            costing phones 324 KB and 4 200 DOM nodes for something they could
+            never move. See HoneyField.tsx. */}
         <HoneyField />
         <SiteHeader />
         <PendingDeletionNotice />
