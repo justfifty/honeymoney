@@ -133,7 +133,11 @@
   <strong>on-device OCR</strong> (Tesseract, in the browser), reads itemised line items, and
   contacts no model at all. Private Spendings buckets are excluded from shared household
   views. Data is isolated per household, settings are encrypted at rest, and backups are
-  encrypted, held off-site, and <strong>proven restorable</strong>.</p>
+  encrypted, held off-site, and <strong>proven restorable</strong>. There are
+  <strong>no analytics SDKs and no data brokers</strong>, and the transaction ledger is
+  append-only and hash-chained, so a record can be voided, never rewritten.
+  This is <strong>alignment with PDPA 2010, not certified compliance</strong> &mdash; no
+  third-party audit yet.</p>
 
   <h2>AI used to build HoneyMoney</h2>
   <p>We used <strong>AI coding assistants</strong> during development. Architecture, data

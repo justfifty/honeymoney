@@ -55,14 +55,45 @@ touching every judging criterion.
 
 ---
 
-## The generated explainer (2026-08-24)
+## The generated explainer (2026-08-25)
 
 The shipped `HoneyMoney_Demo_MAIC2026.mp4` is built by `scripts/build-demo-video.mjs`,
-not recorded. **Its narration script is the `vo` strings in that file** — 21 beats
-running problem → solution → three personas → six graph views → four H-Score bands
-→ strategy → Malaysia impact → CTA, at 2:51 with an en-SG neural voice.
+not recorded. **Its narration script is the `vo` strings in that file** — 24 beats
+running problem → 3-Bucket method → capture → three household shapes → six graph
+views → consolidated dashboard → **the four H-Score tiers, one per beat** → the
+Academy quiz → the product directory → business model → Malaysia impact →
+on-device privacy → CTA, at 2:53 with `en-US-AvaMultilingualNeural`.
 
-The shot list below remains the target for a *human-recorded* version. Record over
+Three things about it are worth knowing before editing the beat sheet:
+
+- **Pages pan, they do not sit still.** `scroll: <cssY>` moves the crop window
+  from the beat's `y` down to that offset across the beat, eased at both ends, so
+  a six-second beat shows what a visitor would actually scroll past instead of one
+  frozen screenful. Values are CSS pixels at that beat's own `vw`.
+- **Narrow pages are captured narrow.** `vw: NARROW` (1280) re-renders a page at
+  a 1280px CSS viewport and 1.5× device pixels — still 1920 real pixels wide, so
+  nothing is upscaled. `/demo`, `/dashboard`, `/guide` and `/learn` put their
+  content in a ~512–672px column; at 1920 that column is 27% of the frame and
+  body text lands unreadably small on the finished video.
+- **The four tiers are four URLs.** `/demo?persona=individual|couple|family|thriving`
+  (and `&tab=`, `&dir=`) was added to the app so each band, and the product
+  directory, can be addressed rather than clicked — which is what makes them
+  filmable at all, and linkable in a message or a document.
+
+Two deployment notes, both learned the hard way:
+
+- The video is captured from `DEMO_SITE` (default `https://honeymoney.app`). Any
+  app change you want on screen has to be live there first — including on the
+  **Cloudflare Pages snapshot**, which serves `/demo`, `/learn` and `/` to
+  anonymous visitors and is rendered from the DOM Cloud origin, not this laptop.
+  Capture from `DEMO_SITE=http://localhost:3000` only as a stopgap.
+- `npm run build` on this machine **overwrites the build the live site is serving**
+  and changes `_next/static` hashes. The edge serves `/_next/static/*` from the
+  Pages snapshot, so a rebuild that is not followed by `npm run site:publish`
+  leaves honeymoney.app rendering with no stylesheet at all. See
+  `deploy/pages/README.md`.
+
+The shot list above remains the target for a *human-recorded* version. Record over
 the same beat sheet: the `vo` lines are already timed, and the video regenerates
 from the live site with `node scripts/build-demo-video.mjs`, so the frames can
 never drift from what a judge sees.
