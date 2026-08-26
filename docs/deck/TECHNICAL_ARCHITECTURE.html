@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HoneyMoney — Technical Architecture (MAIC Nexus 2026, Track T3)</title>
+  <style>
+    /* Same house style as the AI disclosure and project summary, at a density
+       that suits a two-page technical document rather than a one-page notice.
+       ⚠️ NOT capped at 500 words: this is not one of the two MAIC upload
+       notices. It IS capped at three pages by scripts/build-doc-pdfs.mjs, and
+       every run of prose is checked against the exported PDF, so copy that
+       grows by two lines fails the build instead of being silently cut. */
+    @page { size: A4 portrait; margin: 12mm 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+      color: #1d1d1d;
+      line-height: 1.36;
+      font-size: 9pt;
+    }
+    .head { border-bottom: 3px solid #1f6f4a; padding-bottom: 9px; margin-bottom: 12px; }
+    .badge {
+      font-size: 8.5pt; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 999px; background: #1f6f4a; color: #fff;
+      display: inline-block; margin-bottom: 7px;
+    }
+    h1 { margin: 0; font-size: 18pt; color: #112317; }
+    .sub { margin: 4px 0 0; font-size: 9.4pt; color: #355948; }
+    h2 {
+      font-size: 10.5pt; color: #123524; margin: 10px 0 3px;
+      border-left: 4px solid #2b8a57; padding-left: 8px;
+    }
+    h3 { font-size: 9.6pt; color: #123524; margin: 9px 0 2px; }
+    p { margin: 3px 0 6px; }
+    ul { margin: 3px 0 7px; padding-left: 17px; }
+    li { margin-bottom: 2px; }
+    strong { color: #123524; }
+    table { width: 100%; border-collapse: collapse; margin: 4px 0 8px; font-size: 8.5pt; }
+    th, td {
+      text-align: left; padding: 4px 7px;
+      border-bottom: 1px solid rgba(30,60,44,0.18); vertical-align: top;
+    }
+    th { background: #eaf3ee; color: #123524; font-weight: 700; border-bottom: 1.5px solid #2b8a57; }
+    td:first-child { white-space: nowrap; }
+    code {
+      font-family: Consolas, "Courier New", monospace; font-size: 8.8pt;
+      background: #eef3f0; padding: 1px 3px; border-radius: 3px;
+    }
+    .flow {
+      font-family: Consolas, "Courier New", monospace; font-size: 8.4pt; line-height: 1.5;
+      background: #f3f8f5; border-left: 4px solid #2b8a57; padding: 9px 12px;
+      margin: 6px 0 10px; white-space: pre; color: #123524;
+    }
+    .pull {
+      background: #f3f8f5; border-left: 4px solid #2b8a57;
+      padding: 7px 11px; margin: 7px 0 9px;
+    }
+    .cols { display: flex; gap: 14px; }
+    .cols > div { flex: 1; }
+    .meta {
+      display: flex; justify-content: space-between; gap: 12px;
+      margin-top: 14px; padding-top: 7px;
+      border-top: 1px solid rgba(30,60,44,0.25);
+      font-size: 8.8pt; color: #355948;
+    }
+    h2 { break-after: avoid; }
+    li, tr { break-inside: avoid; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <span class="badge">MAIC Nexus 2026 &middot; Track T3</span>
+    <h1>Technical Architecture &mdash; HoneyMoney</h1>
+    <p class="sub"><strong>Team JUST50</strong> &middot; 27 August 2026 &middot; Live at
+    honeymoney.app &middot; Companion document: <em>AI Disclosure</em></p>
+  </div>
+
+  <h2>1. The system in one view</h2>
+  <div class="flow">  CAPTURE                     GRAPH                        DERIVED VIEWS
+  ───────                     ─────                        ─────────────
+  type a line ┐                                          ┌ dashboard + forecast
+  receipt     ├──▶ on-device parse ──▶ human confirms ──▶ │ 6 graph views
+  screenshot  │    (0 tokens)          (never auto-save)  │ H-Score, 5 criteria
+  statement   ┘            │                    │         └ Ask Honey
+                           ▼                    ▼
+                   optional AI extract    PocketBase knowledge graph
+                   (image only)           nodes · edges · transactions
+                                          append-only hash-chained ledger</div>
+  <p>Every household is one graph. <strong>Money is not a table of rows</strong> &mdash; income
+  flows along allocation edges into buckets, and buckets pay vendors &mdash; which is what lets the
+  app see structurally that one bucket's velocity will push a shared goal late, before it does.</p>
+
+  <h2>2. Layers</h2>
+  <table>
+    <tr><th>Layer</th><th>What runs</th><th>Design constraint it satisfies</th></tr>
+    <tr><td><strong>1. App</strong></td><td>Next.js (App Router) PWA, Tailwind, six locales,
+      multi-currency</td><td>Phone-first, installable, nothing to download. Server-rendered, so a mid-range Android does no heavy work.</td></tr>
+    <tr><td><strong>2. Data</strong></td><td>PocketBase &mdash; a single self-hosted binary:
+      database, auth, migrations</td><td>Self-hostable by a household or an employer. Collections are superuser-only; no browser touches them.</td></tr>
+    <tr><td><strong>3. Capture</strong></td><td>Tesseract OCR and our own parser and classifier, in
+      the browser</td><td><strong>Zero tokens, zero transmission, by default.</strong> Works offline. No bank connection, ever.</td></tr>
+    <tr><td><strong>4. AI</strong></td><td>Gemini Flash, Groq, or local Ollama &mdash; switchable
+      per deployment</td><td>Optional and replaceable. Per-call cost ledger. No lock-in, and no model in the critical path.</td></tr>
+    <tr><td><strong>5. Delivery</strong></td><td>Cloudflare Tunnel, Pages, R2</td><td>A public
+      surface that stays up when the origin does not; backups leave as ciphertext.</td></tr>
+  </table>
+
+  <h2>3. The knowledge graph</h2>
+  <div class="cols">
+    <div>
+      <h3>Nodes</h3>
+      <ul>
+        <li><code>income_source</code> &mdash; carries <code>monthly_amount</code></li>
+        <li><code>bucket</code> &mdash; tier 1 Must-paid, 2 Savings, 3 Spendings</li>
+        <li><code>vendor</code>, <code>goal</code>, <code>obligation</code>, <code>asset</code></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Edges</h3>
+      <ul>
+        <li><code>ALLOCATES_PCT</code> / <code>ALLOCATES_FIXED</code> &mdash; the plan</li>
+        <li><code>FUNDS</code> &mdash; a source funding a goal</li>
+        <li><code>SPENT_AT</code> &mdash; a bucket paid a vendor</li>
+        <li>Closed by <code>valid_to</code>, never deleted: history stays legible</li>
+      </ul>
+    </div>
+  </div>
+  <p><strong>Three invariants hold the model together.</strong> (1) <em>Income is read only from
+  declared sources</em>, never inferred from a credit &mdash; a refund cannot become a salary.
+  (2) <em>A transfer is not a spend</em>: money moved into Savings nets to zero at household level,
+  so putting money away never renders as spending it. (3) <em>Void, never delete</em>: the ledger is
+  append-only and hash-chained, so a correction is evidence rather than erasure.</p>
+
+  <h2>4. Derived views &mdash; computed, never stored twice</h2>
+  <ul>
+    <li><strong>Allocation walk</strong> &mdash; a depth-guarded traversal from each income
+    source, so five income streams and nine buckets resolve with no schema change.</li>
+    <li><strong>Projection</strong> &mdash; month-to-date pace against each bucket's allocation:
+    <em>on track</em>, <em>at risk</em>, <em>over budget</em>, or <em>unfunded</em>.</li>
+    <li><strong>H-Score</strong> &mdash; five weighted criteria on tuned curves: savings rate
+    (30), essential burden (25), debt service (20), emergency buffer (20), personal cap (5); banded
+    Building / Steady / Strong / Thriving, with hysteresis so a score cannot flicker.</li>
+  </ul>
+
+  <h2>5. Capture &mdash; the on-device path is the default, not the fallback</h2>
+  <p>A typed line is parsed and classified in the same tick as the keystroke: amount, vendor, date,
+  currency, and one of six categories, by keyword tables that a judge can read and a household can
+  correct. <strong>No network, no token, no account.</strong> The identical module runs the landing
+  page's try-it box, so what a visitor tries is the product, not a mock-up of it. A photographed
+  receipt is OCR'd in the browser and itemised there. Only if a household switches AI on, and only
+  for image extraction, does an image reach a model &mdash; and <strong>nothing is ever saved
+  without a human confirming it</strong>.</p>
+
+  <h2>6. Ask Honey &mdash; the model may not do arithmetic</h2>
+  <div class="flow">  parse ────────▶ compute ─────────────▶ narrate ────────▶ verify
+  intent +        deterministic code:      model phrases     every number in the
+  scope check     the SAME computeHScore   the result        prose must appear in
+  (type-level)    as the score screen                        the computed set</div>
+  <p>Stage 2 emits the only figures allowed to appear. Stage 3 may choose words and emphasis;
+  each number in its prose is checked against that set, and <strong>one unrecognised figure discards
+  the whole answer</strong> for a deterministic template. That template is the floor, not the
+  fallback: with no AI key at all, the answer is the same answer, less warmly phrased. On a cloud
+  engine the payload is slot names, an intent and a locale &mdash; <strong>no figures, no labels, no
+  free text</strong> &mdash; restored locally after the check. Below 8 records or 14 days, Honey
+  declines to project.</p>
+
+  <h2>7. Security and privacy architecture</h2>
+  <table>
+    <tr><th>Concern</th><th>Mechanism</th></tr>
+    <tr><td><strong>Isolation</strong></td><td>Every query is tenant-scoped; collections are
+      superuser-only, reached through routes that authenticate the caller. A household's own AI key
+      is encrypted (AES-256-GCM) before storage and never returned to a browser.</td></tr>
+    <tr><td><strong>Partner privacy</strong></td><td>Tier-3 buckets are personal by default. One
+      visibility filter redacts the record list, the graph and Ask Honey &mdash; the same function
+      in the same query, so a chat box cannot summarise what a list hides.</td></tr>
+    <tr><td><strong>AI consent</strong></td><td>Off until switched on, per purpose, append-only and
+      withdrawable, enforced at the call site rather than the settings screen. Payloads carry a data
+      class; class 2 prefers a local engine.</td></tr>
+    <tr><td><strong>User backups</strong></td><td><strong>Zero-knowledge.</strong> Sealed in the
+      browser &mdash; gzip, PBKDF2-HMAC-SHA256 at 600,000 rounds, AES-256-GCM, envelope parameters
+      bound as AAD &mdash; with a passphrase we never receive. We store ciphertext and hold no key.
+      The server refuses a payload that is not encrypted.</td></tr>
+    <tr><td><strong>Operator backups</strong></td><td>Nightly, encrypted before upload, held
+      off-site, and restore-tested rather than assumed.</td></tr>
+    <tr><td><strong>Integrity</strong></td><td>Append-only hash-chained ledger; a record is voided,
+      never rewritten.</td></tr>
+  </table>
+  <p><strong>The limit of the claim, stated rather than implied:</strong> the live database is not
+  encrypted to the operator, because the server computes an H-Score over it. HoneyMoney is not an
+  end-to-end encrypted ledger; the backup is the artefact that is sealed.</p>
+
+  <h2>8. Deployment</h2>
+  <p>The Next.js server runs on hardware the team controls, published through a named Cloudflare
+  Tunnel, with a Pages snapshot serving the public surface when the origin is not up. PocketBase
+  runs on a Singapore host with settings encryption. The whole stack is <strong>one binary plus one
+  Node app</strong> &mdash; which is what makes self-hosting a real option rather than a slide, at
+  near-zero infrastructure cost.</p>
+
+  <h2>9. How each claim is verified</h2>
+  <table>
+    <tr><th>Command</th><th>What it proves against real code and a real database</th></tr>
+    <tr><td><code>check:ask</code></td><td>The model cannot introduce a number; scope holds at the
+      type level; a partner cannot extract private records through the chat box.</td></tr>
+    <tr><td><code>check:vault</code></td><td>No plaintext survives into a backup; a wrong
+      passphrase, a downgraded KDF and a flipped bit all refuse to open.</td></tr>
+    <tr><td><code>check:capture</code></td><td>What you type is what gets stored; a bare credit
+      never becomes a salary.</td></tr>
+    <tr><td><code>check:tally</code></td><td>The graph and the dashboard agree, household by
+      household, and every ringgit of income is routed.</td></tr>
+    <tr><td><code>check:attribution</code></td><td>Transfers net to zero and privacy holds inside
+      the query, not just in the component.</td></tr>
+  </table>
+
+  <h2>10. Known limits</h2>
+  <p>OCR is imperfect; every extraction is confirmed before filing. Restoring a household
+  <em>from</em> a sealed backup is not built &mdash; opening one returns the data, but recreating a
+  household needs id remapping the ledger has a view on. The seal runs in JavaScript we serve, so
+  independent verification of the delivered bundle is a real gap, listed as one. PDPA 2010 alignment
+  is not certified compliance; no third-party audit yet.</p>
+
+  <div class="meta">
+    <span>honeymoney.app &middot; github.com/justfifty/honeymoney</span>
+    <span>hello@honeymoney.app</span>
+  </div>
+</body>
+</html>

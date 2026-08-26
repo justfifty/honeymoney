@@ -31,11 +31,18 @@ const DECK = join(repo, "docs", "deck");
 const TARGETS = [
   { html: "PROJECT_SUMMARY.html", pdf: "HoneyMoney_Project_Summary_MAIC2026.pdf" },
   { html: "AI_DISCLOSURE.html", pdf: "HoneyMoney_AI_Disclosure_MAIC2026.pdf" },
+  // The technical architecture is NOT one of the two 500-word MAIC notices, and
+  // it is not one page: it answers "how is this built", which a page cannot. It
+  // is exported here anyway so it inherits the two checks that matter — the page
+  // ceiling and the clipped-text difference — rather than being a hand export
+  // that drifts. Two pages by design; three is the ceiling, at which point the
+  // document has stopped being a summary of the architecture.
+  { html: "TECHNICAL_ARCHITECTURE.html", pdf: "HoneyMoney_Technical_Architecture_MAIC2026.pdf", maxPages: 3 },
 ];
 
-// One page each. Two pages means the layout broke, and a judge reading a
-// "one-page summary" that runs to two has been told something untrue before
-// they reach the first sentence.
+// One page each for the notices. Two pages means the layout broke, and a judge
+// reading a "one-page summary" that runs to two has been told something untrue
+// before they reach the first sentence.
 const MAX_PAGES = 1;
 const MIN_WORDS = 200;
 
@@ -49,11 +56,12 @@ const CHROME =
 
 const kb = (b) => `${Math.round(b / 1024)} KB`;
 
-function verify(pdfPath, htmlPath) {
+function verify(pdfPath, htmlPath, maxPages = MAX_PAGES) {
   const { words, pages } = pdfStats(pdfPath);
   console.log(`   ${basename(pdfPath)}  ${kb(statSync(pdfPath).size)} · ${pages}p · ${words} words`);
   const problems = [];
-  if (pages > MAX_PAGES) problems.push(`${pages} pages — this must fit on one`);
+  if (pages > maxPages)
+    problems.push(`${pages} pages — the ceiling for this document is ${maxPages}`);
   if (words > 0 && words < MIN_WORDS) problems.push(`only ${words} words — likely rasterised`);
   problems.push(...clipped(pdfPath, htmlPath));
   return problems;
@@ -70,7 +78,7 @@ for (const t of TARGETS) {
   const outPath = join(DECK, t.pdf);
 
   if (checkOnly) {
-    const problems = verify(outPath, htmlPath);
+    const problems = verify(outPath, htmlPath, t.maxPages);
     if (problems.length) {
       failed = true;
       console.error("     ✗ " + problems.join("\n     ✗ "));
@@ -101,7 +109,7 @@ for (const t of TARGETS) {
 
   if (!existsSync(tmpPdf)) throw new Error(`Chrome produced no PDF for ${t.html}`);
 
-  const problems = verify(tmpPdf, htmlPath);
+  const problems = verify(tmpPdf, htmlPath, t.maxPages);
   if (problems.length) {
     failed = true;
     console.error("     ✗ " + problems.join("\n     ✗ "));
