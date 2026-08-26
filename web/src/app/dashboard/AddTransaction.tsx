@@ -6,17 +6,20 @@ import { t, type Locale } from "@/lib/i18n";
 import { CURRENCIES, rateFor, symbolOf, toMYR } from "@/lib/format";
 import SpendCapture, { type CaptureAnalysis, type Captured } from "../graph/SpendCapture";
 import type { IncomingAttachment } from "@/lib/attachments";
-import SignPicker from "../record/SignPicker";
 import AttributionPicker from "../record/AttributionPicker";
 import {
   signOf,
+  kindOf,
   tierFor,
   defaultBucketFor,
+  SIGN_STYLE,
+  PLUS_CATEGORIES,
   MINUS_CATEGORIES,
   MUST_PAID_TIER,
   SAVINGS_TIER,
   SPENDINGS_TIER,
   type Category,
+  type Sign,
 } from "@/lib/recordKind";
 import { classifyText, CATEGORY_STYLE, noteKeyFor } from "@/lib/classify";
 import { parseVoiceLocal } from "@/lib/voiceParse";
@@ -100,6 +103,10 @@ export default function AddTransaction({
   // overwhelming common case, so that is where the form opens.
   const [category, setCategory] = useState<Category>(MINUS_CATEGORIES[0]);
   const direction = signOf(category);
+  /** Set once the user states the direction outright. See pickSign. */
+  const [pinnedSign, setPinnedSign] = useState<Sign | null>(null);
+  /** The card's category chip, opened. One tap to disagree, in place. */
+  const [picking, setPicking] = useState(false);
   // Income does not come FROM a bucket, so it is not asked for. `savings` is on
   // the `+` side but is a TRANSFER into a tier-2 bucket, so it still needs one.
   const isIncome = direction === "in" && category !== "savings";
@@ -128,7 +135,12 @@ export default function AddTransaction({
   const amountRef = useRef<HTMLInputElement | null>(null);
   const lineRef = useRef<HTMLInputElement | null>(null);
 
-  const EXAMPLES = [tr("try.eg1"), tr("try.eg2"), tr("try.eg3"), tr("try.eg4")];
+  // The examples follow the side you are on. On the money-in side they are the
+  // three shapes of earning a Malaysian household actually types.
+  const EXAMPLES =
+    direction === "in"
+      ? [tr("try.eg4"), tr("qa.egIn2"), tr("qa.egIn3")]
+      : [tr("try.eg1"), tr("try.eg2"), tr("try.eg3")];
 
   /** The bucket a category should land in, by this household's own tiers. */
   function bucketForCategory(next: Category): string {
@@ -151,6 +163,30 @@ export default function AddTransaction({
     );
   }
 
+  /**
+   * Money in, or money out — stated outright, and it sticks.
+   *
+   * `pinnedSign` is what makes the control real. Without it the next keystroke
+   * re-ran the classifier over the whole line and put the record back on the
+   * spending side, because "Ali 500" — my brother paid me back — matches no
+   * earnings keyword and the cold-start default is spending. The button
+   * appeared to work and then quietly undid itself, which is worse than not
+   * offering it.
+   *
+   * Pinned, the table still chooses WHICH kind of money-in this is; it may no
+   * longer choose whether it is money-in. Cleared when the draft is, so the
+   * next record starts from the app's own default rather than from a choice
+   * made about a different one.
+   */
+  function pickSign(next: Sign) {
+    if (next === direction) return;
+    setPinnedSign(next);
+    const kind = classifyText(line, { sign: next });
+    pickCategory(kind.category);
+    setConfidence(undefined);
+    lineRef.current?.focus();
+  }
+
   // ── the one line ─────────────────────────────────────────────────────────
   //
   // Parsed on every keystroke, on this device, with no network and no token —
@@ -165,7 +201,8 @@ export default function AddTransaction({
     }
     const started = performance.now();
     const parsed = parseVoiceLocal(value, knownVendors);
-    const kind = classifyText(value);
+    // The stated side outranks the guessed one — see pickSign.
+    const kind = classifyText(value, pinnedSign ? { sign: pinnedSign } : {});
     setParseMs(performance.now() - started);
 
     if (parsed.vendor) setVendor(parsed.vendor);
@@ -229,6 +266,9 @@ export default function AddTransaction({
 
   function clearDraft() {
     setLine("");
+    // The pin belongs to the record that was just saved, not to the next one.
+    setPinnedSign(null);
+    setPicking(false);
     setVendor("");
     setAmount("");
     setParseMs(null);
@@ -367,6 +407,46 @@ export default function AddTransaction({
       onSubmit={submit}
       className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
     >
+      {/* ── WHICH WAY THE MONEY WENT ──────────────────────────────────────
+          Above the field, always visible, one tap.
+
+          Task 1 put this first for a reason — it changes what everything under
+          it means — and the one-line rewrite demoted it behind "Edit details",
+          which made recording income something you had to go looking for. On a
+          product whose whole income figure is read from what you declare, the
+          money-in half cannot be the hidden half.
+
+          It is also the ONLY thing on this screen the user states outright
+          rather than implies, so it outranks the classifier: see pickSign. */}
+      <div role="radiogroup" aria-label={tr("rec.sign.label")} className="mb-3 flex gap-2">
+        {(["out", "in"] as Sign[]).map((s) => {
+          const on = s === direction;
+          const style = SIGN_STYLE[s];
+          return (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => pickSign(s)}
+              className={`flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-2 text-sm font-semibold transition ${
+                on
+                  ? `${style.fill} border-transparent`
+                  : "border-zinc-300 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {/* The glyph is aria-hidden and the label carries the meaning, so
+                  a screen reader says "Money in", not "plus". Orange and dark
+                  grey, never green/red — see SIGN_STYLE. */}
+              <span aria-hidden className="text-lg leading-none">
+                {style.glyph}
+              </span>
+              {tr(s === "in" ? "rec.sign.in" : "rec.sign.out")}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── ONE LINE ──────────────────────────────────────────────────────
           The same field, and the same on-device parser, as the landing page's
           try-it box. Not auto-focused: this screen is the app's default landing,
@@ -384,7 +464,7 @@ export default function AddTransaction({
           ref={lineRef}
           value={line}
           onChange={(e) => runLine(e.target.value)}
-          placeholder={tr("try.placeholder")}
+          placeholder={tr(direction === "in" ? "qa.placeholderIn" : "try.placeholder")}
           autoComplete="off"
           enterKeyHint="done"
           className="min-w-0 flex-1 bg-transparent py-1.5 text-base text-inherit outline-none placeholder:text-zinc-400 sm:text-lg"
@@ -439,8 +519,8 @@ export default function AddTransaction({
               </span>
               <button
                 type="button"
-                onClick={() => setEdit((v) => !v)}
-                aria-expanded={edit}
+                onClick={() => setPicking((v) => !v)}
+                aria-expanded={picking}
                 className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 transition hover:brightness-95 ${style.chip}`}
               >
                 <span aria-hidden>{style.emoji}</span>
@@ -457,9 +537,51 @@ export default function AddTransaction({
               )}
             </div>
 
+            {/* Disagreeing costs one tap, in place — not a trip through a
+                disclosure. The correction is the household's own filing
+                history, which is what beats a keyword table over time. Only the
+                categories on the CURRENT side are offered; crossing the ledger
+                is what the two buttons above the field are for. */}
+            {picking && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {(direction === "in" ? PLUS_CATEGORIES : MINUS_CATEGORIES).map((c) => {
+                  const on = c === category;
+                  const cs = CATEGORY_STYLE[c];
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => {
+                        pickCategory(c);
+                        // A human said so: no more "worth a check" on this record.
+                        setConfidence(undefined);
+                        setPicking(false);
+                      }}
+                      className={
+                        "inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium ring-1 transition " +
+                        (on ? cs.chip : "bg-transparent text-zinc-600 ring-zinc-300 hover:bg-zinc-50 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-800")
+                      }
+                    >
+                      <span aria-hidden>{cs.emoji}</span>
+                      {tr(`rec.cat.${c}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
               🍯 {tr(noteKeyFor(category))}
             </p>
+
+            {/* Savings is the one place the two-button model hides something
+                real: money you put away sits on the `+` side but is a TRANSFER,
+                not income. A user who sees it counted differently deserves the
+                reason rather than assuming the app got it wrong. */}
+            {kindOf(category) === "transfer" && (
+              <p className={`mt-2 text-xs ${SIGN_STYLE.in.text}`}>{tr("rec.cat.savingsNote")}</p>
+            )}
 
             {/* The claim, measured rather than asserted — and only for the typed
                 path, which is the one that ran on this device. A scan reports its
@@ -578,12 +700,11 @@ export default function AddTransaction({
 
         {edit && (
           <div className="mt-2 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
-            {/* DIRECTION FIRST. It changes what every field under it means: the
-                categories, and whether a Savings bucket is a deposit or a
-                withdrawal. */}
-            <SignPicker category={category} onChange={pickCategory} lang={lang} />
-
-            <div className="mt-3 flex flex-wrap items-end gap-3">
+            {/* No sign picker here any more: direction is the pair of buttons
+                above the field, and the category is one tap on the card's chip.
+                Two controls for one choice, on one screen, is how a household
+                ends up disagreeing with itself about what it just recorded. */}
+            <div className="flex flex-wrap items-end gap-3">
               <label className="flex w-28 flex-col gap-1 text-xs text-zinc-500">
                 {tr("dash.add.amountLabel")}
                 <input

@@ -135,6 +135,7 @@ Live at https://honeymoney.app/privacy
 - Traffic is encrypted in transit. Passwords are hashed, never stored in readable form.
 - Any AI key a household saves is encrypted before it reaches the database, so it is not readable in a backup.
 - Every change to a money record is written to an append-only, hash-chained ledger, so tampering is detectable rather than silent.
+- A sealed backup is encrypted in your own browser before it is uploaded, using a passphrase we never receive. We hold the ciphertext, its size, when it was sealed, and any label you typed — we cannot read what is inside it, and we cannot recover it if you forget the passphrase.
 - If a breach occurs that is likely to cause you significant harm, we will notify the Commissioner and you, as the law requires.
 
 ### Bagaimana kami melindunginya
@@ -142,6 +143,7 @@ Live at https://honeymoney.app/privacy
 - Trafik disulitkan semasa penghantaran. Kata laluan dicincang (hashed) dan tidak pernah disimpan dalam bentuk yang boleh dibaca.
 - Sebarang kunci AI yang disimpan oleh isi rumah disulitkan sebelum sampai ke pangkalan data, jadi ia tidak boleh dibaca dalam sandaran.
 - Setiap perubahan pada rekod kewangan ditulis ke dalam lejar rantaian-cincang yang hanya boleh ditambah, jadi pengubahsuaian dapat dikesan dan bukannya berlaku secara senyap.
+- Sandaran bermeterai disulitkan dalam pelayar anda sendiri sebelum dimuat naik, menggunakan frasa laluan yang tidak pernah kami terima. Kami menyimpan teks sifer, saiznya, masa ia dimeteraikan, dan label yang anda taip — kami tidak boleh membaca kandungannya, dan tidak boleh memulihkannya jika anda terlupa frasa laluan itu.
 - Sekiranya berlaku pelanggaran data yang berkemungkinan menyebabkan kemudaratan ketara kepada anda, kami akan memaklumkan Pesuruhjaya dan anda, seperti yang dikehendaki undang-undang.
 
 ## Contact us

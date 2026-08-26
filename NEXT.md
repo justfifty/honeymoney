@@ -5,6 +5,81 @@
 
 ---
 
+## ✅ Shipped — 2026-08-27 — money in is a real control, and the backup is one we cannot open
+
+### "+ Money in" was a suggestion the next keystroke took back
+
+Yesterday's one-line rewrite moved the two-button direction control behind
+"Edit details" — so on a product whose entire income figure is read from what
+you declare, the money-in half became the hidden half. Worse, it did not hold:
+tap it, type "Ali 500" (my brother paid me back), and the classifier re-ran over
+the whole line, matched no earnings keyword, and put the record back on the
+spending side. **A control the next keystroke silently undoes is worse than no
+control**, because the user has already moved on.
+
+Now: the pair of buttons is above the field and always visible; a stated
+direction is a CONSTRAINT on the classifier rather than a hint (`classifyText(text,
+{ sign })`), so the table may still choose *which* kind of money-in it is and may
+no longer choose *whether* it is money-in; the examples, the placeholder and the
+save button all follow the side you are on; and the category chip on the card
+opens the six categories in place instead of sending you through a disclosure.
+The old `SignPicker` is gone rather than left as a second sign control on the
+same screen — two controls for one choice is how a household ends up disagreeing
+with itself about what it just recorded.
+✅ **`npm run check:capture`** — 6 new assertions that the stated direction wins.
+
+### Sealed backup: zero-knowledge, and checkable
+
+**The decision (docs/POSITION.md §5a): JUST50 sells software. It does not sell,
+mine, broker, or build a business on what is inside a household's records.** The
+first structural expression of that is a backup the operator cannot open.
+
+- `lib/e2ee.ts` — gzip → PBKDF2-HMAC-SHA256 (600,000 rounds, 16-byte salt) →
+  AES-256-GCM, **in the browser**, with the envelope's own parameters bound as
+  AAD so a downgrade attack (600,000 rounds → 1, handed back to a trusting
+  client) makes it refuse to open. Every seal is verified by opening it again
+  before it is offered — `deploy/backup-vault.mjs` learned that rule first: an
+  encrypted backup you cannot decrypt is a tidy way to lose everything.
+- `lib/vault.ts` + `/api/account/vault` — stores the ciphertext, keeps the last
+  five, and **refuses anything that is not encrypted**. That tripwire is not
+  defence against a hostile client (impossible, and pointless); it is defence
+  against a future refactor of ours that wires the plaintext export straight to
+  the backup endpoint. It measures entropy and printable-ASCII ratio rather than
+  grepping for strings, because random bytes contain plenty of short ASCII runs.
+- Setup → **Sealed backup**: seal, download a `.hmvault`, or keep a sealed copy
+  with us; open either one back. Passphrase strength is a gate, not a decoration,
+  and the copy says in plain words that a forgotten passphrase is unrecoverable.
+✅ **`npm run check:vault`** — 33 assertions: no fragment of the plaintext
+survives into the stored row or the decoded ciphertext, the wrong passphrase
+fails, a downgraded KDF and a single flipped bit both refuse, two seals of the
+same data differ, and the server rejects a plaintext payload posted into a
+valid-looking envelope.
+
+⚠️ **The honesty conditions, written into docs/ZERO_KNOWLEDGE.md rather than
+left to be discovered.** The live ledger is still readable by the operator — the
+server computes an H-Score over it and cannot do that on ciphertext — so
+HoneyMoney is *not* an end-to-end encrypted ledger and must never be described
+as one. And the seal happens in JavaScript we serve, so a future build could
+betray it; independent verification of the delivered bundle (SRI / reproducible
+builds / a signed release) is **not built yet** and is listed as missing.
+
+### Pick up here (new)
+
+- [ ] 🛑 **Install the collection before the feature is usable in production.**
+      `npm run vault:install` reports; `-- --apply` creates it. Production is a
+      different PocketBase from this repo's `pb_migrations`, so the migration
+      file alone does not reach it. Until then `/api/account/vault` answers 503
+      with that instruction and the download path still works.
+- [ ] **Restore INTO a household is not built.** Opening a backup gives you the
+      plaintext JSON; recreating a household from it needs id remapping and a
+      decision about the hash-chained ledger, and half of that is worse than
+      none.
+- [ ] **Verify the bundle a user actually receives** — see the third bullet of
+      ZERO_KNOWLEDGE.md §6. Everything else there is defensible; this one is a
+      gap in the claim.
+
+---
+
 ## ✅ Shipped — 2026-08-26 — the two spend views agree, consent is enforced, income is real income
 
 **Where we stopped.** Four commits, all deployed and verified live on honeymoney.app. Plus one

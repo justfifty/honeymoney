@@ -13,6 +13,11 @@ export default async function Home() {
     tr("home.trust.live"),
     tr("home.trust.local"),
     tr("home.trust.privacy"),
+    // Precise on purpose: the backup is what we cannot read, not the live
+    // ledger — the server computes an H-Score over that. docs/ZERO_KNOWLEDGE.md
+    // §2 draws the line, and a trust bar that overstated it would be the first
+    // thing a judge checked and the first thing they found wrong.
+    tr("home.trust.sealed"),
     tr("home.trust.free"),
     tr("home.trust.langs"),
   ];

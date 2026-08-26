@@ -79,6 +79,20 @@ try {
   ok("an ambiguous line asks to be checked", classifyText("save 500 from my salary").confidence < 0.6);
   ok("a clean line does not", classifyText("Salary 5000").confidence >= 0.6);
 
+  // ── 0a. "+ Money in" is a statement, not a hint ──────────────────────────
+  //
+  // Tapping it and typing "Ali 500" — my brother paid me back — used to record
+  // a SPEND: no keyword matched, and the cold-start default is spending. The
+  // button worked and the next keystroke undid it. The table may still choose
+  // WHICH kind of money-in; it may not choose whether it is money-in.
+  console.log("\n0a. the stated direction outranks the guessed one:");
+  ok("+ Money in with no keyword is still income", classifyText("Ali 500", { sign: "in" }).category === "income");
+  ok("+ Money in over a spend word is still income", classifyText("Grab 18.40", { sign: "in" }).category === "income");
+  ok("- Money out over an earnings word is a spend", classifyText("Salary 5000", { sign: "out" }).category === "spendings");
+  ok("+ Money in still tells savings from earnings", classifyText("simpan 500", { sign: "in" }).category === "savings");
+  ok("+ Money in still tells money back from earnings", classifyText("refund 80", { sign: "in" }).category === "income_other");
+  ok("- Money out still tells a bill from a spend", classifyText("TNB bill 142", { sign: "out" }).category === "must_paid");
+
   // ── 0b. the amount, which is the one thing a record cannot be wrong about ──
   //
   // Both of these were silent: no error, no warning — a card that simply did not

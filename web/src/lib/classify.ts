@@ -34,7 +34,7 @@
 // so the user is invited to correct it, and the correction is what the
 // household's own filing history learns from.
 
-import type { Category } from "./recordKind";
+import { signOf, type Category, type Sign } from "./recordKind";
 
 // ── the tables ─────────────────────────────────────────────────────────────
 
@@ -99,17 +99,37 @@ const TABLES: [Category, RegExp][] = [
  *
  * Never throws, never touches the network, and answers `spendings` when it
  * recognises nothing.
+ *
+ * ── `sign`: THE USER OUTRANKS THE TABLE ───────────────────────────────────
+ *
+ * Pass a sign and the guess is confined to that side of the ledger. It is not a
+ * hint — it is a constraint, because it is the one thing on this screen the
+ * user has stated outright rather than implied.
+ *
+ * Without it, tapping "+ Money in" and typing "Ali 500" — my brother paid me
+ * back — produced a SPEND, because no keyword matched and the cold-start
+ * default is spending. A control the next keystroke silently undoes is not a
+ * control; it is a suggestion the app takes back. The classifier still chooses
+ * WHICH kind of money-in it is; it may no longer choose whether it is money-in.
  */
-export function classifyText(text: string): Classified {
+export function classifyText(text: string, opts: { sign?: Sign } = {}): Classified {
   const value = text.trim();
-  if (!value) return UNMATCHED;
+  const tables = opts.sign ? TABLES.filter(([c]) => signOf(c) === opts.sign) : TABLES;
+  // The default when nothing matches: the first category on the stated side, or
+  // spending when nothing was stated.
+  const fallback: Classified =
+    opts.sign === "in"
+      ? { category: "income", confidence: 0.65, ambiguous: false, matched: null }
+      : UNMATCHED;
+
+  if (!value) return fallback;
 
   const hits: { category: Category; matched: string }[] = [];
-  for (const [category, re] of TABLES) {
+  for (const [category, re] of tables) {
     const m = value.match(re);
     if (m) hits.push({ category, matched: m[0] });
   }
-  if (!hits.length) return UNMATCHED;
+  if (!hits.length) return fallback;
 
   // A second hit does not change the answer; it changes how loudly we ask to be
   // corrected.

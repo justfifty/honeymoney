@@ -142,6 +142,38 @@ one that records corrections.
 
 ---
 
+## 5a. The commercial position, decided 2026-08-27
+
+**JUST50 sells software. It does not sell, mine, broker, or build a business on
+what is inside a household's records.** That is a commercial decision, not only
+an ethical one: household financial data is the asset most likely to outlive the
+relationship and the hardest to un-leak, and a company that holds it is
+permanently one bad quarter away from being asked to monetise it.
+
+The first structural expression of that decision is the **sealed backup**
+(docs/ZERO_KNOWLEDGE.md, live 2026-08-27): a household's backup is encrypted in
+their own browser with a passphrase we never receive. We store ciphertext, hold
+no key and no recovery copy, and `npm run check:vault` asserts all of it against
+the real cipher.
+
+Two honesty conditions attach to that claim, and they are conditions rather than
+caveats:
+
+1. **The live ledger is still readable by the operator.** The server computes an
+   H-Score, a projection and a bucket plan, and it cannot do that over
+   ciphertext. HoneyMoney is not an end-to-end encrypted ledger and must never be
+   described as one. §2 of ZERO_KNOWLEDGE.md sets out which row is which.
+2. **The seal happens in JavaScript we serve**, so a future build could betray
+   it. Independent verification of the delivered bundle is not built yet and is
+   listed as such rather than implied.
+
+What this rules out, in advance, is written here so that reversing it is a
+visible act: no sale or brokerage of household data, no advertising against it,
+no "anonymised insights" product, no lender or insurer receiving records as a
+condition of a referral, and no analytics vendor receiving record-level data.
+lib/aggregateDisclosure.ts and docs/DATA_PROCESSORS.md are where any change to
+that would have to surface first.
+
 ## 6. Standing position
 
 At the scale in §2, with the controls in §3, we consider the current
@@ -164,3 +196,4 @@ Signed — Team JUST50
 > | Reviewed | By | Notes |
 > |---|---|---|
 > | 26 Aug 2026 | (initial) | Created. §2 verified against live database. |
+| 27 Aug 2026 | (update) | §5a added: sell software, not data. Sealed backup shipped; see docs/ZERO_KNOWLEDGE.md. |

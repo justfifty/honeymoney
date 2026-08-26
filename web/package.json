@@ -30,6 +30,8 @@
     "check:privacy": "node ../scripts/build-privacy-doc.mjs --check",
     "repair:income": "npx --yes tsx --env-file=.env.local scripts/repair-income-graph.mts",
     "check:tally": "npx --yes tsx --env-file=.env.local scripts/check-tally.mts",
+    "check:vault": "npx --yes tsx scripts/check-vault.mts",
+    "vault:install": "npx --yes tsx --env-file=.env.local scripts/install-vault-collection.mts",
     "check:capture": "npx --yes tsx --env-file=.env.local scripts/check-capture.mts"
   },
   "dependencies": {

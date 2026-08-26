@@ -8,6 +8,8 @@ import Logo from "../Logo";
 import IosInstallGuide from "../IosInstallGuide";
 import ProfileSettings from "../account/ProfileSettings";
 import AccountActions from "../account/AccountActions";
+import SealedBackup from "./SealedBackup";
+import { listVaults } from "@/lib/vault";
 import AiStatus from "./AiStatus";
 import PrivacyControls from "./PrivacyControls";
 
@@ -76,6 +78,14 @@ export default async function SetupPage() {
               option will use the nuclear option. */}
           <Section title="🔒 Privacy & your data" tone="plain">
             <PrivacyControls />
+          </Section>
+
+          {/* Sealed backup sits between privacy and delete on purpose: it is
+              the thing a person should do BEFORE they consider leaving, and the
+              screen they are on when they think about their data leaving is the
+              screen where the option belongs. */}
+          <Section title="🔐 Sealed backup" tone="plain">
+            <SealedBackup initial={await listVaults(ctx.tenant.id, ctx.user.id)} />
           </Section>
 
           {/* Delete / restore — reuses the guarded, reversible flow. */}
