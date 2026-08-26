@@ -5,6 +5,141 @@
 
 ---
 
+## ✅ Shipped — 2026-08-26 — the two spend views agree, consent is enforced, income is real income
+
+**Where we stopped.** Four commits, all deployed and verified live on honeymoney.app. Plus one
+outage — a flat battery landing between two halves of a deploy — written up below, because the
+same shape has now caused the same symptom twice.
+
+### The tally bug: two files, two definitions of "spend"
+
+Reported as *"dashboard and graph don't tally"*. `lib/moneyView.ts` skipped voided rows and
+credits; `lib/graphView.ts` skipped neither and summed EVERY transaction into its spend-per-edge
+map. Each file was internally consistent, which is why it survived: a household that logged an
+RM20,000 salary saw twenty thousand ringgit of *spending* drawn on /graph and not on the
+dashboard, and a voided record — kept visible on purpose, as evidence — counted as money gone.
+
+Both now call `countsAsSpend()` in `lib/recordKind.ts`. One definition, so the next view that
+draws spending inherits the answer instead of inventing a third one.
+✅ **`npm run check:tally`** walks every real household and asserts graph total == dashboard
+total, rather than asserting that each file agrees with itself.
+
+### Income was recorded but never read
+
+`lib/projection.ts` and `lib/hscoreData.ts` read income from `income_source` nodes alone, while
+the capture path filed every inflow against a `vendor` node. A household that had entered its
+salary still had an income of **zero** everywhere that mattered: allocations divided nothing,
+headroom was nothing, the savings rate was zero over zero, and the H-Score described a
+household that earned nothing and spent normally.
+
+⚠️ **The first fix over-corrected, and the follow-up matters more than the fix.** Routing
+*every* inflow to an `income_source` was right for the `+ Income` button and wrong for
+everything else: a CSV import and a statement commit post `direction:"in"` with no category,
+because a bank credit can be a refund, a cashback, a card payment, or a transfer between the
+household's own accounts. Left alone, importing a statement would have turned "Refund — Shopee"
+into an income source with a monthly figure attached, inflating the household's income and
+every ratio built on it — savings rate, essential burden, debt service, the H-Score. A fix for
+a tally bug that silently invented income. Only a **stated** category (`income` /
+`income_other`) creates a source now; a bare inflow still records as an inflow and still stays
+out of spend, it simply does not claim to be a salary.
+✅ **`npm run check:capture`** — 20 assertions against a throwaway household it creates and
+removes, including the one that matters: **a bare credit does NOT become income**.
+
+### The consent that was never checked
+
+`hasConsent()` had **no callers anywhere in the application**. Signup wrote the answer, the
+settings screen rendered it, the append-only ledger stored it, and every AI call site ignored
+it — which is worse than never asking, because the ledger is evidence we knew AI was a purpose
+requiring consent.
+
+- `lib/aiGuard.ts` — consent gate + data classes, both failing closed.
+- `dataClass` is REQUIRED on `GenOpts`, so a new call site cannot omit it. That requirement
+  immediately surfaced `honeyInsight()`, which had been sending household bucket labels and
+  exact figures to a cloud model on **every dashboard load** with nothing watching it.
+- Class 2 (documents, labels, figures) prefers a local engine where one is configured;
+  `aiVision` is pinned to class 2 and cannot be overridden.
+- Ask Honey's cloud path now sends slot names, an intent and a locale — no figures, no labels,
+  no free text. Local engines still get full context, because nothing leaves the machine.
+
+### Backups were leaving in the clear
+
+R2 held **13 unencrypted copies of the production database**. `deploy/backup-vault.mjs` seals
+with AES-256-GCM before upload; existing archives were sealed in place and the plaintext
+removed. PocketBase's own S3 upload is off. The key never enters the bucket, and a wrong key is
+refused rather than returning garbage.
+
+### Notices, for public use
+
+`/terms` (bilingual, disclaimer at the top), acceptance recorded in its own append-only
+`agreements` ledger — **not** as a consent, because you cannot withdraw agreement to terms
+while still using the service. Privacy and terms linked from every footer in six locales, and
+`/terms` added to the always-on snapshot for the reason `/privacy` already is: a notice
+reachable only while the laptop is on has not, in any meaningful sense, been given.
+`docs/POSITION.md` records where we stand, what enforces it, and the eight triggers that move
+it — including what we got wrong that day and how it was caught.
+
+### 🛑 The outage: the site went unstyled, and the same cause did it on 2026-08-24
+
+**Symptom.** Every app route rendered as bare HTML on a white page — the landing showed
+`HoneyField`'s raw SVG dots with no `mask-image` to shape them. Reported as *"the website got
+haywired"*; `build-static-site.mjs` already carries that exact word from 24 Aug.
+
+**Cause.** The deploy is three steps, and the battery died between the second and the third:
+
+| | step | |
+|---|---|---|
+| 1 | `npm run build` → `.next-dc` | ✅ 15:04 |
+| 2 | push the bundle to the DOM Cloud origin | ✅ origin served the new HTML |
+| 3 | `npm run site:publish` | ❌ **never ran** |
+
+DOM Cloud served HTML referencing `1w1rzyd3v17ue.css`, while the Cloudflare Pages snapshot —
+which serves **all** of `/_next/static/*` — still held only `3yfx8wcsj50l3.css`. Every
+stylesheet request 404'd. Fixed by running step 3 against `.next-dc` (the bundle the origin
+actually runs — pairing the DOM Cloud origin with this laptop's `.next` is the same mismatch by
+another route). Verified afterwards: **18 routes, 0 broken assets**.
+
+**Nothing was lost.** The shutdown was **clean** — Windows event **1074** (battery-critical
+action), not a hard cut (41/6008). Working tree clean, all four commits intact, `data.db`
+uncorrupted, `check:tally` and `check:capture` green.
+
+⚠️ **The lesson, now twice-learned: steps 2 and 3 are one operation, and they are not atomic.**
+A half-deploy is **invisible from the pages a snapshot serves** — `/`, `/demo` and `/learn` come
+*from* the snapshot and stayed internally consistent, so they looked perfect while the twelve
+app routes were bare. That is exactly where anyone asking "is the site up?" looks first.
+Status 200 proves nothing either: the worker answers a missing chunk with fallback HTML **at
+200**, which is why this presents as *unstyled* rather than as an error.
+⬜ **`verify-uptime.ps1` should fetch an APP route, pull its `_next/static` hrefs out of the
+HTML, and fetch each one** — asserting the body is CSS and not HTML. That check would have
+caught both occurrences in seconds.
+
+### Pick up here
+
+- [ ] 🛑 **Clean the invented income sources — a live household's H-Score is wrong.**
+      `check:tally` reports Alvin Chua's household as `Salary=8050, Saving=2000, FD=1050,
+      Monthly Income=10000, Grab=19` → **RM21,119**. Three of those five are not income:
+      `Saving` and `FD` are savings vehicles, and **`Grab=19` is an RM19 refund that became a
+      RM19/month salary** — precisely the case the follow-up fix now prevents. The fix stops
+      *new* ones; these rows predate it. That household's allocations (RM10,559 must-paid) and
+      its **H-Score of 68** are computed on roughly double its real income.
+      `npm run repair:income` reports and changes nothing; `-- --apply` fixes.
+      (`ww pong` is clean: one source, RM20,000.)
+- [ ] **Teach `verify-uptime.ps1` to catch a half-deploy** — see the outage above.
+- [ ] **The user's own household still has no declared income**, so Ask Honey will keep
+      declining for it — correctly. Add an income source on **/graph** (not /record).
+      Projections additionally need ≥8 records over ≥14 days.
+- [ ] **Retry the household Gemini key** in /setup with the **Model field blank** — the
+      dead-model fix is live. If it still 404s, DOM Cloud's `~/.env.honeymoney` may pin
+      `GEMINI_MODEL=gemini-2.0-flash`; that file is on the host and was not inspected.
+- [ ] **Decide what `PITCH_DECK.html` is for.** It is now a stale mirror of a deck edited in
+      Canva. Either fold the Canva wording back into it once more, or retire it and let the
+      PDF be the only deck. Nothing depends on it any more — the video does not.
+- [ ] **Both upload docs sit at 500/500 words.** No headroom; the next added sentence has to
+      displace one. `node scripts/check-summary-words.mjs` is the gate.
+- [ ] **`lib/ai.ts` calls the Gemini `v1beta` endpoint**, which Google now describes as
+      deprecated for production. Not breaking anything today.
+
+---
+
 ## ✅ Shipped — 2026-08-25 (afternoon) — the deck is one file, the video quotes it, and AI works again
 
 **Where we stopped.** Everything below is deployed and verified live on honeymoney.app.
@@ -123,7 +258,7 @@ Two things wait on a human; both are under *Pick up here*.
   `-KeyFile` passed explicitly when invoked from a nested `powershell -File` call —
   `$PSScriptRoot` comes back empty and it looks for a key at the filesystem root.
 
-### Pick up here
+### Pick up here — superseded, see 2026-08-26 above
 
 - [ ] **The user's own household still has no declared income**, so Ask Honey will keep
       declining for it — correctly. Add an income source on **/graph** (not /record).
@@ -138,7 +273,7 @@ Two things wait on a human; both are under *Pick up here*.
       displace one. `node scripts/check-summary-words.mjs` is the gate.
 - [ ] **`lib/ai.ts` calls the Gemini `v1beta` endpoint**, which Google now describes as
       deprecated for production. Not breaking anything today.
-- [ ] **Nothing is committed.** The working tree carries all of the above.
+- [x] ~~**Nothing is committed.**~~ Committed 2026-08-26 as `74ce50b`.
 
 ---
 
