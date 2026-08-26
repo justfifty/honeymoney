@@ -342,10 +342,22 @@ export async function addManualTransaction(
       ? "inflow"
       : "outflow";
 
-  const counterparty =
-    kind === "inflow"
-      ? await ensureIncomeSourceNode(tenantId, input.vendorLabel)
-      : null;
+  // ONLY a stated income category creates an income source — never a bare
+  // direction.
+  //
+  // The `+ Income` button posts category:"income"; a CSV import and a statement
+  // commit post direction:"in" with no category, because a bank credit can be a
+  // refund, a cashback, a card payment or a transfer between the household's own
+  // accounts. Treating every credit as income would have turned "Refund —
+  // Shopee" into an income source with a monthly figure, inflating the
+  // household's income and every ratio built on it.
+  //
+  // An inflow with no stated category still records correctly as an inflow and
+  // still stays out of spend. It simply does not claim to be a salary.
+  const isStatedIncome = input.category === "income" || input.category === "income_other";
+  const counterparty = isStatedIncome
+    ? await ensureIncomeSourceNode(tenantId, input.vendorLabel)
+    : null;
   const vendorNodeId = counterparty?.id ?? (await ensureVendorNode(tenantId, input.vendorLabel));
 
   // A bucket is still REQUIRED for anything that leaves a bucket, and still

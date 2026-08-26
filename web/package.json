@@ -29,7 +29,8 @@
     "privacy:doc": "node ../scripts/build-privacy-doc.mjs",
     "check:privacy": "node ../scripts/build-privacy-doc.mjs --check",
     "repair:income": "npx --yes tsx --env-file=.env.local scripts/repair-income-graph.mts",
-    "check:tally": "npx --yes tsx --env-file=.env.local scripts/check-tally.mts"
+    "check:tally": "npx --yes tsx --env-file=.env.local scripts/check-tally.mts",
+    "check:capture": "npx --yes tsx --env-file=.env.local scripts/check-capture.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.1",
