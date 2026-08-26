@@ -100,9 +100,39 @@ export interface AskConfidence {
 export const MIN_TXNS_TO_PROJECT = 8;
 export const MIN_DAYS_TO_PROJECT = 14;
 
-export function assessAskConfidence(f: HouseholdFacts): AskConfidence {
+/**
+ * The questions that are literally a ratio to declared income, and so cannot be
+ * answered at all without it.
+ *
+ * Everything NOT in this set was refused for the same reason until 2026-08-26,
+ * and should not have been. "How far along is our Japan trip?" is answered from
+ * the goal's own balance; "how many months of buffer do we have?" from savings
+ * over must-paid spending. Neither divides by income. A household that had
+ * logged records and set goals but not yet declared a salary was told, for
+ * every question it asked, to go and declare a salary — including for the
+ * questions its existing data already answered.
+ */
+const NEEDS_INCOME: ReadonlySet<IntentKind> = new Set<IntentKind>(["afford", "income_change"]);
+
+/**
+ * Questions about what IS rather than what WILL BE. They survive the thin-data
+ * floor because describing a balance is not projecting from one.
+ */
+const DESCRIBES_PRESENT: ReadonlySet<IntentKind> = new Set<IntentKind>([
+  "hscore_explain",
+  "spending_summary",
+  "goal_timing",
+]);
+
+/**
+ * `kind` omitted ⇒ assessed for the household as a whole, where a missing
+ * income is disqualifying. Passing the kind narrows that to the questions the
+ * missing income actually blocks.
+ */
+export function assessAskConfidence(f: HouseholdFacts, kind?: IntentKind): AskConfidence {
   const { txnCount, days, monthsWithData } = f.history;
-  const noIncome = f.inputs.netIncomeMonthly <= 0;
+  const incomeMatters = kind === undefined || NEEDS_INCOME.has(kind);
+  const noIncome = incomeMatters && f.inputs.netIncomeMonthly <= 0;
 
   if (noIncome) {
     return {
@@ -167,7 +197,7 @@ const bufferMonthsOf = (i: ScoreInputs) => safeDiv(i.liquidSavings, i.mustPaidMo
 // ── the computations ───────────────────────────────────────────────────────
 
 export function compute(intent: Intent, f: HouseholdFacts): Outcome {
-  const conf = assessAskConfidence(f);
+  const conf = assessAskConfidence(f, intent.kind);
 
   // Declines and requests-for-input never reach the arithmetic — and never
   // carry a number, so there is nothing for stage 3 to get wrong.
@@ -184,7 +214,7 @@ export function compute(intent: Intent, f: HouseholdFacts): Outcome {
   // The thin-data floor. Below it the honest answer is why we won't project,
   // not a projection with a disclaimer stapled on. H-Score explanation survives
   // it because that describes what IS, not what WILL BE.
-  if (!conf.projectable && intent.kind !== "hscore_explain" && intent.kind !== "spending_summary") {
+  if (!conf.projectable && !DESCRIBES_PRESENT.has(intent.kind)) {
     return { kind: intent.kind, facts: {}, confidence: conf, cannotAnswer: true };
   }
 
@@ -196,7 +226,7 @@ export function compute(intent: Intent, f: HouseholdFacts): Outcome {
     case "buffer":
       return { ...computeBuffer(f), confidence: conf };
     case "goal_timing":
-      return { ...computeGoalTiming(intent, f), confidence: conf };
+      return { ...computeGoalTiming(intent, f, conf.projectable), confidence: conf };
     case "spending_summary":
       return { ...computeSpendingSummary(f), confidence: conf };
     case "hscore_explain":
@@ -333,7 +363,24 @@ function computeBuffer(f: HouseholdFacts): Omit<Outcome, "confidence"> {
   };
 }
 
-function computeGoalTiming(intent: Intent, f: HouseholdFacts): Omit<Outcome, "confidence"> {
+/**
+ * "How far along is the Japan trip?"
+ *
+ * Two answers, and the split is the whole point. WHERE THE GOAL STANDS is a
+ * balance — saved, target, what is left — and it is true whatever else is
+ * missing. WHEN IT LANDS is a forecast, and needs a credible monthly pace.
+ *
+ * So a household with thin history or no saving flow yet gets the balance and
+ * an honest "no date yet", instead of the refusal it used to get. Withholding a
+ * number we hold, because a DIFFERENT number would have been a guess, taught
+ * the user that Honey knows nothing — when what it could not do was only the
+ * date.
+ */
+function computeGoalTiming(
+  intent: Intent,
+  f: HouseholdFacts,
+  projectable: boolean,
+): Omit<Outcome, "confidence"> {
   const goal = f.goals[0];
   if (!goal || goal.target <= 0) {
     return { kind: "goal_timing", facts: {}, cannotAnswer: true };
@@ -342,8 +389,15 @@ function computeGoalTiming(intent: Intent, f: HouseholdFacts): Omit<Outcome, "co
   // The goal's own contribution when it has one, else what the household
   // actually saves. Never a number we wished for on their behalf.
   const monthly = goal.monthly > 0 ? goal.monthly : f.inputs.savingsMonthly;
-  if (monthly <= 0) {
-    return { kind: "goal_timing", label: goal.label, facts: { remaining, target: r2(goal.target), saved: r2(goal.saved) }, cannotAnswer: true };
+  // No `months` fact ⇒ stage 3 states the balance and says why there is no date.
+  // The absence of the key IS the signal, so a date can never be narrated from
+  // a pace that was never computed.
+  if (!projectable || monthly <= 0) {
+    return {
+      kind: "goal_timing",
+      label: goal.label,
+      facts: { remaining, target: r2(goal.target), saved: r2(goal.saved) },
+    };
   }
   return {
     kind: "goal_timing",

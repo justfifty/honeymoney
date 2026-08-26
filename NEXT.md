@@ -78,6 +78,41 @@ reachable only while the laptop is on has not, in any meaningful sense, been giv
 `docs/POSITION.md` records where we stand, what enforces it, and the eight triggers that move
 it — including what we got wrong that day and how it was caught.
 
+### The dashboard congratulated a household that had declared nothing
+
+Reported as *"why does Ask Honey still say it doesn't know my income?"* — and the honest answer
+is that for `Just Fifty's household` it is **right**: 3 buckets, 2 goals, 5 records, **zero
+`income_source` nodes**. The bug was the sentence directly above it. `ruleBasedInsight()` in
+`lib/projection.ts` looked for `over_budget` and `at_risk` and treated everything else as cause
+for congratulation — including `unfunded`, which `projectBuckets()` assigns to any bucket with
+no allocation, and including the empty projection of a household with no plan at all.
+
+So one screen said **"every bucket is on track and your Savings are funding on schedule"** and,
+four inches below, **"I don't know your monthly income yet"**. Same household, same second, and
+only one of them could be true. Praise for a plan that does not exist is the worse of the two —
+it is also what stops the user declaring the income that would make every other number work.
+Honey now says nothing is funded and points at the same screen Ask Honey points at, and
+`getHoneyInsight()` no longer asks a model to comment on a projection where nothing is funded:
+a model handed an empty context writes encouragement anyway.
+
+### A missing income no longer blocks the questions that never needed it
+
+The same report asked the right follow-up: *if the income can't be read, why not just answer
+with where the goal stands?* It should. `assessAskConfidence()` refused **every** question when
+`netIncomeMonthly <= 0`, but only `afford` and `income_change` are ratios to income. "How far
+along is our Japan trip?" is answered from the goal's own balance; the buffer, from savings over
+must-paid spending. A household that had logged records and set goals was told to go and declare
+a salary in answer to questions its existing data already answered.
+
+Income is now a precondition for the two kinds that divide by it, and `goal_timing` joins
+`hscore_explain` and `spending_summary` in surviving the thin-data floor — because *where a goal
+stands* is a balance and *when it lands* is a forecast. Thin history now costs the **date**, not
+the balance: "Japan Trip: RM1,050 of RM3,000 so far — RM1,950 to go. I won't put a month on it
+yet…" rather than a flat refusal. The absent `months` fact **is** the signal, so no date can be
+narrated from a pace that was never computed.
+✅ **`npm run check:ask`** — 8 new assertions, including that `afford` still refuses without
+income and says why, and that a goal question answers with no income at all.
+
 ### 🛑 The outage: the site went unstyled, and the same cause did it on 2026-08-24
 
 **Symptom.** Every app route rendered as bare HTML on a white page — the landing showed
@@ -124,9 +159,11 @@ caught both occurrences in seconds.
       `npm run repair:income` reports and changes nothing; `-- --apply` fixes.
       (`ww pong` is clean: one source, RM20,000.)
 - [ ] **Teach `verify-uptime.ps1` to catch a half-deploy** — see the outage above.
-- [ ] **The user's own household still has no declared income**, so Ask Honey will keep
-      declining for it — correctly. Add an income source on **/graph** (not /record).
-      Projections additionally need ≥8 records over ≥14 days.
+- [ ] **The user's own household still has no declared income** (verified against the live DB:
+      3 buckets, 2 goals, 5 records, no `income_source`), so Ask Honey will keep declining
+      `afford` and `income_change` for it — correctly, and now it is the only thing it declines.
+      Add an income source on **/graph** (not /record). A *date* on a goal additionally needs
+      ≥8 records over ≥14 days and money moving into Savings.
 - [ ] **Retry the household Gemini key** in /setup with the **Model field blank** — the
       dead-model fix is live. If it still 404s, DOM Cloud's `~/.env.honeymoney` may pin
       `GEMINI_MODEL=gemini-2.0-flash`; that file is on the host and was not inspected.

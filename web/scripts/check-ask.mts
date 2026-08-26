@@ -236,6 +236,38 @@ try {
   const noIncome: HouseholdFacts = { ...FACTS, inputs: { ...FACTS.inputs, netIncomeMonthly: 0 } };
   check("no declared income is not projectable", assessAskConfidence(noIncome).projectable, false);
 
+  // ── a missing income blocks only the questions that divide by income ──────
+  //
+  // Until 2026-08-26 it blocked every question, so a household that had logged
+  // records and set a goal was told to declare a salary in answer to "how far
+  // along is our trip fund?" — a question its own goal balance already answered.
+  console.log("\nstage 2 — a missing income blocks the income ratios, and nothing else");
+
+  const affordNoIncome = compute(parseIntent("can we afford RM3,000?"), noIncome);
+  check("afford still refuses without income", affordNoIncome.cannotAnswer, true);
+  check("…and says WHY it refuses", affordNoIncome.confidence.reasonKey, "ask.conf.noIncome");
+
+  const goalNoIncome = compute(parseIntent("when will we reach our goal?"), noIncome);
+  ok("a goal question is answered without any income at all", !goalNoIncome.cannotAnswer);
+  check("…with the balance", goalNoIncome.facts.remaining, 14000);
+  check("…and does not divide by income", goalNoIncome.confidence.reasonKey === "ask.conf.noIncome", false);
+  ok(
+    "…and the answer states where the goal stands",
+    narrateTemplate({ ...goalNoIncome }, "en").includes("Umrah"),
+    narrateTemplate({ ...goalNoIncome }, "en"),
+  );
+
+  // Thin history costs the DATE, not the balance: a forecast needs a pace, a
+  // balance does not.
+  const goalThin = compute(parseIntent("when will we reach our goal?"), thin);
+  ok("thin history still answers the goal balance", !goalThin.cannotAnswer);
+  check("…but states no month count", goalThin.facts.months, undefined);
+  ok(
+    "…and says plainly there is no date yet",
+    narrateTemplate(goalThin, "en").includes("won’t put a month on it"),
+    narrateTemplate(goalThin, "en"),
+  );
+
   // ── stage 3: the model cannot introduce a number ─────────────────────────
   console.log("\nstage 3 — the number check, which is the actual guarantee");
 

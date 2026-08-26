@@ -341,6 +341,9 @@ const en: Dict = {
   "ask.income.score": "Your H-Score would go from {scoreBefore} to {scoreAfter}.",
   "ask.buffer.main": "You have about {months} months of buffer \u2014 {liquid} liquid against {mustPaid} of essentials each month.",
   "ask.goal.main": "{label} needs {remaining} more. At {monthly} a month that\u2019s about {months} months.",
+  "ask.goal.progress": "{label}: {saved} of {target} so far — {remaining} to go.",
+  "ask.goal.noDate": "I won’t put a month on it yet — I don’t have enough saving history to know your pace, and an invented date is worse than none.",
+  "ask.goal.noPace": "I’ll put a date on it as soon as I see money moving into Savings: the pace has to come from your own records.",
   "ask.summary.main": "Your biggest buckets are {labels}, {total} between them over the last 90 days.",
   "ask.hscore.main": "Your H-Score is {score}. The most room to move is {component}, at {points} of {max} points.",
   "ask.conf.high": "Based on {months} months of records.",
@@ -565,6 +568,8 @@ const en: Dict = {
   "honey.over": "Heads up together: at this month's pace, {bucket} is trending about RM{gap} over its RM{alloc} plan. A small tweak now keeps your Savings goal right on schedule — want to rebalance?",
   "honey.risk": "You're doing well! {bucket} is getting close to its RM{alloc} limit — worth a gentle glance so nothing nudges your shared goals later.",
   "honey.ontrack": "Great teamwork this month — every bucket is on track and your Savings are funding on schedule. Keep it up!",
+  "honey.unfunded.all": "Nothing is funded yet — no income is flowing into your buckets, so there is nothing for me to call on track. Declare your monthly income on the Graph screen and every number here starts working.",
+  "honey.unfunded.some": "{bucket} has nothing allocated to it yet, so I can’t tell you whether it’s on track. Point some income at it on the Graph screen and I’ll watch it with you.",
 
   // ── Statement import + duplicate warnings ──────────────────
   "cap.duplicateExact": "Already recorded: {vendor}, RM {amount} on {when}. Saving this would count it twice.",
@@ -1313,6 +1318,9 @@ const ms: Dict = {
   "ask.income.score": "H-Score anda akan berubah dari {scoreBefore} ke {scoreAfter}.",
   "ask.buffer.main": "Anda ada kira-kira {months} bulan penampan \u2014 {liquid} cair berbanding {mustPaid} keperluan sebulan.",
   "ask.goal.main": "{label} perlukan {remaining} lagi. Pada {monthly} sebulan, kira-kira {months} bulan.",
+  "ask.goal.progress": "{label}: {saved} daripada {target} setakat ini — {remaining} lagi.",
+  "ask.goal.noDate": "Saya belum akan letak bulan padanya — rekod simpanan belum cukup untuk tahu kadar anda, dan tarikh yang direka lebih buruk daripada tiada.",
+  "ask.goal.noPace": "Saya akan beri tarikh sebaik sahaja saya nampak wang masuk ke Simpanan: kadarnya mesti datang daripada rekod anda sendiri.",
   "ask.summary.main": "Baldi terbesar anda ialah {labels}, {total} kesemuanya dalam 90 hari lepas.",
   "ask.hscore.main": "H-Score anda ialah {score}. Ruang paling besar ialah {component}, pada {points} daripada {max} mata.",
   "ask.conf.high": "Berdasarkan {months} bulan rekod.",
@@ -1535,6 +1543,8 @@ const ms: Dict = {
   "honey.over": "Perhatian bersama: pada kadar bulan ini, {bucket} dijangka melebihi kira-kira RM{gap} daripada pelan RM{alloc}. Sedikit pelarasan sekarang memastikan matlamat Simpanan anda kekal mengikut jadual — mahu imbang semula?",
   "honey.risk": "Anda buat dengan baik! {bucket} semakin hampir dengan had RM{alloc} — eloklah pantau sedikit supaya matlamat bersama tidak terjejas kemudian.",
   "honey.ontrack": "Kerja berpasukan yang hebat bulan ini — setiap baldi ikut jadual dan Simpanan anda dibiayai mengikut jadual. Teruskan!",
+  "honey.unfunded.all": "Belum ada apa-apa yang dibiayai — tiada pendapatan mengalir ke baldi anda, jadi tiada apa yang boleh saya kata ikut jadual. Isytiharkan pendapatan bulanan anda di skrin Graf dan setiap nombor di sini mula berfungsi.",
+  "honey.unfunded.some": "{bucket} belum ada peruntukan, jadi saya tidak boleh kata sama ada ia ikut jadual. Salurkan sedikit pendapatan kepadanya di skrin Graf dan saya akan memantaunya bersama anda.",
 
   // ── Statement import + duplicate warnings ──────────────────
   "cap.duplicateExact": "Sudah direkodkan: {vendor}, RM {amount} pada {when}. Menyimpannya akan mengiranya dua kali.",
@@ -2045,6 +2055,8 @@ const zh: Dict = {
   "honey.over": "一起注意：按本月的节奏，{bucket} 预计将超出 RM{alloc} 计划约 RM{gap}。现在稍作调整，就能让你的储蓄目标保持在正轨上 — 要重新平衡吗？",
   "honey.risk": "你们做得很好！{bucket} 正接近其 RM{alloc} 上限 — 稍加留意，以免日后影响你们的共同目标。",
   "honey.ontrack": "本月团队合作出色 — 每个预算篮都在正轨上，你的储蓄也按计划注资。继续保持！",
+  "honey.unfunded.all": "目前还没有任何预算篮获得资金 — 没有收入流入，所以我无法说什么在正轨上。请在图谱页面申报你的月收入，这里的每个数字才会开始运作。",
+  "honey.unfunded.some": "{bucket} 还没有分配到任何资金，所以我无法判断它是否在正轨上。在图谱页面为它分配一部分收入，我就能和你一起盯着它。",
 
   // ── Statement import + duplicate warnings ──────────────────
   "cap.duplicateExact": "已经记录过：{when} 在 {vendor} 的 RM {amount}。再保存会重复计算。",
@@ -2535,6 +2547,8 @@ const ta: Dict = {
   "honey.over": "ஒன்றாகக் கவனியுங்கள்: இந்த மாத வேகத்தில், {bucket} அதன் RM{alloc} திட்டத்தைவிட சுமார் RM{gap} அதிகமாகச் செல்கிறது. இப்போது ஒரு சிறிய மாற்றம் உங்கள் சேமிப்பு இலக்கைச் சரியான நேரத்தில் வைத்திருக்கும் — மீண்டும் சமன் செய்யலாமா?",
   "honey.risk": "நீங்கள் நன்றாகச் செய்கிறீர்கள்! {bucket} அதன் RM{alloc} வரம்பை நெருங்குகிறது — பிறகு உங்கள் பொதுவான இலக்குகள் பாதிக்கப்படாமல் இருக்க கொஞ்சம் கவனியுங்கள்.",
   "honey.ontrack": "இந்த மாதம் அருமையான குழு முயற்சி — ஒவ்வொரு பக்கெட்டும் சரியான பாதையில் உள்ளது, உங்கள் சேமிப்பும் திட்டப்படி நிதியளிக்கப்படுகிறது. தொடருங்கள்!",
+  "honey.unfunded.all": "இதுவரை எதற்கும் நிதி ஒதுக்கப்படவில்லை — உங்கள் பக்கெட்டுகளுக்கு வருமானம் வரவில்லை. கிராப் திரையில் உங்கள் மாத வருமானத்தை அறிவியுங்கள்.",
+  "honey.unfunded.some": "{bucket} க்கு இன்னும் ஒதுக்கீடு இல்லை, எனவே அது சரியான பாதையில் உள்ளதா என்று சோல்ல முடியாது. கிராப் திரையில் அதற்கு சிறிது வருமானத்தை ஒதுக்குங்கள்.",
 
   // ── Statement import + duplicate warnings ──────────────────
   "cap.duplicateExact": "ஏற்கனவே பதிவு செய்யப்பட்டது: {when} அன்று {vendor} இல் RM {amount}. மீண்டும் சேமித்தால் இரண்டு முறை கணக்கிடப்படும்.",
@@ -3025,6 +3039,8 @@ const hi: Dict = {
   "honey.over": "साथ मिलकर ध्यान दें: इस माह की रफ़्तार से, {bucket} अपने RM{alloc} प्लान से लगभग RM{gap} अधिक जा रहा है। अभी एक छोटा बदलाव आपके बचत लक्ष्य को सही समय पर रखेगा — रीबैलेंस करना चाहेंगे?",
   "honey.risk": "आप अच्छा कर रहे हैं! {bucket} अपनी RM{alloc} सीमा के करीब पहुँच रहा है — थोड़ा ध्यान दें ताकि आगे आपके साझा लक्ष्य प्रभावित न हों।",
   "honey.ontrack": "इस माह बढ़िया टीमवर्क — हर बकेट सही राह पर है और आपकी बचत समय पर फंड हो रही है। ऐसे ही जारी रखें!",
+  "honey.unfunded.all": "अभी तक कुछ भी फंड नहीं हुआ है — आपके बकेट में कोई आय नहीं आ रही, इसलिए मैं यह नहीं कह सकती कि क्या सही राह पर है। ग्राफ़ स्क्रीन पर अपनी मासिक आय घोषित करें, तब यहाँ का हर आंकड़ा काम करने लगेगा।",
+  "honey.unfunded.some": "{bucket} को अभी कोई राशि आवंटित नहीं है, इसलिए मैं नहीं कह सकती कि यह सही राह पर है या नहीं। ग्राफ़ स्क्रीन पर इसे कुछ आय दें।",
 
   // ── Statement import + duplicate warnings ──────────────────
   "cap.duplicateExact": "पहले से दर्ज है: {when} को {vendor} पर RM {amount}। दोबारा सहेजने पर यह दो बार गिना जाएगा।",
@@ -3518,6 +3534,8 @@ const zhHant: Dict = {
   "honey.over": "一起注意：依本月的步調，{bucket} 預計將超出 RM{alloc} 計畫約 RM{gap}。現在稍作調整，就能讓你的儲蓄目標維持在正軌上 — 要重新平衡嗎？",
   "honey.risk": "你們做得很好！{bucket} 正接近其 RM{alloc} 上限 — 稍加留意，以免日後影響你們的共同目標。",
   "honey.ontrack": "本月團隊合作出色 — 每個帳戶籃都在正軌上，你的儲蓄也按計畫注資。繼續保持！",
+  "honey.unfunded.all": "目前還沒有任何帳戶籃獲得資金 — 沒有收入流入，所以我無法說什麼在正軌上。請在圖譜頁面申報你的月收入，這裡的每個數字才會開始運作。",
+  "honey.unfunded.some": "{bucket} 還沒有分配到任何資金，所以我無法判斷它是否在正軌上。在圖譜頁面為它分配一部分收入，我就能和你一起盯著它。",
 
   // ── Statement import + duplicate warnings ──────────────────
   "cap.duplicateExact": "已經記錄過：{when} 在 {vendor} 的 RM {amount}。再儲存會重複計算。",

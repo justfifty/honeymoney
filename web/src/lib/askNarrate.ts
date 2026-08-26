@@ -165,13 +165,25 @@ export function narrateTemplate(outcome: Outcome, locale: Locale): string {
         mustPaid: money(f.mustPaid),
       })}${hedge}`;
 
-    case "goal_timing":
+    case "goal_timing": {
+      // No `months` ⇒ stage 2 had a balance but no credible pace. State the
+      // balance, then say plainly why there is no date — rather than the old
+      // behaviour, which withheld the balance too.
+      if (f.months === undefined) {
+        return `${T("ask.goal.progress", {
+          label: outcome.label ?? "",
+          saved: money(f.saved),
+          target: money(f.target),
+          remaining: money(f.remaining),
+        })} ${T(outcome.confidence.projectable ? "ask.goal.noPace" : "ask.goal.noDate")}`;
+      }
       return `${T("ask.goal.main", {
         label: outcome.label ?? "",
         remaining: money(f.remaining),
         monthly: money(f.monthly),
         months: f.months,
       })}${hedge}`;
+    }
 
     case "spending_summary":
       return `${T("ask.summary.main", { labels: outcome.label ?? "", total: money(f.total) })}${hedge}`;

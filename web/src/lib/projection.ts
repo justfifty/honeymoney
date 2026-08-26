@@ -231,10 +231,26 @@ function buildContext(projection: BucketProjection[]): string {
 }
 
 // Deterministic, marital-safe fallback insight from the projection alone.
+//
+// ── AN UNFUNDED BUCKET IS NOT A BUCKET THAT IS DOING WELL ────────────────
+//
+// Until 2026-08-26 this looked for `over_budget` and `at_risk` and treated
+// EVERYTHING ELSE as cause for congratulation — including `unfunded`, which
+// projectBuckets assigns to any bucket with no allocation, and including the
+// empty projection of a household that has declared nothing at all.
+//
+// So a brand-new household saw "every bucket is on track and your Savings are
+// funding on schedule" above an Ask Honey box that, on the same screen, said it
+// did not know their monthly income. Both sentences were about the same
+// household and only one of them could be true. Praise for a plan that does not
+// exist is the worse of the two, and it is also the one that stops the user
+// declaring the income that would make every other number work.
 function ruleBasedInsight(projection: BucketProjection[], locale: Locale): string {
   const over = projection.filter((b) => b.status === "over_budget");
   const risk = projection.filter((b) => b.status === "at_risk");
+  const unfunded = projection.filter((b) => b.status === "unfunded");
 
+  // A real overspend outranks an unfunded bucket: it is money already moving.
   if (over.length > 0) {
     const b = over[0];
     const gap = Math.abs(b.projected_balance);
@@ -244,6 +260,14 @@ function ruleBasedInsight(projection: BucketProjection[], locale: Locale): strin
     const b = risk[0];
     return t(locale, "honey.risk", { bucket: dataLabel(locale, b.bucket_label), alloc: b.allocated });
   }
+  // Nothing funded anywhere — including no buckets at all. Says the same thing
+  // Ask Honey says, and points at the same screen, so the two agree.
+  if (projection.length === 0 || unfunded.length === projection.length) {
+    return t(locale, "honey.unfunded.all");
+  }
+  if (unfunded.length > 0) {
+    return t(locale, "honey.unfunded.some", { bucket: dataLabel(locale, unfunded[0].bucket_label) });
+  }
   return t(locale, "honey.ontrack");
 }
 
@@ -251,7 +275,12 @@ export async function getHoneyInsight(
   projection: BucketProjection[],
   locale: Locale = "en",
 ): Promise<{ text: string; source: "gemini" | "rule-based" }> {
-  if (!isGeminiConfigured()) {
+  // Nothing is funded ⇒ there is no plan to comment on, and the model is not
+  // asked. `buildContext` would hand it a list of zeroes (or an empty string)
+  // and a model given no facts writes encouragement anyway — which is exactly
+  // the sentence this fix exists to stop showing.
+  const funded = projection.some((b) => b.status !== "unfunded");
+  if (!isGeminiConfigured() || !funded) {
     return { text: ruleBasedInsight(projection, locale), source: "rule-based" };
   }
   try {
