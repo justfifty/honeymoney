@@ -50,6 +50,7 @@
       margin: 6px 0 10px;
       font-size: 9.5pt;
     }
+    td:first-child { white-space: nowrap; }
     th, td {
       text-align: left;
       padding: 5px 8px;
@@ -77,6 +78,9 @@
       border-radius: 3px;
     }
     .meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
       margin-top: 16px;
       padding-top: 8px;
       border-top: 1px solid rgba(30,60,44,0.25);
@@ -86,72 +90,83 @@
   </style>
 </head>
 <body>
-  <!-- ⚠️ HARD LIMIT: 500 WORDS. Verified with `node scripts/check-summary-words.mjs
-       --file docs/deck/AI_DISCLOSURE.html`. The 1,740-word version this replaced said
-       everything twice: once as a claim and once as an explanation of why the claim was
-       trustworthy. A disclosure has to be checkable, not persuasive — every fact below
-       survived; only the argument for it was cut. -->
+  <!-- ⚠️ HARD LIMIT: 500 WORDS, ONE PAGE. Verified with
+       `node scripts/check-summary-words.mjs --file docs/deck/AI_DISCLOSURE.html`
+       and `node scripts/build-doc-pdfs.mjs`.
+
+       2026-08-27: the architecture table was added at the cost of prose, not of facts —
+       every claim in the 25 Aug version survives below, and three shipped since were
+       added (the wire protocol, the on-device classifier, the sealed backup). The
+       1,740-word ancestor said everything twice: once as a claim, once as an argument
+       for trusting the claim. A disclosure has to be checkable, not persuasive, so the
+       right-hand column of the table names the command that checks it. -->
   <div class="head">
     <span class="badge">MAIC Nexus 2026 &middot; Track T3</span>
-    <h1>AI Disclosure Statement &mdash; HoneyMoney</h1>
-    <p class="sub"><strong>Team JUST50</strong> &middot; Updated 25 August 2026</p>
+    <h1>Technical Architecture &amp; AI Disclosure &mdash; HoneyMoney</h1>
+    <p class="sub"><strong>Team JUST50</strong> &middot; Updated 27 August 2026 &middot; honeymoney.app</p>
   </div>
 
-  <h2>What the AI does</h2>
-  <p>Our companion <strong>&ldquo;Honey&rdquo;</strong> reads messy real-world input &mdash; a
-  photographed receipt, a forwarded e-wallet screenshot, a sentence typed one-handed &mdash;
-  and explains a household's position in plain English or Malay. It does not calculate the
-  figures it speaks, and it does not recommend financial products.</p>
+  <h2>Architecture &mdash; four layers, one graph</h2>
+  <table>
+    <tr><th>Layer</th><th>What runs</th><th>Why it matters</th></tr>
+    <tr>
+      <td><strong>1. App</strong></td>
+      <td>Next.js PWA</td>
+      <td>Any device, nothing to install.</td>
+    </tr>
+    <tr>
+      <td><strong>2. Data</strong></td>
+      <td>PocketBase knowledge graph &mdash; nodes, edges, transactions</td>
+      <td>Self-hostable single binary. Append-only, hash-chained ledger: a record is voided, never rewritten. No analytics SDKs.</td>
+    </tr>
+    <tr>
+      <td><strong>3. Capture</strong></td>
+      <td>On-device OCR and text parsing</td>
+      <td><strong>Zero tokens, nothing transmitted.</strong> Six languages, multi-currency, no bank connection.</td>
+    </tr>
+    <tr>
+      <td><strong>4. AI</strong></td>
+      <td>Gemini Flash, Groq, or local Ollama</td>
+      <td>Switchable and optional, cost ledgered per call. No lock-in.</td>
+    </tr>
+  </table>
 
-  <h2>Numbers come from code, not the model</h2>
-  <p>Ask Honey runs <strong>parse &rarr; compute &rarr; narrate</strong>. A deterministic
-  function owns every figure &mdash; the same <code>computeHScore</code> behind the H-Score
-  screen, so the chat and the score cannot disagree. The model phrases those figures, and
-  every number in its prose is checked against the computed set before display; an
-  unrecognised number is discarded in favour of a deterministic template.
-  <strong>Every number a household reads has been computed, never composed.</strong></p>
+  <h2>Every figure is computed, never composed</h2>
+  <p>Ask Honey runs <strong>parse &rarr; compute &rarr; narrate</strong>. Deterministic code owns
+  every number &mdash; the same <code>computeHScore</code> as the score screen, so chat and score
+  cannot disagree. The model only phrases. Each number in its prose is checked against the
+  computed set; one unrecognised figure and the whole answer is discarded for a template.</p>
 
-  <h2>Scope</h2>
-  <p>Honey answers questions about your own money. Product recommendation is regulated
-  advice and is routed to a licensed directory. An affordability question with no price asks
-  for the price rather than guessing one. The <strong>3-Bucket allocation is rules-based and
-  user-configured</strong>: the AI never moves or locks funds and executes no transactions.</p>
+  <h2>What a cloud model actually receives</h2>
+  <p>A <strong>local</strong> engine gets full context &mdash; nothing leaves the machine. A
+  <strong>cloud</strong> engine gets slot names, an intent and a locale: no figures, no labels, no
+  free text. Figures are restored after the answer is checked. Image extraction is the exception:
+  it sends the image you chose to scan.</p>
 
-  <h2>Models, and what they receive</h2>
-  <p>Providers are switchable per deployment, with a per-call token and cost ledger:
-  <strong>Google Gemini Flash</strong> (multimodal, the only one doing image OCR),
-  <strong>Groq</strong> (text insight), and <strong>Ollama</strong> (local &mdash; nothing
-  leaves the machine; hosts open models such as DeepSeek and Qwen). A household may supply its own key; it is encrypted
-  (<strong>AES-256-GCM</strong>) before storage, never returned to a browser, and validated
-  against the provider when saved. Extraction sends the forwarded image. Insight sends
-  derived, minimised aggregates &mdash; never a raw ledger.</p>
+  <h2>Privacy, and its limits</h2>
+  <p><strong>AI is off until a household turns it on</strong>; consent is per purpose, recorded
+  append-only, withdrawable, and enforced at the call site rather than the settings screen. Backups
+  are <strong>sealed in your browser</strong> (AES-256-GCM; PBKDF2, 600,000 rounds) with a
+  passphrase we never receive &mdash; we hold ciphertext and no key. The live database is not
+  encrypted to us: the server computes your score over it. That line is documented, not implied.
+  Private Spendings buckets stay out of shared views. One-click export. <strong>We sell software, not
+  data</strong>: no brokerage, no advertising against records, no &ldquo;anonymised insights&rdquo;
+  product.</p>
 
-  <h2>Privacy</h2>
-  <p><strong>AI features are off until a household switches them on.</strong> Consent is
-  asked per purpose and recorded in an append-only ledger &mdash; withdrawal included &mdash;
-  and a one-click export returns everything held. The default in-app receipt scan runs
-  <strong>on-device OCR</strong> (Tesseract, in the browser), reads itemised line items, and
-  contacts no model at all. Private Spendings buckets are excluded from shared household
-  views. Data is isolated per household, settings are encrypted at rest, and backups are
-  encrypted, held off-site, and <strong>proven restorable</strong>. There are
-  <strong>no analytics SDKs and no data brokers</strong>, and the transaction ledger is
-  append-only and hash-chained, so a record can be voided, never rewritten.
-  This is <strong>alignment with PDPA 2010, not certified compliance</strong> &mdash; no
-  third-party audit yet.</p>
+  <h2>Scope, limits, and how we built it</h2>
+  <p>Honey answers about your own money. Product recommendation is regulated advice, routed to a
+  licensed directory; an affordability question with no price asks for one. Allocation is
+  rules-based and user-set &mdash; the AI moves no money and executes no transactions. OCR is
+  imperfect and every extraction is confirmed before filing. Below 8 records or 14 days, Honey
+  declines to project. Insights are <strong>educational, not licensed advice</strong>. We used AI
+  coding assistants; architecture, financial logic and copy were reviewed and accepted by the team,
+  on a public, non-backdated commit history.</p>
 
-  <h2>AI used to build HoneyMoney</h2>
-  <p>We used <strong>AI coding assistants</strong> during development. Architecture, data
-  model, financial logic and copy were reviewed and accepted by the team, and the commit
-  history is public and non-backdated.</p>
-
-  <h2>Limitations</h2>
-  <p>OCR is not perfect; extraction is confirmed by the user before anything is filed.
-  Insights are <strong>educational, not licensed financial advice</strong>. Below 8 records or
-  14 days, Honey declines to project rather than estimating.</p>
-
-  <div class="pull"><strong>If any statement here becomes inaccurate, we will correct it.</strong>
-  A capability left in a disclosure after it has left the code is the same defect as an
-  undisclosed one.</div>
+  <div class="pull"><strong>Checkable, not merely stated:</strong> <code>check:ask</code> proves the
+  model cannot introduce a number, <code>check:vault</code> that no plaintext survives into a
+  backup, <code>check:capture</code> that what you type is what gets stored. If any statement here
+  becomes inaccurate, we correct it &mdash; a capability left in a disclosure after it has left the
+  code is the same defect as an undisclosed one.</div>
 
   <div class="meta">
     <span>honeymoney.app &middot; github.com/justfifty/honeymoney</span>
