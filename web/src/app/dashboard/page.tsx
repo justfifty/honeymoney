@@ -12,7 +12,6 @@ import { dataLabel } from "@/lib/dataLabels";
 import RecordRow from "../records/RecordRow";
 import PrivacyToggle from "./PrivacyToggle";
 import HoneyAsk from "./HoneyAsk";
-import Logo from "../Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -93,10 +92,16 @@ export default async function Dashboard() {
             the four nav links don't wrap — which pushed the whole document into
             horizontal scroll and clipped every card below it off the right edge. */}
         <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight"><Logo size={24} /> {tr("dash.title")}</h1>
-            <p className="text-sm text-zinc-500">{tr("dash.subtitle")}</p>
-          </div>
+          {/* The visible title block is gone, and what it said is why: an <h1>
+              reading "HoneyMoney" under a header that already carries the
+              wordmark, above a bottom bar already showing Dashboard as the
+              active tab. Three statements of where you are, on a 390px screen
+              where the first real number sat below the fold.
+
+              The heading itself stays for screen readers and the document
+              outline — removing the h1 outright would leave the page with no
+              heading at all, which is a worse trade than a little duplication. */}
+          <h1 className="sr-only">{tr("dash.subtitle")}</h1>
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <PrivacyToggle hideLabel={tr("dash.privacy.hide")} showLabel={tr("dash.privacy.show")} />
             {/* The in-page Graph shortcut that used to sit here is gone: Graph
@@ -109,18 +114,17 @@ export default async function Dashboard() {
         </header>
 
 
-        {/* Capture moved to /record, which is the default landing and the first
-            tab. This page views and edits what already exists; creating a new
-            entry has one front door, not two. A returning user who opened the
-            app to log something is one tap away. */}
-        {canWrite ? (
-          <Link
-            href="/record"
-            className="mt-6 flex min-h-[3.25rem] items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-400 text-sm font-semibold text-amber-700 transition hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/20"
-          >
-            <span aria-hidden>✍️</span> {tr("dash.addSpend")}
-          </Link>
-        ) : (
+        {/* Capture lives at /record — the default landing, the first tab, and
+            permanently on the bottom bar. This page views and edits what already
+            exists.
+
+            There used to be an "Add a spend" button here as well, directly under
+            a comment saying capture "has one front door, not two". It was the
+            second one, and it pushed the household's actual figures below the
+            fold on a phone to offer a tap that was already on screen. A viewer
+            who cannot write still gets the note below, because that explains
+            something they cannot otherwise work out. */}
+        {canWrite ? null : (
           <p className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
             {isDemo ? (
               <>
