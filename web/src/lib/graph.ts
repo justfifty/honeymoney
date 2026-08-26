@@ -59,6 +59,139 @@ async function ensureVendorNode(tenantId: string, vendor: string): Promise<strin
   return created.id;
 }
 
+// ── income has to become a NODE, not just a row ────────────────────────────
+//
+// This is the fix for "the dashboard and graph don't tally with the data".
+//
+// lib/projection.ts and lib/hscoreData.ts read a household's income from ONE
+// place: `income_source` nodes and their `props.monthly_amount`. Neither of them
+// looks at transactions. So a user who recorded a RM20,000 salary still had an
+// income of zero everywhere it mattered — allocations divided nothing, headroom
+// was nothing, savings rate was zero over zero, and the H-Score was computed
+// from a household that appeared to earn nothing while spending normally.
+//
+// Recording income now maintains the node the rest of the app already reads, so
+// the graph, the dashboard and the score tally by construction rather than by
+// three separate calculations agreeing.
+//
+// `derived: true` marks a source this path created. A source a human declared —
+// the seeded demo households, or anything set up on /graph — is NEVER
+// overwritten: their monthly_amount is a stated plan, and silently replacing it
+// with whatever happened to be logged this month would destroy the distinction
+// between what a household expects to earn and what it has so far received.
+
+interface IncomeProps {
+  monthly_amount?: number;
+  derived?: boolean;
+  [k: string]: unknown;
+}
+
+/** Find-or-create the income_source node money arrives from. */
+async function ensureIncomeSourceNode(tenantId: string, label: string): Promise<PBNode> {
+  const clean = label.trim() || "Income";
+  const existing = await pbFirst<PBNode>(
+    "nodes",
+    `tenant = ${pbStr(tenantId)} && kind = 'income_source' && label ~ ${pbStr(clean)}`,
+  );
+  if (existing) return existing;
+
+  return pbCreate<PBNode>("nodes", {
+    tenant: tenantId,
+    kind: "income_source",
+    label: clean,
+    props: { derived: true, monthly_amount: 0 },
+  });
+}
+
+/**
+ * Recompute a derived source's monthly figure from what was actually received.
+ *
+ * The month with the most recent activity is used rather than a trailing
+ * average, because an average over a partial first month reports a household as
+ * earning half its salary — and the person looking at the screen has just typed
+ * the full amount in. Whole months only, falling back to the current one when
+ * that is all there is.
+ */
+export async function refreshDerivedIncome(tenantId: string, nodeId: string): Promise<void> {
+  const node = await pbFirst<PBNode>("nodes", `id = ${pbStr(nodeId)} && tenant = ${pbStr(tenantId)}`);
+  if (!node || node.kind !== "income_source") return;
+
+  const props = (node.props ?? {}) as IncomeProps;
+  // A declared source is a statement of intent. Leave it alone.
+  if (props.derived !== true) return;
+
+  const rows = await pbList<{ amount: number; occurred_at: string; kind?: string; direction?: string; voided?: boolean }>(
+    "transactions",
+    { filter: `tenant = ${pbStr(tenantId)} && vendor_node = ${pbStr(nodeId)}` },
+  );
+
+  const byMonth = new Map<string, number>();
+  for (const r of rows) {
+    if (r.voided) continue;
+    if (r.direction !== "in") continue;
+    const m = String(r.occurred_at).slice(0, 7);
+    byMonth.set(m, (byMonth.get(m) ?? 0) + Number(r.amount || 0));
+  }
+  if (!byMonth.size) return;
+
+  const newest = [...byMonth.keys()].sort().pop() as string;
+  const monthly = Math.round((byMonth.get(newest) ?? 0) * 100) / 100;
+
+  await pbUpdate("nodes", nodeId, { props: { ...props, derived: true, monthly_amount: monthly } });
+}
+
+/**
+ * The starting split, created the first time a household records income.
+ *
+ * A new household is seeded with three buckets and NO allocation edges, so
+ * until now the first salary landed in a graph with nowhere to send it: the
+ * projection divided the income across nothing, every bucket showed unfunded,
+ * and the dashboard stayed empty for a household that had just told it what
+ * they earn. The only way out was to open /graph and wire allocations by hand,
+ * which is not a step anyone discovers.
+ *
+ * 50 / 20 / 30 across Must-paid, Savings and Spendings. The savings figure is
+ * not a round number chosen for tidiness: lib/hscore.ts scores savings rate on a
+ * curve that reaches 26 of 30 points at 20%, so the default the app proposes and
+ * the behaviour it rewards are the same number.
+ *
+ * `derived: true` says the household did not choose this. It is a starting
+ * point to adjust on /graph, and it is created ONCE — the moment a real
+ * allocation exists, this never fires again and never overwrites anything.
+ */
+export async function ensureDefaultAllocations(tenantId: string, incomeNodeId: string): Promise<void> {
+  // Scoped to THIS source, not to the household.
+  //
+  // The first version asked "does the household have any allocations?" and
+  // stopped if so — which left a second income source with no route at all. A
+  // household with a salary and a side income then showed RM21,119 of income
+  // against RM8,050 allocated, and the difference was money the app had been
+  // told about and had nowhere to put. Every source needs somewhere to go; a
+  // plan already made for a DIFFERENT source is not a reason to skip this one.
+  const existing = await pbList<PBEdge>("edges", {
+    filter: `tenant = ${pbStr(tenantId)} && src_node = ${pbStr(incomeNodeId)} && valid_to = '' && (rel = 'ALLOCATES_PCT' || rel = 'ALLOCATES_FIXED')`,
+  });
+  if (existing.length) return; // this source is already routed; leave it alone
+
+  const buckets = await listBuckets(tenantId);
+  const SPLIT: Record<number, number> = { 1: 50, 2: 20, 3: 30 };
+
+  for (const [tier, pct] of Object.entries(SPLIT)) {
+    // The household's own bucket in that tier — the first one, which for a
+    // freshly seeded household is the only one.
+    const target = buckets.find((b) => b.tier === Number(tier));
+    if (!target) continue;
+    await pbCreate("edges", {
+      tenant: tenantId,
+      src_node: incomeNodeId,
+      dst_node: target.id,
+      rel: "ALLOCATES_PCT",
+      percentage: pct,
+      props: { derived: true },
+    });
+  }
+}
+
 export async function listBuckets(tenantId: string): Promise<{ id: string; label: string; tier: number }[]> {
   const buckets = await pbList<PBNode>("nodes", {
     filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
@@ -134,6 +267,7 @@ export async function ingestReceipt(
   };
   const tx = await pbCreate<{ id: string }>("transactions", body);
 
+
   await append({
     tenantId,
     op: "create",
@@ -198,7 +332,21 @@ export async function addManualTransaction(
   },
   actor?: Actor,
 ): Promise<IngestResult> {
-  const vendorNodeId = await ensureVendorNode(tenantId, input.vendorLabel);
+  // Which KIND of counterparty this is, decided before anything is written.
+  // Money coming in arrives from an income_source; money going out goes to a
+  // vendor. Filing a salary as a vendor is what left the graph with no income
+  // in it at all, and every figure derived from income reading zero.
+  const kind: RecordKind = input.category
+    ? kindOf(input.category)
+    : input.direction === "in"
+      ? "inflow"
+      : "outflow";
+
+  const counterparty =
+    kind === "inflow"
+      ? await ensureIncomeSourceNode(tenantId, input.vendorLabel)
+      : null;
+  const vendorNodeId = counterparty?.id ?? (await ensureVendorNode(tenantId, input.vendorLabel));
 
   // A bucket is still REQUIRED for anything that leaves a bucket, and still
   // verified to belong to this tenant. It is only optional for money coming in.
@@ -213,7 +361,13 @@ export async function addManualTransaction(
   // No SPENT_AT edge for an inflow, and that is the point: SPENT_AT means
   // "this bucket paid this vendor". Income paid nobody, so inventing an edge
   // from a bucket it never came from is what drew salaries as spending.
-  const edgeId = wallet ? await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId) : "";
+  //
+  // A TRANSFER gets none either, and that was the second half of the same bug.
+  // `+ Savings` posts a bucket, so the old condition drew a SPENT_AT edge out of
+  // the savings bucket — putting money away rendered as spending it, on the one
+  // screen the household looks at to see whether they are saving.
+  const edgeId =
+    wallet && kind === "outflow" ? await ensureSpentAtEdge(tenantId, wallet.id, vendorNodeId) : "";
 
   const body: Record<string, unknown> = {
     tenant: tenantId,
@@ -228,11 +382,7 @@ export async function addManualTransaction(
     // existing caller working unchanged. `+ Savings` becomes a TRANSFER here —
     // the one inference that stops a savings deposit reading as money leaving
     // the household.
-    kind: (input.category
-      ? kindOf(input.category)
-      : input.direction === "in"
-        ? "inflow"
-        : "outflow") as RecordKind,
+    kind,
     ...(input.paidBy || input.memberId ? { paid_by: input.paidBy ?? input.memberId } : {}),
     visibility: input.visibility ?? "shared",
     // Absent ⇒ false ⇒ "nobody said this, we defaulted it", which is exactly
@@ -248,6 +398,22 @@ export async function addManualTransaction(
   };
 
   const tx = await pbCreate<{ id: string }>("transactions", body);
+
+  // The whole point of the change above: the node the dashboard, the projection
+  // and the H-Score all read is updated in the same call that records the money,
+  // so the screens tally the moment the user hits save rather than after some
+  // separate setup step nobody knew to do.
+  if (counterparty) {
+    try {
+      await refreshDerivedIncome(tenantId, counterparty.id);
+      // Income with nowhere to go renders as an empty dashboard, which reads as
+      // "the app didn't save it". Give it somewhere on the first pay-in.
+      await ensureDefaultAllocations(tenantId, counterparty.id);
+    } catch {
+      // The income is recorded either way. A stale monthly figure is a wrong
+      // dashboard; a failed save is a lost record, and that is the worse one.
+    }
+  }
 
   // Images go up AFTER the record exists, because a file field needs something
   // to attach to. That ordering is also why an upload failure must not throw:

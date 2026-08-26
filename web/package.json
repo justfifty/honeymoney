@@ -27,7 +27,9 @@
     "site:deploy": "cd ../deploy/pages && wrangler pages deploy",
     "site:publish": "npm run site:build && npm run site:deploy",
     "privacy:doc": "node ../scripts/build-privacy-doc.mjs",
-    "check:privacy": "node ../scripts/build-privacy-doc.mjs --check"
+    "check:privacy": "node ../scripts/build-privacy-doc.mjs --check",
+    "repair:income": "npx --yes tsx --env-file=.env.local scripts/repair-income-graph.mts",
+    "check:tally": "npx --yes tsx --env-file=.env.local scripts/check-tally.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.1",
