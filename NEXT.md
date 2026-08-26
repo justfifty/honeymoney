@@ -5,6 +5,50 @@
 
 ---
 
+## ✅ Shipped — 2026-08-27 (evening) — the deploy, and the file that blocked it
+
+**honeymoney.app was four builds behind.** Reported as *"why is the app after login
+not showing the smart UI?"* — and the answer was not a bug: the origin was serving
+the build written at **15:00 on 26 Aug**, so everything from the dashboard fix
+onward existed only in this repo. `deploy/domcloud/push-build.ps1` shipped it, and
+its own asset check passed at the origin: 11 assets, all 200.
+
+### 🛑 Then `site:publish` failed, and that is an outage
+
+Cloudflare Pages refuses any single file over **25 MiB**. The re-cut demo video was
+27.4 MiB, so the whole upload was rejected — leaving the origin serving NEW HTML
+while the edge still held the OLD snapshot. `/record` then referenced
+`1u8hle8bnnqfn.css` and the edge answered **404**: the unstyled-site failure, for
+the third time, by a route nobody had considered.
+
+**The lesson is new and worth writing down: a file that has nothing to do with the
+app can strand the entire edge deploy.** The video is a deck asset. It is copied
+into the snapshot with the PDFs, it grew by 9 MB when the demo was re-cut, and
+nothing warned — the build stage succeeded and only `wrangler` refused, after the
+origin was already live on the new bundle.
+
+Fixed by transcoding to 22.7 MiB (two-pass x264, 1030k video / 96k audio — the
+slides and slow pans lose nothing visible) and republishing. Verified afterwards
+across `/`, `/record`, `/login` and `/dashboard`: **11 assets each, all 200**, and
+the new Record component confirmed present in the JavaScript the site actually
+serves.
+
+⬜ **`build-demo-video.mjs` should refuse to write a file over 24 MiB**, naming
+this reason. The encoder targets quality and has no idea a downstream host has a
+ceiling; the check belongs where the file is made, not where it is rejected.
+⬜ **`site:publish` should pre-flight `dist/` for oversized files** before the app
+bundle is pushed, so the ordering failure cannot happen at all.
+
+### Also
+
+- The landing trust bar renders `trust.slice(0, 3)`, so the sealed-backup line
+  added this morning was written and never shown. It now holds the third slot,
+  replacing "PDPA-aware · private by design" — which repeated the line above it,
+  making two of the three visible claims the same claim. The one-line flip is
+  documented in `app/page.tsx`. **Not yet deployed:** it rides the next push.
+
+---
+
 ## ✅ Shipped — 2026-08-27 — money in is a real control, and the backup is one we cannot open
 
 ### "+ Money in" was a suggestion the next keystroke took back

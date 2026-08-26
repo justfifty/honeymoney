@@ -9,15 +9,23 @@ export default async function Home() {
   const locale = await getLocale();
   const tr = (k: string) => t(locale, k);
 
+  // ⚠️ ONLY THE FIRST THREE RENDER — see `trust.slice(0, 3)` below. The list is
+  // longer than the bar, so anything appended here is written and never shown,
+  // which is how the sealed-backup line spent its first deploy invisible.
   const trust = [
     tr("home.trust.live"),
     tr("home.trust.local"),
-    tr("home.trust.privacy"),
-    // Precise on purpose: the backup is what we cannot read, not the live
-    // ledger — the server computes an H-Score over that. docs/ZERO_KNOWLEDGE.md
-    // §2 draws the line, and a trust bar that overstated it would be the first
-    // thing a judge checked and the first thing they found wrong.
+    // Third slot, decided 2026-08-27: this replaced "PDPA-aware · private by
+    // design", which repeated the line above it — two of the three visible
+    // claims were the same claim. Precise on purpose, too: the backup is what
+    // we cannot read, NOT the live ledger, since the server computes an H-Score
+    // over that. docs/ZERO_KNOWLEDGE.md §2 draws the line, and a trust bar that
+    // overstated it would be the first thing a judge checked and the first
+    // thing they found wrong.
+    // To put PDPA back in the visible three, swap this line for
+    // tr("home.trust.privacy").
     tr("home.trust.sealed"),
+    tr("home.trust.privacy"),
     tr("home.trust.free"),
     tr("home.trust.langs"),
   ];
