@@ -35,6 +35,10 @@ export async function honeyInsight(contextText: string, locale: Locale = "en", m
   return aiGenerate(`Household snapshot:\n${contextText}\n\nGive one insight now:${langLine}`, {
     system: HONEY_SYSTEM,
     fn: "honeyInsight",
+    // Class 2: buildContext() interpolates the household's own bucket LABELS
+    // ("Ma's dialysis") alongside exact RM figures. This path ran on every
+    // dashboard load and nothing was watching it.
+    dataClass: 2,
     meta,
   });
 }

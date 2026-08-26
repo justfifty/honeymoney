@@ -115,8 +115,8 @@ For **each** member (have IDs on hand):
 
 **Impact / ESG:**
 > Financial resilience for underbanked households, reduced money-stress and better
-> workplace wellbeing, mapped to **SDG 1 (No Poverty), 3 (Good Health), 8 (Decent
-> Work)** and Malaysia's **MADANI** agenda.
+> workplace wellbeing, mapped to **SDG 1 (No Poverty) and 8 (Decent Work)** and
+> Malaysia's **MADANI** agenda.
 
 **Tech stack (one line):**
 > Next.js 16 + PocketBase local-first knowledge graph + multi-provider AI (Google

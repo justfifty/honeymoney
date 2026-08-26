@@ -37,7 +37,10 @@ interface AiUsageRow {
   created: string;
 }
 
-// Indicative gemini-2.0-flash pricing (USD per token) — flag as an estimate.
+// Indicative Gemini Flash pricing (USD per token) — flag as an estimate, and it
+// is more of an estimate than it looks: the model is `gemini-flash-latest`, so
+// which Flash release these rates describe moves with Google. No model id named
+// here, because naming one would make the label look precise when it is not.
 const FLASH_IN_PER_TOKEN = 0.1 / 1_000_000;
 const FLASH_OUT_PER_TOKEN = 0.4 / 1_000_000;
 

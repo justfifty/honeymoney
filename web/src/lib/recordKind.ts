@@ -198,3 +198,46 @@ export const SIGN_STYLE: Record<Sign, { glyph: string; text: string; fill: strin
 export function isPrivateTier(tier: number | null | undefined): boolean {
   return tier === PRIVATE_TIER;
 }
+
+// ── one definition of "spend", for every view that draws it ────────────────
+//
+// This exists because two views disagreed about the same rows and each was
+// internally consistent. lib/moneyView.ts — behind the dashboard, treemap and
+// Sankey — skipped voided records and skipped credits. lib/graphView.ts — behind
+// the /graph network — skipped neither, and summed EVERY transaction into its
+// spend-per-edge map.
+//
+// The result was reported as "the dashboard and graph don't tally", and it was
+// not a rounding difference: a household that logged a RM20,000 salary saw that
+// salary drawn as twenty thousand ringgit of spending on one screen and not on
+// the other. A voided record — the thing the ledger keeps precisely BECAUSE it
+// must stay visible as evidence — was counted as money spent on the same screen.
+//
+// Duplicated filters drift. This one is a function, so the next view that draws
+// spending inherits the same answer instead of inventing a third one.
+
+export interface SpendCandidate {
+  direction?: string | null;
+  voided?: boolean;
+  kind?: string | null;
+}
+
+/**
+ * Does this row represent money the household actually spent?
+ *
+ * `direction` is the field checked rather than `kind`, because rows that predate
+ * Task 1 have no kind at all — a large share of the real data — and treating a
+ * missing kind as "not spend" would silently drop them from every total. A
+ * missing DIRECTION defaults to spend, which matches how records.ts reads the
+ * same rows and keeps the two consistent.
+ */
+export function countsAsSpend(t: SpendCandidate): boolean {
+  // Voided is evidence, not spending. The ledger keeps it on purpose.
+  if (t.voided) return false;
+  // Credits — refunds, cashback, salary, dividends — are not spend.
+  if (t.direction === "in") return false;
+  // A transfer moves money inside the household; at household level it nets to
+  // zero, and drawing it as spend shows money leaving that never left.
+  if (t.kind === "transfer") return false;
+  return true;
+}

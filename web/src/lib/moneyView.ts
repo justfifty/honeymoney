@@ -6,6 +6,7 @@
 import { pbList, pbStr } from "./pocketbase";
 import { getBucketProjection } from "./projection";
 import { collapsePrivateVendors, privateBucketIds } from "./privacy";
+import { countsAsSpend } from "./recordKind";
 import type { BucketProjection } from "./types";
 
 interface PBNode {
@@ -145,8 +146,9 @@ export async function getMoneyView(tenantId: string, opts: MoneyViewOpts = {}): 
     if (!t.wallet_node || !t.vendor_node) continue;
     // A voided record is evidence, not spending — counting it would inflate the
     // projection, the health score and the shortfall date alike.
-    if (t.voided) continue;
-    if (t.direction === "in") continue; // credits (refunds, cashback) aren't spend
+    // Same predicate as /graph, so the two can no longer disagree about the
+    // same rows — which they did, visibly, until 2026-08-26.
+    if (!countsAsSpend(t)) continue;
     txnCount += 1;
     const k = [t.wallet_node, t.vendor_node, t.member ?? ""].join(SEP);
     agg.set(k, (agg.get(k) ?? 0) + Number(t.amount));

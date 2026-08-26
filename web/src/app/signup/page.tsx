@@ -181,6 +181,21 @@ function SignupForm() {
           {busy ? "Creating…" : code ? "Join household" : "Create account"}
         </button>
 
+        {/* Acceptance has to be VISIBLE to be acceptance. The server records a
+            row against this version either way, and a row saying someone agreed
+            to something they were never shown is evidence of the wrong thing. */}
+        <p className="text-xs leading-relaxed text-zinc-500">
+          By creating an account you agree to our{" "}
+          <Link href="/terms" className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300">
+            Terms of Service
+          </Link>{" "}
+          and confirm you have read the{" "}
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300">
+            Privacy Notice
+          </Link>
+          . HoneyMoney is not financial advice.
+        </p>
+
         {tooShort && <p className="text-[11px] text-zinc-400">Password needs at least 8 characters.</p>}
         {!tooShort && password.length >= 8 && strength.score < 2 && (
           <p className="text-[11px] text-amber-600">

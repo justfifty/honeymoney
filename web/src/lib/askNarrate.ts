@@ -116,7 +116,7 @@ export function narrateTemplate(outcome: Outcome, locale: Locale): string {
 
   // Thin data: say why we will not project, rather than projecting quietly.
   if (outcome.cannotAnswer && !outcome.confidence.projectable) {
-    return `${T(outcome.confidence.reasonKey, outcome.confidence.vars)} ${T("ask.thin.suggestion")}`;
+    return `${T(outcome.confidence.reasonKey, outcome.confidence.vars)} ${T(outcome.confidence.fixKey)}`;
   }
   if (outcome.cannotAnswer) return T("ask.cannotAnswer");
 
@@ -232,3 +232,137 @@ export function narratePrompt(outcome: Outcome, question: string, locale: Locale
     `Now write the answer.${lang}`,
   ].join("\n");
 }
+
+// ── the wire: what stage 3 is allowed to send ───────────────────────────────
+//
+// Everything above this line runs on our own hardware. Everything below decides
+// what may leave it.
+//
+// narratePrompt(), directly above, sends the user's RAW QUESTION and the fully
+// rendered template — every computed figure, and every user-authored bucket
+// label the template interpolated. In a financial app the typed sentence is the
+// most sensitive artifact in the pipeline ("can we afford the IVF round"), and
+// stage 3 never needed it: stage 1 already reduced that sentence to a typed
+// Intent. It is kept for the local-provider path, where nothing leaves the
+// machine and the extra context genuinely improves the phrasing.
+//
+// For a cloud provider the model gets names instead of values. It writes
+// "{amount} would leave you {bufferAfter} months of buffer", and the figures are
+// substituted back here after the check below passes. Not minimised personal
+// data — none. That is the difference between "we send only what is needed" and
+// "we send nothing about you", and only the second is a sentence you can put in
+// a privacy notice without a lawyer flinching.
+
+/** How large a change is, without saying how large. Derived here, from exact
+ *  figures, so the ordinal is trustworthy and the figures stay home. */
+export type Impact = "minor" | "moderate" | "significant";
+
+export function impactOf(outcome: Outcome): Impact | undefined {
+  const d = outcome.facts.scoreDelta;
+  if (d === undefined) return undefined;
+  return d >= 8 ? "significant" : d >= 3 ? "moderate" : "minor";
+}
+
+/** Placeholder tokens the model is given, and the only ones it may use back. */
+const slot = (name: string) => `{${name}}`;
+
+/**
+ * The payload. Built by construction from an allowlist — never by filtering a
+ * richer object — which is the outbound twin of validateIntent(). That
+ * asymmetry was the bug: what came BACK from a model was rebuilt field by
+ * field, and what went OUT was assembled by string concatenation.
+ */
+export interface Wire {
+  kind: string;
+  locale: string;
+  slots: string[];
+  impact?: Impact;
+}
+
+export function toWire(outcome: Outcome, locale: Locale): Wire {
+  const w: Wire = {
+    kind: outcome.kind,
+    locale,
+    slots: Object.keys(outcome.facts).map(slot),
+  };
+  const impact = impactOf(outcome);
+  if (impact) w.impact = impact;
+  return w;
+}
+
+/**
+ * The tripwire.
+ *
+ * A rule that is not tested is a rule that gets edited out by someone who did
+ * not know it was load-bearing. This asserts the payload carries no digits and
+ * no characters outside a deliberately narrow set, so a future field holding a
+ * vendor name or an RM figure fails here rather than at the provider.
+ */
+export function wireIsClean(w: Wire): boolean {
+  const s = JSON.stringify(w);
+  if (/\d/.test(s)) return false;
+  return /^[A-Za-z0-9_{}",:\[\]\s.\-]*$/.test(s.replace(/\d/g, ""));
+}
+
+export const WIRE_SYSTEM = `${NARRATE_SYSTEM}
+
+You are writing with PLACEHOLDERS, not numbers. You will be given slot names such
+as {amount} or {bufferAfter}. Use them exactly as written, wherever the figure
+belongs in your sentence.
+
+- Write NO digits at all. Not a year, not a count, not "2-3". If you need a
+  quantity, use a slot or write the word.
+- Use only the slots you are given. Do not invent one, and do not use a slot
+  twice unless the sentence genuinely repeats that figure.
+- You will never be told what any figure IS, and you must not imply you know.
+  Do not write "a small amount" or "a healthy buffer" — you cannot see them.`;
+
+export function wirePrompt(w: Wire): string {
+  const lang = w.locale === "en" ? "" : `\nWrite in the user's language (${w.locale}).`;
+  const impact = w.impact ? `\nThe overall effect on their score is: ${w.impact}.` : "";
+  return [
+    `Question type: ${w.kind}`,
+    `Slots you may use: ${w.slots.join(" ")}`,
+    impact,
+    ``,
+    `Write two or three warm, plain sentences placing every slot where its figure`,
+    `belongs. Remember: no digits.${lang}`,
+  ].join("\n");
+}
+
+/**
+ * Put the real figures back, or refuse the answer.
+ *
+ * Returns null when the prose used a slot that does not exist, or wrote a digit
+ * of its own — both of which mean the model produced a figure rather than a
+ * place for one. There is no repair pass, for the same reason verifyNumbers has
+ * none: repairing it would mean deciding which of its numbers to trust.
+ */
+export function restoreWire(prose: string, outcome: Outcome): string | null {
+  if (/\d/.test(prose)) return null;
+
+  const known = new Set(Object.keys(outcome.facts));
+  const used = [...prose.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((m) => m[1]);
+  if (used.some((name) => !known.has(name))) return null;
+  if (!used.length) return null; // an answer with no figures in it answers nothing
+
+  let out = prose;
+  for (const name of used) {
+    const v = outcome.facts[name];
+    // Money-shaped facts read as money; counts, months and scores read bare.
+    // MONEY_SLOTS is explicit rather than inferred from magnitude, because
+    // guessing wrong renders a score of 72 as "RM72".
+    const text = MONEY_SLOTS.has(name) ? money(v) : String(v);
+    out = out.split(slot(name)).join(text);
+  }
+  // Belt and braces: the restored prose goes through the same allowlist the
+  // template path uses, so a substitution bug cannot ship a figure stage 2
+  // never computed.
+  return verifyNumbers(out, outcome).ok ? out : null;
+}
+
+const MONEY_SLOTS = new Set([
+  "amount", "headroom", "shortfall", "newIncome", "oldIncome", "drop", "allocated",
+  "gap", "spare", "liquidSavings", "mustPaid", "target", "saved", "remaining",
+  "monthly", "total", "cat1", "cat2", "cat3",
+]);

@@ -4,6 +4,7 @@ import { isDatabaseConfigured, activeAiProvider, isProviderConfigured } from "@/
 import { requirePermission } from "@/lib/household";
 import { readReceipt } from "@/lib/receipt";
 import { apiError } from "@/lib/apiError";
+import { aiConsentGiven } from "@/lib/aiGuard";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,26 @@ export async function POST(request: NextRequest) {
 
   try {
     const ctx = await requirePermission("add_record");
+
+    // A receipt image is the least de-identifiable thing this app handles — and
+    // one from a clinic or a pharmacy is health data, which is SENSITIVE
+    // personal data under s.4 and a stricter regime than the financial data
+    // everyone assumes is the sensitive part. It does not go to a model unless
+    // this user has said it may.
+    //
+    // The decline is a 501, the same shape as "no key configured", because the
+    // client already treats any non-ok response as "scan it on-device instead".
+    // That fallback is not a consolation prize here: it is the zero-egress path
+    // the product is designed around.
+    if (!(await aiConsentGiven(ctx.user.id))) {
+      return NextResponse.json(
+        {
+          error: "ai_consent_missing",
+          message: "AI processing is off for this household. Scanning on-device instead.",
+        },
+        { status: 501 },
+      );
+    }
 
     const provider = activeAiProvider();
     if (!isProviderConfigured(provider)) {

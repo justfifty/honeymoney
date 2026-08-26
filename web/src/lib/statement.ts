@@ -331,6 +331,8 @@ export async function readStatement(
           system: EXTRACT_SYSTEM,
           json: true,
           fn: "readStatement.rows",
+          // Verbatim statement text — descriptors, amounts, dates.
+          dataClass: 2,
           provider,
           meta: { tenantId, source: "statement" },
         });
@@ -452,6 +454,8 @@ async function readMeta(head: string, tenantId: string, provider: AiProvider): P
       system: EXTRACT_SYSTEM,
       json: true,
       fn: "readStatement.meta",
+      // The statement header: account holder, bank, period, balances.
+      dataClass: 2,
       provider,
       meta: { tenantId, source: "statement" },
     });
@@ -486,6 +490,9 @@ Every vendor must appear exactly once. Never invent a nodeId.`,
         "You file merchants into a Malaysian household's spending buckets. Rent, utilities, telco, insurance, loan and school fees are commitments the household has already promised — tier 1. Transfers into savings or investment are tier 2. Groceries, food, fuel, retail and everything discretionary is tier 3. Choose only from the ids given.",
       json: true,
       fn: "readStatement.classify",
+      // The household's real bucket ids and labels, plus every merchant on the
+      // statement.
+      dataClass: 2,
       provider,
       meta: { tenantId, source: "statement" },
     },

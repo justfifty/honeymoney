@@ -13,7 +13,7 @@
 // difference between a pitch that survives a bad conference wifi and one that
 // doesn't.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { t as translate, type Locale } from "@/lib/i18n";
 import {
@@ -24,6 +24,7 @@ import {
   type PersonaKey,
 } from "@/lib/demoData";
 import { describeMovement, savingsGapToNextBand } from "@/lib/hscore";
+import { CATEGORIES } from "@/lib/directory";
 import HScoreView from "../hscore/HScoreView";
 import DashboardView from "./DashboardView";
 import RecordView from "./RecordView";
@@ -37,6 +38,23 @@ const TABS: { key: Tab; icon: string }[] = [
   { key: "hscore", icon: "💛" },
   { key: "more", icon: "⋯" },
 ];
+
+// ── URL addressing ──────────────────────────────────────────────────────────
+// /demo?persona=family&tab=hscore opens straight at one household's tier, the
+// same way /graph?tenantId=&mode= does. Without this, every tier but the
+// default is behind a click — unlinkable in a message, unciteable in a doc, and
+// unreachable to any screenshot tool, which is why the demo video could only
+// ever show one of the four bands.
+//
+// Applied in an effect rather than in the useState initialiser on purpose: this
+// route is `force-static`, so the server renders the default persona, and
+// reading location during the first client render would hydrate into a mismatch.
+const TAB_KEYS: Tab[] = ["record", "dashboard", "hscore", "more"];
+const DIR_KEYS = CATEGORIES.map((c) => c.key);
+const isPersona = (v: string | null): v is PersonaKey =>
+  Boolean(v) && (PERSONA_ORDER as string[]).includes(v as string);
+const isTab = (v: string | null): v is Tab =>
+  Boolean(v) && (TAB_KEYS as string[]).includes(v as string);
 
 /** Edits are keyed per persona so switching households doesn't lose your work. */
 type Edits = Partial<Record<PersonaKey, { added: DemoTxn[]; removed: Set<string> }>>;
@@ -55,6 +73,17 @@ export default function DemoApp({ lang }: { lang: Locale }) {
   const [active, setActive] = useState<PersonaKey>("couple");
   const [tab, setTab] = useState<Tab>("hscore");
   const [edits, setEdits] = useState<Edits>({});
+  const [dir, setDir] = useState<string | null>(null);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const p = q.get("persona");
+    const t = q.get("tab");
+    const d = q.get("dir");
+    if (isPersona(p)) setActive(p);
+    if (isTab(t)) setTab(t);
+    if (d && DIR_KEYS.includes(d)) setDir(d);
+  }, []);
 
   const persona = personas[active];
   const edit = edits[active];
@@ -193,6 +222,8 @@ export default function DemoApp({ lang }: { lang: Locale }) {
         )}
         {tab === "hscore" && (
           <HScoreView
+            key={dir ?? "score"}
+            initialCategory={dir}
             hscore={hscore}
             movement={movement}
             savingsGap={savingsGap}

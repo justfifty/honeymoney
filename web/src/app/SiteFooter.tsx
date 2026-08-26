@@ -35,7 +35,17 @@ export default async function SiteFooter() {
             <Link key={n.href} href={n.href} className="hover:text-amber-600">{tr(n.key)}</Link>
           ))}
         </nav>
-        <p className="text-zinc-400">{tr("footer.meta")}</p>
+        {/* The legal links sit in their own row rather than in NAV above. They
+            are not navigation — a privacy notice and a set of terms have to be
+            reachable from every page to have been *given*, and burying them
+            among nine product links is how they stop being findable. Both are
+            in the always-on static snapshot, so they survive the origin being
+            down; a notice that needs the laptop on is not given either. */}
+        <p className="flex items-center gap-x-3 text-zinc-400">
+          <Link href="/privacy" className="hover:text-amber-600">{tr("footer.privacy")}</Link>
+          <Link href="/terms" className="hover:text-amber-600">{tr("footer.terms")}</Link>
+          <span>{tr("footer.meta")}</span>
+        </p>
       </div>
     </footer>
   );

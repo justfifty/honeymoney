@@ -116,7 +116,7 @@ export default async function AdminPage() {
           </table>
         </div>
         <p className="mt-2 text-xs text-zinc-400">
-          AI cost is an estimate at gemini-2.0-flash rates ($0.10/$0.40 per 1M in/out tokens).
+          AI cost is an estimate at Gemini Flash rates ($0.10/$0.40 per 1M in/out tokens).
           {a.ai.total === 0 && " Currently 0 tokens — no Gemini key configured, so runtime AI spend is genuinely nil."}
           {a.costByCurrency.filter((c) => c.currency !== "USD").map((c) => ` · ${c.total.toFixed(2)} ${c.currency} in non-USD items`)}
         </p>

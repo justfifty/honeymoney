@@ -1,7 +1,7 @@
 # PDPA Compliance Status
 
 **HoneyMoney · Team JUST50**
-Last verified against the **live system**: 25 August 2026 · Owner: DPO *(unnamed — see item H2)*
+Last verified against the **live system**: 25 August 2026 · Owner: Privacy lead — **Chua Kia Wah (Alvin Chua)**. No DPO appointed; below threshold, see BREACH_PROCEDURE.md §1
 
 > One page answering "where do we actually stand?", so the answer never again
 > has to be reconstructed from a chat log. Every ✅ here was verified against

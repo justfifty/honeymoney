@@ -78,6 +78,15 @@ export interface AskConfidence {
   level: ConfidenceLevel;
   /** i18n key explaining the level in the user's own terms. */
   reasonKey: string;
+  /**
+   * i18n key for what to DO about it — paired with `reasonKey`, because the two
+   * are not interchangeable. There used to be one suggestion for every decline,
+   * so a household with no declared income was told "log a couple more weeks
+   * and ask me again": advice that cannot work, since income is read from
+   * declared sources and never from transactions (lib/hscoreExplain.ts). They
+   * could log for a year and get the same refusal.
+   */
+  fixKey: string;
   vars: Record<string, string | number>;
   /**
    * False ⇒ Honey declines to project and says why. Not a hedge appended to a
@@ -99,6 +108,7 @@ export function assessAskConfidence(f: HouseholdFacts): AskConfidence {
     return {
       level: "thin",
       reasonKey: "ask.conf.noIncome",
+      fixKey: "ask.thin.fix.noIncome",
       vars: {},
       projectable: false,
     };
@@ -107,16 +117,17 @@ export function assessAskConfidence(f: HouseholdFacts): AskConfidence {
     return {
       level: "thin",
       reasonKey: "ask.conf.tooThin",
+      fixKey: "ask.thin.fix.records",
       vars: { txns: txnCount, days },
       projectable: false,
     };
   }
   if (f.confidence.ok && monthsWithData >= 3) {
-    return { level: "high", reasonKey: "ask.conf.high", vars: { months: monthsWithData }, projectable: true };
+    return { level: "high", reasonKey: "ask.conf.high", fixKey: "", vars: { months: monthsWithData }, projectable: true };
   }
   // Projectable, but say so plainly rather than in a footnote.
   const weeks = Math.max(1, Math.round(days / 7));
-  return { level: "fair", reasonKey: "ask.conf.fair", vars: { weeks, txns: txnCount }, projectable: true };
+  return { level: "fair", reasonKey: "ask.conf.fair", fixKey: "", vars: { weeks, txns: txnCount }, projectable: true };
 }
 
 // ── the outcome ────────────────────────────────────────────────────────────

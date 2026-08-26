@@ -561,6 +561,7 @@ export default function HScoreView({
   inputs,
   streakMonths,
   unscoredCount = 0,
+  initialCategory = null,
   tr,
 }: {
   hscore: HScore;
@@ -571,9 +572,16 @@ export default function HScoreView({
   streakMonths: number;
   /** Records no criterion can see, because they have no bucket. */
   unscoredCount?: number;
+  /**
+   * Opens straight on a directory category instead of the score. Lets the
+   * catalogue be addressed by URL (/demo?dir=deposits) so it can be linked and
+   * filmed; it is still never reachable FROM a score, which is the guarantee
+   * that matters — see lib/directory.ts.
+   */
+  initialCategory?: string | null;
   tr: Tr;
 }) {
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(initialCategory);
 
   if (category) {
     return <DirectoryView category={category} onBack={() => setCategory(null)} tr={tr} />;

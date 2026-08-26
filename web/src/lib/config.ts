@@ -13,7 +13,17 @@ export const config = {
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
 
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
-  geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+  // A FLOATING ALIAS on purpose. This default used to be a dated id, and on
+  // 2026-08-25 Google shut `gemini-2.0-flash` down: every AI path in the app
+  // started returning 404, and the /setup panel's own advice for a 404 —
+  // "leave the model field empty to use the default" — pointed at the very
+  // model that had been retired. A pinned id turns someone else's deprecation
+  // schedule into an outage here.
+  // `gemini-flash-latest` hot-swaps with each Flash release and Google gives two
+  // weeks' notice by email before a breaking change behind it. Pin a dated id in
+  // GEMINI_MODEL if a specific version is ever needed; the cost figures in
+  // lib/analytics.ts are labelled estimates precisely because this can move.
+  geminiModel: process.env.GEMINI_MODEL ?? "gemini-flash-latest",
 
   // Multi-provider AI: which text engine to use — "gemini" | "groq" | "ollama".
   aiProvider: (process.env.AI_PROVIDER ?? "gemini").toLowerCase(),

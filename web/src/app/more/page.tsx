@@ -44,6 +44,7 @@ const GROUPS: { titleKey: string; items: Item[] }[] = [
   {
     titleKey: "more.g.learn",
     items: [
+      { href: "/directory", key: "nav.directory", desc: "more.d.directory", icon: "🏦" },
       { href: "/guide", key: "nav.guide", desc: "more.d.guide", icon: "📖" },
       { href: "/learn", key: "nav.learn", desc: "more.d.learn", icon: "🎓" },
       { href: "/gallery", key: "gallery.title", desc: "more.d.gallery", icon: "🖼️" },

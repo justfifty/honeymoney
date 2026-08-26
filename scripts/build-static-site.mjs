@@ -64,7 +64,13 @@ const BASE = (argBase > -1 ? process.argv[argBase + 1] : "https://honeymoney-app
 // that is only reachable while the origin happens to be up is not, in any
 // meaningful sense, given. It renders from the snapshot so it survives the
 // laptop being off, exactly like the pages a first-time visitor lands on.
-const ROUTES = ["/", "/demo", "/guide", "/learn", "/gallery", "/deck", "/privacy"];
+//
+// /terms is here for the identical reason, and was missing for a week after the
+// page shipped: honeymoney.app/terms answered 404 while the signup form was
+// already asking people to agree to it. An agreement nobody can read is not an
+// agreement, and the failure was silent — the page existed, the build was fine,
+// and only the public URL was wrong.
+const ROUTES = ["/", "/demo", "/guide", "/learn", "/gallery", "/deck", "/privacy", "/terms"];
 
 const log = (...a) => console.log("  ", ...a);
 

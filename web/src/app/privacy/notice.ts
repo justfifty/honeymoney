@@ -220,14 +220,14 @@ export const NOTICE_SECTIONS: NoticeSection[] = [
     en: {
       heading: "Contact us",
       body: [
-        "For any request under this notice — access, correction, withdrawal, deletion, or a complaint — contact our Data Protection Officer at privacy@honeymoney.app.",
+        "For any request under this notice — access, correction, withdrawal, deletion, or a complaint — contact our privacy lead at privacy@honeymoney.app.",
         "We aim to respond within 21 days.",
       ],
     },
     ms: {
       heading: "Hubungi kami",
       body: [
-        "Untuk sebarang permintaan di bawah notis ini — akses, pembetulan, penarikan balik, pemadaman, atau aduan — hubungi Pegawai Perlindungan Data kami di privacy@honeymoney.app.",
+        "Untuk sebarang permintaan di bawah notis ini — akses, pembetulan, penarikan balik, pemadaman, atau aduan — hubungi ketua privasi kami di privacy@honeymoney.app.",
         "Kami berusaha untuk membalas dalam tempoh 21 hari.",
       ],
     },

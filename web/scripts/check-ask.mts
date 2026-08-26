@@ -28,7 +28,14 @@
 import { pbCreate, pbDelete } from "../src/lib/pocketbase.ts";
 import { parseIntent, validateIntent } from "../src/lib/askIntent.ts";
 import { compute, assessAskConfidence, type HouseholdFacts } from "../src/lib/askCompute.ts";
-import { narrateTemplate, verifyNumbers, allowedNumbers } from "../src/lib/askNarrate.ts";
+import {
+  narrateTemplate,
+  verifyNumbers,
+  allowedNumbers,
+  toWire,
+  wireIsClean,
+  restoreWire,
+} from "../src/lib/askNarrate.ts";
 import { askHoney } from "../src/lib/copilot.ts";
 import { config } from "../src/lib/config.ts";
 
@@ -384,6 +391,75 @@ try {
 } catch (err) {
   failures++;
   console.log("\n  FAIL  the check itself threw: " + (err instanceof Error ? err.message : String(err)));
+}
+
+// ── the wire: what a cloud provider is allowed to receive ──────────────────
+//
+// Everything above proves the model cannot produce a NUMBER. This proves it is
+// never given one. The two are different promises and the second is the one the
+// privacy notice makes.
+console.log("");
+console.log("the wire — a cloud provider receives no household data at all");
+{
+  const facts: HouseholdFacts = {
+    inputs: {
+      netIncomeMonthly: 8400, grossIncomeMonthly: 9600, savingsMonthly: 1250,
+      mustPaidMonthly: 3900, debtRepaymentsMonthly: 800, liquidSavings: 15750,
+      privacyCapMonthly: 1200, privacyTrailing3: [1100, 1150, 1180],
+    },
+    confidence: { ok: true, missing: [], txns30d: 42 },
+    hscore: {
+      score: 71, rawBand: "steady", band: "steady",
+      subScores: [{ key: "emergencyBuffer", points: 8, max: 20 }],
+      confidence: { ok: true, missing: [], txns30d: 42 },
+    },
+    headroomThisMonth: 2310.55,
+    allocatedMonthly: 6090,
+    // A user-authored label of exactly the kind that must never leave.
+    categoryTotals: [{ label: "Ma's dialysis", amount: 940 }],
+    goals: [],
+    history: { days: 96, txnCount: 42, monthsWithData: 4 },
+  };
+
+  const outcome = compute(parseIntent("can we afford RM2,000 for a holiday?"), facts);
+  const wire = toWire(outcome, "en");
+  const sent = JSON.stringify(wire);
+
+  ok("the wire passes its own tripwire", wireIsClean(wire), sent);
+  ok("the wire carries no digits", !/\d/.test(sent), sent);
+  ok("the wire carries no household label", !sent.includes("dialysis"), sent);
+
+  // Every figure stage 2 computed must be absent from the payload, in every
+  // form it could plausibly be written in.
+  const leaked = Object.values(outcome.facts).flatMap((v) => [
+    String(v), String(Math.round(v)), v.toLocaleString("en-MY"),
+  ]).filter((form) => form.length > 2 && sent.includes(form));
+  ok("no computed figure appears in the payload", leaked.length === 0, leaked.join(" "));
+
+  // The round trip still produces a correct answer.
+  const restored = restoreWire(
+    "Spending {amount} would leave you with {bufferAfter} months of buffer.",
+    outcome,
+  );
+  ok("slots are filled from stage 2", restored !== null, String(restored));
+  ok(
+    "…and the restored answer passes the number check",
+    restored !== null && verifyNumbers(restored, outcome).ok,
+    String(restored),
+  );
+
+  // A model that writes its own figure loses the answer, exactly as it does on
+  // the local path.
+  ok(
+    "prose containing a digit is refused",
+    restoreWire("You have about 3 months of buffer left.", outcome) === null,
+    "should be null",
+  );
+  ok(
+    "an invented slot is refused",
+    restoreWire("Your {netWorth} is healthy.", outcome) === null,
+    "should be null",
+  );
 }
 
 console.log("");

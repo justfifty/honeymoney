@@ -164,7 +164,13 @@ const AFFORD_RE =
 const INCOME_RE = /\b(income|salary|gaji|pay|wage|earn)\b/i;
 const DROP_RE = /\b(drop|drops|fall|falls|cut|lose|lost|reduce[sd]?|less|turun|down|hilang)\b/i;
 const RISE_RE = /\b(rise|rises|increase[sd]?|raise|more|up|naik|bonus)\b/i;
-const GOAL_RE = /\b(goal|target|save (?:up )?for|when will|how long until|reach|sasaran|matlamat)\b/i;
+// "on track" / "di landasan" are here because the dashboard SHIPS them: the
+// third Ask Honey suggestion chip is "Are we on track to save this month?"
+// (dash.ask.s3), and nothing matched it — so the one question the app itself
+// invited people to click came back "I'm not sure what to work out there."
+// A canned suggestion the parser cannot read is worse than no suggestion.
+const GOAL_RE =
+  /\b(goal|target|save (?:up )?for|saving this month|save this month|on track|when will|how long until|reach|sasaran|matlamat|di landasan|menyimpan bulan ini)\b/i;
 const SUMMARY_RE =
   /\b(where (?:did|does)|how much (?:did|do|have)|spend(?:ing)? on|breakdown|summary|pattern|most on|biggest)\b/i;
 const HSCORE_RE = /\b(h-?score|score|band|rating|improve my|how (?:do|can) (?:i|we) improve)\b/i;

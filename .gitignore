@@ -112,3 +112,9 @@ deploy/domcloud/.pbhost
 # Voice auditions from scripts/build-demo-video.mjs --samples. Disposable, and
 # kept OUT of .demo-video so a capture run cannot delete them.
 .vo-samples/
+
+# Backup encryption key — losing this makes every R2 backup unreadable.
+# Keep an offline copy; never commit it.
+deploy/.pb-backup-key
+deploy/.r2-credentials.json
+restored/

@@ -76,6 +76,13 @@ function explainProviderFailure(provider: AiProvider, raw: string): string {
       : `${name} rejected that key. Copy it again from the provider's console — keys are long and a truncated paste looks identical to a wrong one. (${detail})`;
   }
   if (code === "404") {
+    // A retired model and a mistyped one both come back 404 and need opposite
+    // advice. Worse, "leave it empty" is actively wrong when the DEFAULT is what
+    // was retired — which is what happened when Google shut gemini-2.0-flash
+    // down on 2026-08-25: the panel told people to clear the field, and clearing
+    // it selected the dead model again. Providers say so in words, so read them.
+    if (/no longer (available|supported)|has been (retired|deprecated)|is deprecated/i.test(raw))
+      return `${name} has retired that model. Clear the model field to use the current default, or paste the replacement id from the message below. (${detail})`;
     return `${name} does not recognise that model name. Leave the model field empty to use the default. (${detail})`;
   }
   if (code === "429") {
@@ -127,6 +134,7 @@ export async function POST(request: Request) {
     // inside an unrelated question about their savings.
     try {
       const reply = await aiGenerate("Reply with exactly: OK", {
+        dataClass: 0,
         provider,
         creds: { provider, apiKey, url, model: model || undefined },
         fn: "key_validate",

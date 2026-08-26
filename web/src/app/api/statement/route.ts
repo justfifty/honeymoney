@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/household";
 import { PdfPasswordError } from "@/lib/pdf";
 import { readStatement } from "@/lib/statement";
 import { apiError } from "@/lib/apiError";
+import { aiConsentGiven } from "@/lib/aiGuard";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,21 @@ export async function POST(request: NextRequest) {
 
   try {
     const ctx = await requirePermission("add_record");
+
+    // Unlike a receipt, statement import has no on-device path to fall back to
+    // — so this refuses outright rather than degrading. Saying so plainly is
+    // better than a feature that silently returns nothing: the household can
+    // turn AI on, or keep importing by CSV.
+    if (!(await aiConsentGiven(ctx.user.id))) {
+      return NextResponse.json(
+        {
+          error: "ai_consent_missing",
+          message:
+            "Statement import reads the PDF with an AI model, and AI processing is off for this household. Turn it on under Settings → Privacy, or import a CSV instead.",
+        },
+        { status: 403 },
+      );
+    }
 
     const provider = activeAiProvider();
     if (!isProviderConfigured(provider)) {

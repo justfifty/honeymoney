@@ -36,6 +36,12 @@ export async function POST(request: Request) {
     const result = await askHoney(question.slice(0, 300), tenantId, locale, {
       viewerMemberId: ctx?.memberId ?? null,
       redact: !isDemo,
+      // Whose `ai_processing` consent governs. The asker's, because the answer
+      // is theirs — and any data belonging to a member who has not consented is
+      // already excluded by the viewerMemberId redaction above. The privacy
+      // filter doubles as the consent filter, so a household of two does not
+      // need a third rule.
+      userId: ctx?.user.id ?? null,
     });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {

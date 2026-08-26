@@ -368,6 +368,9 @@ export async function analyzeReceipt(
     system: ANALYZE_SYSTEM,
     json: true,
     fn: "analyzeReceipt",
+    // The prompt carries this household's bucket list, recent spending and full
+    // vendor history as JSON. Nothing about it is de-identified.
+    dataClass: 2,
     provider,
     meta: { tenantId, source: "receipt" },
   });

@@ -44,7 +44,7 @@ _Free tier: rate-limited but no card required. Great for the demo._
    ```
    AI_PROVIDER=gemini
    GEMINI_API_KEY=your_key_here
-   GEMINI_MODEL=gemini-2.0-flash
+   GEMINI_MODEL=gemini-flash-latest
    ```
 4. Restart → `/api/ai/check` → `gemini` shows `ok: true`.
 

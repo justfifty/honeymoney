@@ -7,11 +7,16 @@
 
 import {
   config,
-  activeAiProvider,
   isProviderConfigured,
   isPocketBaseConfigured,
   type AiProvider,
 } from "./config";
+import {
+  assertClassAllowed,
+  isLocalProvider,
+  providerForClass,
+  type DataClass,
+} from "./aiGuard";
 import { pbCreate } from "./pocketbase";
 
 interface Usage {
@@ -20,12 +25,34 @@ interface Usage {
   total: number;
 }
 
+/**
+ * What was logged about a call, beyond how many tokens it burned.
+ *
+ * The token counts answer "what did this cost". They cannot answer "what
+ * personal data left this household, and when" — which is the question an
+ * access request and a breach assessment both open with. Minimisation is a
+ * mitigating factor only where it can be evidenced, so the ledger records the
+ * class of the payload, whether it stayed on local hardware, and how big it
+ * was. Not the payload itself: a log of what you were careful not to send is a
+ * second copy of the thing you were careful not to send.
+ */
+export interface CallMeta {
+  tenantId?: string;
+  source?: string;
+  dataClass?: DataClass;
+  local?: boolean;
+  bytes?: number;
+}
+
+const egressBytes = (prompt: string, system?: string, image?: string): number =>
+  prompt.length + (system?.length ?? 0) + (image?.length ?? 0);
+
 async function logUsage(
   fn: string,
   provider: string,
   model: string,
   u: Usage,
-  meta?: { tenantId?: string; source?: string },
+  meta?: CallMeta,
 ): Promise<void> {
   if (!isPocketBaseConfigured()) return;
   try {
@@ -38,6 +65,9 @@ async function logUsage(
       tenant: meta?.tenantId ?? "",
       source: meta?.source ?? "",
       ok: true,
+      data_class: meta?.dataClass ?? 2,
+      local: meta?.local ?? false,
+      egress_bytes: meta?.local ? 0 : (meta?.bytes ?? 0),
     });
   } catch {
     /* telemetry must never break a request */
@@ -60,7 +90,15 @@ export interface GenOpts {
   fn?: string;
   provider?: AiProvider;
   creds?: AiCreds;
-  meta?: { tenantId?: string; source?: string };
+  meta?: CallMeta;
+  /**
+   * What is in this payload. REQUIRED, and required for the same reason the
+   * `resolve()` comment below gives about credentials: an optional safety field
+   * is how the tenth call site gets added that omits it. TypeScript refusing to
+   * compile a call that has not declared its class is the enforcement; a
+   * convention that call sites "should" set it is not.
+   */
+  dataClass: DataClass;
 }
 
 // The household's credentials override the server's environment, field by
@@ -95,9 +133,30 @@ function resolve(opts: GenOpts, p: AiProvider, vision = false) {
 const NO_KEY = (engine: string, envVar: string) =>
   `No ${engine} key. Set ${envVar} on the server, or add your household's own key under Setup.`;
 
-// Generate text with the chosen (or configured) provider.
-export async function aiGenerate(prompt: string, opts: GenOpts = {}): Promise<string> {
-  const provider = opts.provider ?? opts.creds?.provider ?? activeAiProvider();
+/**
+ * Decide who carries this payload, refuse the routing if it may not leave, and
+ * stamp the ledger fields onto `meta` so every logUsage() call below records
+ * them without each provider function having to remember to.
+ */
+function route(opts: GenOpts, bytes: number): { provider: AiProvider; opts: GenOpts } {
+  const provider = providerForClass(opts.dataClass, opts.provider ?? opts.creds?.provider);
+  assertClassAllowed(opts.dataClass, provider);
+  const local = isLocalProvider(provider);
+  return {
+    provider,
+    opts: {
+      ...opts,
+      // A household's own cloud credentials must not smuggle a class-2 payload
+      // past a routing decision that sent it to the local engine.
+      creds: opts.creds?.provider === provider ? opts.creds : undefined,
+      meta: { ...opts.meta, dataClass: opts.dataClass, local, bytes },
+    },
+  };
+}
+
+// Generate text with the provider this payload's data class permits.
+export async function aiGenerate(prompt: string, o: GenOpts): Promise<string> {
+  const { provider, opts } = route(o, egressBytes(prompt, o.system));
   const fn = opts.fn ?? "aiGenerate";
   if (provider === "groq") return groqGen(prompt, opts, fn);
   if (provider === "ollama") return ollamaGen(prompt, opts, fn);
@@ -201,9 +260,18 @@ async function ollamaGen(prompt: string, opts: GenOpts, fn: string): Promise<str
 // three providers can do it, but each wants the image in a different envelope
 // and under a different model id — hence one entrypoint over three shapes.
 
-export interface VisionOpts extends GenOpts {
+/**
+ * Vision carries no `dataClass` because there is only one honest answer: a
+ * photograph of a receipt is household data, and no framing of the request
+ * makes it otherwise. Omitting the field rather than asking callers to write
+ * `dataClass: 2` removes the possibility of one of them writing something else.
+ */
+export interface VisionOpts extends Omit<GenOpts, "dataClass"> {
   mimeType: string;
 }
+
+/** VisionOpts after route() has stamped the class it was always going to have. */
+type VisionOptsResolved = VisionOpts & { dataClass: DataClass };
 
 export function visionModelOf(p: AiProvider): string {
   if (p === "groq") return config.groqVisionModel;
@@ -215,16 +283,23 @@ export function visionModelOf(p: AiProvider): string {
 export async function aiVision(
   prompt: string,
   imageBase64: string,
-  opts: VisionOpts,
+  o: VisionOpts,
 ): Promise<string> {
-  const provider = opts.provider ?? opts.creds?.provider ?? activeAiProvider();
+  // A document image is household data by construction — there is no
+  // de-identified way to send a photograph of a receipt — so vision is pinned
+  // to class 2 whatever the caller passed. This is the path most likely to
+  // carry sensitive personal data: a receipt from a clinic or a pharmacy is
+  // health data about an identified person, which is a stricter regime than the
+  // financial data everyone assumes is the sensitive part here.
+  const routed = route({ ...o, dataClass: 2 }, egressBytes(prompt, o.system, imageBase64));
+  const opts = routed.opts as VisionOptsResolved;
   const fn = opts.fn ?? "aiVision";
-  if (provider === "groq") return groqVision(prompt, imageBase64, opts, fn);
-  if (provider === "ollama") return ollamaVision(prompt, imageBase64, opts, fn);
+  if (routed.provider === "groq") return groqVision(prompt, imageBase64, opts, fn);
+  if (routed.provider === "ollama") return ollamaVision(prompt, imageBase64, opts, fn);
   return geminiVision(prompt, imageBase64, opts, fn);
 }
 
-async function geminiVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
+async function geminiVision(prompt: string, image: string, opts: VisionOptsResolved, fn: string): Promise<string> {
   const { key, model } = resolve(opts, "gemini", true);
   if (!key) throw new Error(NO_KEY("Gemini", "GEMINI_API_KEY"));
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
@@ -251,17 +326,20 @@ async function geminiVision(prompt: string, image: string, opts: VisionOpts, fn:
     .trim();
   if (!text) throw new Error("Gemini returned an empty response.");
   const um = data?.usageMetadata ?? {};
+  // `model`, not config.geminiModel: this call may have run on a household's own
+  // key and model, and logging the server's id filed those tokens under a model
+  // that never saw them. The ledger is what /admin costs the month from.
   await logUsage(
     fn,
     "gemini",
-    config.geminiModel,
+    model,
     { prompt: um.promptTokenCount || 0, output: um.candidatesTokenCount || 0, total: um.totalTokenCount || 0 },
     opts.meta,
   );
   return text;
 }
 
-async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
+async function groqVision(prompt: string, image: string, opts: VisionOptsResolved, fn: string): Promise<string> {
   const { key, model } = resolve(opts, "groq", true);
   if (!key) throw new Error(NO_KEY("Groq", "GROQ_API_KEY"));
   // Groq speaks the OpenAI vision shape: an image_url whose url is a data: URI.
@@ -294,7 +372,7 @@ async function groqVision(prompt: string, image: string, opts: VisionOpts, fn: s
   return text;
 }
 
-async function ollamaVision(prompt: string, image: string, opts: VisionOpts, fn: string): Promise<string> {
+async function ollamaVision(prompt: string, image: string, opts: VisionOptsResolved, fn: string): Promise<string> {
   const { model, url: base } = resolve(opts, "ollama", true);
   if (!base) throw new Error(NO_KEY("Ollama", "OLLAMA_URL"));
   const messages: unknown[] = [];
@@ -359,6 +437,7 @@ export async function aiHealth(creds?: AiCreds): Promise<ProviderHealth[]> {
         provider: p,
         creds,
         fn: "agentic_check",
+        dataClass: 0,
         system: "You are a health probe. Reply with exactly the requested token, nothing else.",
       });
       out.push({

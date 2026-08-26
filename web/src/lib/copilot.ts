@@ -46,7 +46,18 @@ import { isProviderConfigured, activeAiProvider } from "./config";
 import { STATUTORY_FACTS, isStatutoryQuestion, statutoryAnswer } from "./statutory";
 import { parseIntent, type Intent } from "./askIntent";
 import { compute, type HouseholdFacts, type Outcome } from "./askCompute";
-import { narrateTemplate, narratePrompt, verifyNumbers, NARRATE_SYSTEM } from "./askNarrate";
+import {
+  narrateTemplate,
+  narratePrompt,
+  verifyNumbers,
+  NARRATE_SYSTEM,
+  toWire,
+  wirePrompt,
+  wireIsClean,
+  restoreWire,
+  WIRE_SYSTEM,
+} from "./askNarrate";
+import { aiConsentGiven, isLocalProvider, providerForClass } from "./aiGuard";
 import { t, type Locale } from "./i18n";
 
 export interface HoneyAnswer {
@@ -70,6 +81,14 @@ export interface AskOptions {
   viewerMemberId?: string | null;
   /** Off for the fictional demo personas, whose "private" spend is invented. */
   redact?: boolean;
+  /**
+   * Who is asking. Used only to read their `ai_processing` consent — never to
+   * widen what they can see, which is `viewerMemberId`'s job.
+   *
+   * Absent means an anonymous visitor on the public demo, where the personas
+   * are fictional and there is no data subject whose consent could be missing.
+   */
+  userId?: string | null;
 }
 
 // ── fact gathering ─────────────────────────────────────────────────────────
@@ -178,53 +197,92 @@ export async function askHoney(
   // ── STAGE 3: narrate. ──
   const template = narrateTemplate(outcome, locale);
 
+  // The answer, whenever a model is not going to be involved. Named rather than
+  // repeated at the seven places below that reach it, because a fallback that is
+  // spelled out seven times is a fallback that will eventually be spelled wrong
+  // once — and the wrong spelling would be the one that returns a model answer.
+  const fellBack = (rephrased = true): HoneyAnswer => ({
+    answer: template,
+    source: "computed",
+    kind: outcome.kind,
+    confidence: outcome.confidence.level,
+    ...(rephrased ? { rephrasedByFallback: true } : {}),
+  });
+
   // No key, nothing to compute, or nothing to say — the template IS the answer,
   // and it is a correct one. Not a degraded mode.
   if (!isProviderConfigured(activeAiProvider()) || outcome.cannotAnswer || !Object.keys(outcome.facts).length) {
-    return {
-      answer: template,
-      source: "computed",
-      kind: outcome.kind,
-      confidence: outcome.confidence.level,
-    };
+    return fellBack(false);
   }
 
+  // ── THE CONSENT GATE ─────────────────────────────────────────────────────
+  //
+  // `ai_processing` is an optional, off-by-default purpose in lib/consent.ts.
+  // It was collected at signup, rendered in settings, and stored in an
+  // append-only ledger — and until now no AI call site read it. hasConsent()
+  // had no callers anywhere in the application.
+  //
+  // Checked HERE rather than at the route, because this is the last point that
+  // knows the household and the first that is about to involve a model, and
+  // because every caller of askHoney() would otherwise have to remember. The
+  // decline is not an error: the template is a complete, correct, fully
+  // translated answer, so a household that declines AI loses some warmth of
+  // phrasing and nothing else.
+  if (!(await aiConsentGiven(opts.userId))) return fellBack(false);
+
   try {
-    const facts_ = outcome.kind === "statutory" ? `\n\n${STATUTORY_FACTS}` : "";
     // The household's own engine if it has one, the server's otherwise. Only
     // stage 3 - the phrasing - ever sees a model, so this cannot change any
     // figure: stage 2 already computed every number, and the allowlist check
     // below still discards an answer that invents one, whoever is paying.
     const creds = (await resolveAiCreds(tenantId).catch(() => null)) ?? undefined;
-    const prose = await aiGenerate(narratePrompt(outcome, question, locale) + facts_, {
-      system: NARRATE_SYSTEM,
+    const provider = providerForClass(1, creds?.provider);
+
+    // ── THE FORK THAT DECIDES WHAT LEAVES ────────────────────────────────
+    //
+    // On a LOCAL engine nothing leaves the machine, so the model gets the full
+    // context — the question, the rendered template, the figures — and phrases
+    // better for having it.
+    //
+    // On a CLOUD engine it gets slot names and nothing else. Not a redacted
+    // version of the household's data: no version of it. The figures are put
+    // back here, after the answer has been checked.
+    if (isLocalProvider(provider)) {
+      const facts_ = outcome.kind === "statutory" ? `\n\n${STATUTORY_FACTS}` : "";
+      const prose = await aiGenerate(narratePrompt(outcome, question, locale) + facts_, {
+        system: NARRATE_SYSTEM,
+        fn: "askHoney",
+        creds,
+        dataClass: 2,
+        meta: { tenantId, source: "web" },
+      });
+      // The enforcement. A model that introduced any figure stage 2 did not
+      // compute loses its answer entirely — no partial credit, no repair pass.
+      // Repairing it would mean deciding which of its numbers to trust, and the
+      // whole point is that we cannot.
+      if (!verifyNumbers(prose, outcome).ok) return fellBack();
+      return { answer: prose, source: "ai", kind: outcome.kind, confidence: outcome.confidence.level };
+    }
+
+    const wire = toWire(outcome, locale);
+    // If the payload does not pass its own tripwire we do not send it at all.
+    // The template is already a correct answer, so failing closed costs a
+    // slightly stiffer sentence and nothing else.
+    if (!wireIsClean(wire)) return fellBack();
+
+    const prose = await aiGenerate(wirePrompt(wire), {
+      system: WIRE_SYSTEM,
       fn: "askHoney",
       creds,
+      dataClass: 1,
       meta: { tenantId, source: "web" },
     });
 
-    // The enforcement. A model that introduced any figure stage 2 did not
-    // compute loses its answer entirely — no partial credit, no repair pass.
-    // Repairing it would mean deciding which of its numbers to trust, and the
-    // whole point is that we cannot.
-    const check = verifyNumbers(prose, outcome);
-    if (!check.ok) {
-      return {
-        answer: template,
-        source: "computed",
-        kind: outcome.kind,
-        confidence: outcome.confidence.level,
-        rephrasedByFallback: true,
-      };
-    }
-    return { answer: prose, source: "ai", kind: outcome.kind, confidence: outcome.confidence.level };
+    const restored = restoreWire(prose, outcome);
+    if (!restored) return fellBack();
+    return { answer: restored, source: "ai", kind: outcome.kind, confidence: outcome.confidence.level };
   } catch {
-    return {
-      answer: template,
-      source: "computed",
-      kind: outcome.kind,
-      confidence: outcome.confidence.level,
-    };
+    return fellBack(false);
   }
 }
 

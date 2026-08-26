@@ -88,6 +88,31 @@ each of those produces a snapshot that looks fine and breaks in a browser.
 **Re-run `site:build` + `site:deploy` after any change to the public pages.** The
 snapshot is a point-in-time copy; it does not update itself.
 
+### A plain `npm run build` can take the whole site down
+
+Not only the public pages — **every** page, including the signed-in app.
+
+`/_next/static/*` is served from the snapshot (see the routing table above), while
+`/dashboard`, `/login`, `/graph` and the rest are rendered by an origin. A build
+changes the hashed asset filenames. So the moment `web/.next` is rebuilt and the
+origin restarts, the origin serves HTML pointing at `_next/static` filenames the
+snapshot has never heard of, the stylesheet 404s, and every route in the app —
+public and private — renders as unstyled HTML. It looks like a catastrophic CSS
+regression and it is a stale copy of one directory.
+
+Observed 2026-08-25: a `npm run build` run only to check that a change compiled
+did exactly this to `/`, `/login`, `/graph`, `/hscore`, `/more` and `/record`.
+`npm run site:publish` restored it in under a minute.
+
+So:
+
+- To **check a change compiles**, never touch the live build:
+  `NEXT_DIST_DIR=.next-verify npm run build` (and `git checkout -- web/tsconfig.json`
+  afterwards — `next build` edits it).
+- To **ship a change**, finish the job: build → restart the origin →
+  `npm run site:publish`. A rebuild without a republish is a half-deploy, and the
+  half that is missing is the one holding the stylesheet.
+
 ## First-time setup (already done, recorded for a rebuild)
 
 1. `cloudflared tunnel route dns honeymoney origin.honeymoney.app`

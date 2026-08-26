@@ -1,7 +1,7 @@
 # Personal Data Breach — Response Procedure
 
 **HoneyMoney · Team JUST50**
-Version 1.0 · 24 August 2026 · Owner: Data Protection Officer
+Version 1.0 · 24 August 2026 · Owner: Privacy lead (Alvin Chua)
 
 > Malaysia's PDPA, as amended in 2024, requires a data controller to notify the
 > Personal Data Protection Commissioner of a personal data breach, and to notify
@@ -41,12 +41,60 @@ Suspicion is enough to start the clock. The clock starts when we become
 
 | Role | Who | Responsibility |
 |---|---|---|
-| **Data Protection Officer (DPO)** | *[NAME — must be filled in]* | Owns this procedure. Decides on notification. Single point of contact for the Commissioner. |
-| **Technical lead** | *[NAME]* | Containment, evidence, restoration. |
-| **Deputy** | *[NAME]* | Acts if the DPO is unreachable within 4 hours. |
+| **Privacy lead** | **Alvin Chua** · privacy@honeymoney.app | Owns this procedure. Decides on notification. Single point of contact for the Commissioner and for data subjects. |
+| **Technical lead** | **Young Pong** | Containment, evidence, restoration. |
+| **Deputy** | **Young Pong** | Acts if the privacy lead is unreachable within 4 hours. |
 
 > The deputy row is not administrative padding. A 72-hour clock that starts on a
 > Friday night does not pause because one person is on a flight.
+
+### Why "privacy lead" and not "DPO"
+
+The title is deliberate and it is not modesty.
+
+Appointing a **Data Protection Officer** is a threshold obligation under the
+amended Act, and naming someone DPO voluntarily is generally read as accepting
+the whole statutory package that comes with it: notification to the Commissioner
+on a clock running from the date of appointment, published contact details, and
+competency and independence requirements. A team that adopts the title for good
+governance reasons can acquire a filing deadline it never intended to take on.
+
+**Our position: we are below the threshold and have not appointed a DPO.** The
+thresholds turn on the number of data subjects processed, on sensitive personal
+data, and on regular systematic monitoring. HoneyMoney is pre-launch, with seed
+households and a demo tenant, and clears none of them.
+
+That position is recorded here rather than left implicit, because a reasoned and
+dated conclusion is defensible in a way that an unexplained absence is not. It
+has **not** been confirmed against the current JPDP guideline. Confirm it before
+launch and write the date below.
+
+> Threshold position last reviewed: **26 August 2026** · reviewed by: *[NAME]* ·
+> confirmed against JPDP guideline: **NO — outstanding**
+
+### When we must appoint one anyway
+
+Not a one-time check. These are the tripwires; crossing any of them turns the
+privacy lead into a DPO appointment with a filing deadline attached.
+
+- **Volume.** Real households cross into the thousands. Check the current
+  threshold figures rather than trusting a number remembered from here.
+- **Sensitive personal data at scale.** Receipts from clinics and pharmacies are
+  health data. The moment those are processed routinely rather than incidentally,
+  the sensitive-data threshold is the one that binds, and it is lower.
+- **Systematic monitoring.** Any always-on profiling or behavioural scoring
+  across the user base — which is one reason the directory in `lib/directory.ts`
+  is a catalogue and not a recommender.
+- **Employer or sponsor pilots.** Processing on behalf of an organisation changes
+  both the volume and the character of what we hold.
+- **Incorporation.** A company is a data controller in its own right. Whoever
+  signs the processor agreements should revisit this at the same time.
+
+**Nothing here moves the liability.** With or without the title, the data
+controller — currently the individuals named above, until Team JUST50 is
+incorporated — remains accountable under the Act. The role creates an owner for
+this procedure and a contact point for data subjects. It does not transfer risk
+onto one person's name, and it never did.
 
 ---
 
@@ -110,7 +158,7 @@ overstate it, because re-identification from spending patterns is possible.
 
 Include: what happened, when, categories of data, approximate number of people
 affected, likely consequences, what we have done to contain it, what we are doing
-to prevent recurrence, and DPO contact details.
+to prevent recurrence, and privacy lead contact details.
 
 If facts are still emerging, **notify anyway and supplement later.** A late
 notification is a separate failure from the breach itself.
@@ -119,7 +167,7 @@ notification is a separate failure from the breach itself.
 
 Plain language, English and Bahasa Malaysia, sent to the address on their
 account. Say what happened, what data, what we have done, what they should do
-(change password, watch for phishing), and how to reach the DPO.
+(change password, watch for phishing), and how to reach the privacy lead.
 
 Do not minimise, and do not use the word "may" to do work that "did" should do.
 
@@ -156,7 +204,8 @@ Within 14 days of closing the incident:
 
 | | |
 |---|---|
-| DPO | *[NAME]* · privacy@honeymoney.app |
+| Privacy lead | **Alvin Chua** · privacy@honeymoney.app |
+| Deputy | **Young Pong** · privacy@honeymoney.app |
 | Commissioner | Jabatan Perlindungan Data Peribadi (JPDP), Malaysia — confirm current address and portal at time of use |
 | Hosting provider | DOM Cloud (application + PocketBase, Singapore) |
 | CDN / edge / backups | Cloudflare (Pages, R2 — Asia-Pacific) |
@@ -167,9 +216,10 @@ Within 14 days of closing the incident:
 
 Honest, so nobody discovers them mid-incident:
 
-- **The DPO is not yet named**, and has not been notified to the Commissioner.
-  Until both are done, §1 and §7 are incomplete and this procedure cannot be
-  executed as written.
+- **The below-threshold position in §1 is unverified.** We have concluded that no
+  DPO appointment is required and recorded why. That conclusion has not been
+  checked against the current JPDP guideline, and it expires the moment any
+  tripwire in §1 is crossed. Re-read §1 before launch.
 - **`privacy@honeymoney.app` must be confirmed to actually deliver.** The domain
   has MX records; the routing rule for this address has not been verified.
 - **There is no automated detection.** Every path into this procedure today is a

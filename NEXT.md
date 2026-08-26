@@ -5,6 +5,143 @@
 
 ---
 
+## ✅ Shipped — 2026-08-25 (afternoon) — the deck is one file, the video quotes it, and AI works again
+
+**Where we stopped.** Everything below is deployed and verified live on honeymoney.app.
+Two things wait on a human; both are under *Pick up here*.
+
+### The pitch artefacts are finally one story
+
+- **The deck is the Canva PDF, and nothing else pretends to be.** The demo video used to
+  render its slides from `PITCH_DECK.html` — which stopped being the deck the day the
+  Canva export became the upload artefact, so the video was quoting slides from a file
+  nobody ships. `build-demo-video.mjs` now rasterises pages straight out of
+  `HoneyMoney_Pitch_Deck_MAIC2026.pdf` with `pdftoppm`, and `deck: n` in the beat sheet is
+  the PDF page number you would type into a viewer. Two guards: the build fails if a beat
+  asks for a page the deck lacks, and fails if the deck stops being 16:9 (the scaler would
+  silently stretch it rather than letterbox).
+- **Slide 11 lost "for the Year 3 referral layer"** (edited in Canva). Three things had been
+  collapsed into that phrase: *showing* the catalogue needs no licence and already ships;
+  *taking a fee* is gated on counsel plus a signed provider agreement, which is a contract
+  gate and not a calendar one; only *material referral revenue* is genuinely Year 3, and
+  slide 9's Phase 3 already says so.
+- **SDG list reconciled.** Both decks say **SDG 1 and 8**. The Project Summary said
+  "1, 3 (Good Health), 8", `docs/REGISTRATION.md` said the same, and the video caption said
+  "1, 4 & 8" — three artefacts, three lists. All now follow the deck.
+- **AI Disclosure gained three claims the deck makes and it did not**: no analytics SDKs and
+  no data brokers, the append-only hash-chained transaction ledger, and the deck's own
+  honest caveat — *alignment with PDPA 2010, not certified compliance, no third-party audit
+  yet*. Checked and deliberately NOT changed: the disclosure says Honey answers "in plain
+  English or Malay" while the deck says six languages. Both are right — `LOCALES` has six,
+  but the `ask.*` strings exist only in `en` and `ms`.
+- Dated copies refreshed in `docs/deck/Submission/`; all four served from the site.
+
+### The demo video: 2:53, and no frame sits still
+
+- **Pages pan.** A new `scroll:` field moves the crop window down the page across a beat on
+  a smoothstep. Every web beat has one. The six `/graph` views get a gentle drift — that
+  page is one screenful and there is genuinely nothing below it to reveal.
+- **Narrow pages are captured narrow.** `vw: NARROW` (1280) re-renders at a 1280px CSS
+  viewport and 1.5x device pixels — still 1920 real pixels, nothing upscaled. `/demo`,
+  `/dashboard`, `/guide` and `/learn` put content in a ~512–672px column; at 1920 that is
+  27% of the frame and body text lands unreadable.
+- **The four H-Score tiers are four beats, one URL each**, panning each household's own
+  arithmetic. Plus new beats for the Academy quiz and the product directory, and a
+  business-model beat saying referrals are later, licensed and opt-in — because
+  `PARTNER_OFFERS_ENABLED = false` and `VOUCHERS` is an empty array.
+- **Deck slides are letterboxed** to clear the caption band. The Canva slides put body copy
+  where the HTML deck had a footer, and the band was cutting the last line off two cards on
+  Drivers & Impact.
+- **Two pipeline bugs fixed.** Capture now runs with `--force-prefers-reduced-motion`: the
+  entrance animations were a *race*, not a wait — three identical runs of the landing page
+  gave two good frames and one frozen mid-fade with the product shot unpainted, and raising
+  the virtual-time budget made it worse. The site already turns `.hm-animate` off under
+  reduced motion, so this renders every element at its final state. And the VO cache is now
+  keyed on the LINE, not just voice + beat index — rewriting a beat's `vo` and rebuilding
+  with `--no-shoot` used to silently reuse the previous take, so caption and narration
+  drifted apart with nothing failing.
+- **Compressed to 19.2 MB (CRF 25, was 29.3).** Not cosmetic: Cloudflare Pages rejects files
+  over 25 MiB, so the uncompressed cut could not have shipped at all.
+
+### Product changes this needed, all live
+
+- **`/demo?persona=individual|couple|family|thriving`, `&tab=`, `&dir=`** — the four tiers
+  and the product directory are now addressable, the way `/graph` takes `?tenantId=` and
+  `?mode=`. An unlinkable tier is also an uncitable one, and it was unreachable to any
+  screenshot tool, which is why the video could previously only ever show one of four bands.
+- **`/directory` exists**, with a More entry. The app was already *promising* it: Honey's
+  decline for a product question reads "There's a directory of licensed Malaysian providers
+  under More › Directory" (`ask.decline.routed`) and no such entry existed. The compliance
+  position is intact — this component never sees a score, band or household,
+  `getListings(category, sort)` still refuses to accept one, sorting stays
+  alphabetical/by-provider, and there is **deliberately no search box**: a relevance ranking
+  IS a recommendation, and a recommendation is the licensed act.
+
+### Ask Honey — and what was actually wrong with it
+
+- **It never needed an AI key.** parse → compute → narrate; `askCompute.ts` is pure and
+  `narrateTemplate()` answers in full without a model. The model only rephrases, and every
+  number in its prose is checked against the computed facts before display. The Gemini
+  outage was never why it was failing.
+- **"Cannot detect the income" was data, not a defect** — and the advice attached to it was
+  wrong. `netIncomeMonthly <= 0` produced `ask.conf.noIncome` followed by the single generic
+  suggestion "log a couple more weeks and ask me again": advice that *cannot* work, because
+  income is summed from `income_source` nodes and never from transactions
+  (`hscoreExplain.ts` — "NO TRANSACTION IS EVER INCOME"). They could log for a year and get
+  the same refusal. `AskConfidence` now carries a `fixKey` paired with `reasonKey`, and the
+  no-income one says to declare it on the Graph screen.
+- **A shipped suggestion chip did not parse.** `dash.ask.s3` — "Are we on track to save this
+  month?" — matched no intent regex, so the one question the app itself invited you to click
+  came back "I'm not sure what to work out there." `GOAL_RE` now covers "on track" and the
+  Malay "di landasan". All four chips answer, in both languages.
+
+### The Gemini outage, and the deployment shape behind it
+
+- **Google shut `gemini-2.0-flash` down.** It was hardcoded in `config.ts` *and* pinned again
+  in `web/.env.local`, so the /setup panel's own 404 advice — "leave the model field empty to
+  use the default" — selected the dead model again. The default is now
+  **`gemini-flash-latest`**, deliberately a floating alias: a pinned dated id is what turned
+  someone else's deprecation schedule into our outage. The 404 message now tells a *retired*
+  model apart from a *mistyped* one. Also fixed: `geminiVision` logged token usage against
+  `config.geminiModel` even when a household ran on its own key and model, so /admin costed
+  those tokens under a model that never saw them.
+- **Local Ollama is configured on the laptop** (`AI_PROVIDER=ollama`, `llama3.2`, `llava` for
+  vision — `llama3.2-vision` is not pulled). Zero cost, zero cloud. Warm latency **403 ms**;
+  the first call is ~24 s while the model loads. This is what let the whole AI path be
+  verified end to end without a paid key. Remove those lines from `web/.env.local` to go back
+  to Gemini.
+- **⚠️ The laptop is NOT the public origin any more.** honeymoney.app's app routes are served
+  by **DOM Cloud**; `/`, `/demo`, `/learn`, `/deck` and **all of `/_next/static/*`** come from
+  the Cloudflare Pages snapshot. Verified by fingerprint: `/hscore` on the apex matches
+  `honeymoney-app.domcloud.dev` byte for byte and differs from `localhost:3000`.
+- **The half-deploy is the outage.** This morning's unstyled site was a DOM Cloud build
+  (10:56) shipped without a matching `site:publish`: the origin served HTML pointing at
+  `_next/static` filenames the snapshot had never heard of, the stylesheet 404'd, and every
+  route — public and private — rendered as bare HTML. Written up in `deploy/pages/README.md`.
+  **Build → restart origin → `npm run site:publish`, always.** To merely check that a change
+  compiles, use `NEXT_DIST_DIR=.next-verify npm run build`. Note `push-build.ps1` needs
+  `-KeyFile` passed explicitly when invoked from a nested `powershell -File` call —
+  `$PSScriptRoot` comes back empty and it looks for a key at the filesystem root.
+
+### Pick up here
+
+- [ ] **The user's own household still has no declared income**, so Ask Honey will keep
+      declining for it — correctly. Add an income source on **/graph** (not /record).
+      Projections additionally need ≥8 records over ≥14 days.
+- [ ] **Retry the household Gemini key** in /setup with the **Model field blank** — the
+      dead-model fix is live. If it still 404s, DOM Cloud's `~/.env.honeymoney` may pin
+      `GEMINI_MODEL=gemini-2.0-flash`; that file is on the host and was not inspected.
+- [ ] **Decide what `PITCH_DECK.html` is for.** It is now a stale mirror of a deck edited in
+      Canva. Either fold the Canva wording back into it once more, or retire it and let the
+      PDF be the only deck. Nothing depends on it any more — the video does not.
+- [ ] **Both upload docs sit at 500/500 words.** No headroom; the next added sentence has to
+      displace one. `node scripts/check-summary-words.mjs` is the gate.
+- [ ] **`lib/ai.ts` calls the Gemini `v1beta` endpoint**, which Google now describes as
+      deprecated for production. Not breaking anything today.
+- [ ] **Nothing is committed.** The working tree carries all of the above.
+
+---
+
 ## ✅ Shipped — 2026-08-25 — submission set aligned, PDPA built, /graph fixed for real users
 
 **One story across every artefact.** The Submission deck's edits were folded back into

@@ -103,7 +103,7 @@ const HOW_TO: Record<Provider, { title: string; cost: string; steps: string[]; l
       "Create an API key at aistudio.google.com/apikey",
       "AI_PROVIDER=gemini",
       "GEMINI_API_KEY=…",
-      "GEMINI_MODEL=gemini-2.0-flash",
+      "GEMINI_MODEL=gemini-flash-latest",
     ],
     link: "https://aistudio.google.com/apikey",
   },
@@ -392,7 +392,7 @@ export default function AiStatus({
                         ? "llama-3.3-70b-versatile"
                         : form.provider === "ollama"
                           ? "llama3.2"
-                          : "gemini-2.0-flash"
+                          : "gemini-flash-latest"
                     }
                     className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-sm dark:border-zinc-700 dark:bg-zinc-900"
                   />

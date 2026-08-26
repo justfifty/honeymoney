@@ -98,6 +98,23 @@ try {
     }
   }
   Note "held: $([Math]::Min($mine.Count, $Keep)) backup(s)"
+
+  # Ship it off-machine, ENCRYPTED. PocketBase's own S3 upload was turned off on
+  # 2026-08-26 because it wrote the archive to R2 in the clear — a complete copy
+  # of every household's records, in a bucket the Cloudflare API reports as
+  # `jurisdiction: null`. deploy/backup-vault.mjs seals with AES-256-GCM first,
+  # so what crosses the border is ciphertext.
+  #
+  # A failure here is logged but does NOT fail the run: the local backup above
+  # already succeeded, and losing that because an upload timed out would trade a
+  # good outcome for a worse one. The log is what surfaces a persistent problem.
+  try {
+    $vault = & node (Join-Path $PSScriptRoot 'backup-vault.mjs') push 2>&1
+    $vault | ForEach-Object { Note ("vault: " + $_) }
+    if ($LASTEXITCODE -ne 0) { Note "vault: upload FAILED (local backup is intact)" }
+  } catch {
+    Note ("vault: upload FAILED (local backup is intact): " + $_.Exception.Message)
+  }
 } catch {
   Note ("FAIL: " + $_.Exception.Message)
   exit 1

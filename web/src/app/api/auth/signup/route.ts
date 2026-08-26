@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { signupUser, loginUser, AUTH_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 import { acceptInvite, createHouseholdFor, AuthError } from "@/lib/household";
 import { recordSignupConsents, type Purpose } from "@/lib/consent";
+import { recordAcceptance } from "@/lib/agreements";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,19 @@ export async function POST(request: Request) {
     // Consent is written against the household the account ends up in, so it is
     // recorded after that is settled rather than at the top — a consent row
     // pointing at no tenant is an audit trail that cannot answer "whose data".
+    // Accepting the terms is a condition of having an account, so it is
+    // recorded once here rather than offered as a choice. It does NOT wait for
+    // the household: unlike consent, which answers "may we process this
+    // household's data", acceptance is between the person and us and is true
+    // the moment the account exists.
+    try {
+      await recordAcceptance({ userId: user.id, source: "signup" });
+    } catch {
+      /* Same reasoning as the consent write below: never fail a sign-up over an
+         audit row. A missing row means we cannot prove acceptance, which is our
+         problem to fix, not a reason to refuse the account. */
+    }
+
     const consent = async (tenantId: string) => {
       try {
         await recordSignupConsents({ userId: user.id, tenantId, answers: body.consents ?? {} });

@@ -2,6 +2,7 @@
 // nodes grouped by role + edges with their monthly RM flow.
 
 import { pbList, pbStr } from "./pocketbase";
+import { countsAsSpend } from "./recordKind";
 
 export interface GNode {
   id: string;
@@ -40,7 +41,14 @@ export async function getGraphView(tenantId: string): Promise<GraphView> {
   const [nodes, edges, txns] = await Promise.all([
     pbList<GNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<GEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<{ wallet_node: string; vendor_node: string; amount: number }>("transactions", {
+    pbList<{
+      wallet_node: string;
+      vendor_node: string;
+      amount: number;
+      direction?: string;
+      voided?: boolean;
+      kind?: string | null;
+    }>("transactions", {
       filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)}`,
     }),
   ]);
@@ -53,6 +61,9 @@ export async function getGraphView(tenantId: string): Promise<GraphView> {
   const spendByPair = new Map<string, number>();
   for (const t of txns) {
     if (!t.wallet_node || !t.vendor_node) continue;
+    // Was missing entirely: this map summed EVERY row, so an inflow was drawn as
+    // spend and a voided record was counted as money gone. See countsAsSpend().
+    if (!countsAsSpend(t)) continue;
     const key = `${t.wallet_node}→${t.vendor_node}`;
     spendByPair.set(key, (spendByPair.get(key) ?? 0) + Number(t.amount));
   }
