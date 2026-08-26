@@ -151,12 +151,71 @@ export function detectCurrency(text: string): string | undefined {
 // Speedmart" lost its amount entirely and fell through to the bare-number rule,
 // which then answered 99. A dot-separated pair is only a time when it actually
 // says am/pm; a colon is unambiguous on its own.
+/** Month names across the six locales, for telling a year from an amount. */
+const MONTH_WORD =
+  /jan|feb|mac|mar|apr|mei|may|jun|jul|ogos|aug|sep|okt|oct|nov|dis|dec|month|bulan|月|माह|மாத/i;
+
+/**
+ * Is this four-digit number a DATE, or is it money?
+ *
+ * It used to be assumed a date, always: `\b(19|20)\d{2}\b` was deleted outright
+ * before the amount was read. On OCR'd receipt text that is right. On a line a
+ * human TYPED it is wrong far more often than it is right — and it became a
+ * daily bug the moment the Record screen began parsing typed lines:
+ *
+ *     "bonus 2000"          → no amount at all
+ *     "rent 2000"           → no amount at all
+ *     "RM2,000 Raya trip"   → no amount at all
+ *
+ * RM2,000 is one of the most ordinary sums in Malaysian household money, and
+ * "no amount" is a silent failure: the card simply does not appear.
+ *
+ * So a year is removed only where something beside it actually says "date" — a
+ * separator touching it, or a month word next to it. A receipt's "03/07/2026"
+ * is already removed whole by the rule above this one, and "26 Aug 2026" still
+ * matches here.
+ */
+function isDateContext(whole: string, at: number, len: number): boolean {
+  const before = whole.slice(Math.max(0, at - 14), at).toLowerCase();
+  const after = whole.slice(at + len, at + len + 8).toLowerCase();
+  return (
+    /[/.-]\s*$/.test(before) ||
+    /^\s*[/.-]/.test(after) ||
+    MONTH_WORD.test(before) ||
+    MONTH_WORD.test(after)
+  );
+}
+
 function stripNonMoney(text: string): string {
   return text
     .replace(/\b\d{1,2}:\d{2}\b/g, " ") // 7:30
     .replace(/\b\d{1,2}[.:]\d{2}\s*(?:am|pm)\b/gi, " ") // 7.30pm
-    .replace(/\b(?:19|20)\d{2}\b/g, " ") // years
-    .replace(/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/g, " "); // 3/7, 03-07-2026
+    .replace(/\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/g, " ") // 3/7, 03-07-2026
+    .replace(/\b(?:19|20)\d{2}\b/g, (year, at: number, whole: string) =>
+      isDateContext(whole, at, year.length) ? " " : year,
+    );
+}
+
+// ── one definition of "a money token" ──────────────────────────────────────
+//
+// 🛑 Every rule below used to spell its own, as `\d+(?:[.,]\d{1,2})?`, and that
+// pattern cannot read a thousands separator. "RM2,000" matched as `2,00` and
+// came back as **RM2.00** — a five-hundred-fold under-read, silently, on the
+// most ordinary large sum in Malaysian household money. "Salary 5,000" was
+// RM5.00. It survived this long because nothing typed grouped numbers until the
+// Record screen started parsing typed lines.
+//
+// Grouped form is tried FIRST, and the two forms are distinguished by what
+// follows the comma: three digits is a group ("2,000"), one or two is a decimal
+// ("6,50", which some people do type).
+const MONEY = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?`;
+
+function toAmount(token: string): number {
+  // 1,234.56 or 1,234 — the comma groups thousands, so it is not a decimal point.
+  if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(token)) {
+    return parseFloat(token.replace(/,/g, ""));
+  }
+  return parseFloat(token.replace(",", "."));
 }
 
 export function extractAmount(raw: string): number | undefined {
@@ -182,18 +241,23 @@ export function extractAmount(raw: string): number | undefined {
   //     the amount actually paid.
   const hits = [
     ...t.matchAll(
-      /((?:sub)?)(?:total|jumlah|amount|bayar|paid|spent|harga|price|合计|總計|總共|मूल्य|மொத்தம்)[^\d\n]{0,40}(\d+(?:[.,]\d{1,2})?)/giu,
+      new RegExp(
+        String.raw`((?:sub)?)(?:total|jumlah|amount|bayar|paid|spent|harga|price|合计|總計|總共|मूल्य|மொத்தம்)[^\d\n]{0,40}(${MONEY})`,
+        "giu",
+      ),
     ),
   ];
   const totals = hits.filter((h) => !h[1]);
   const chosen = (totals.length ? totals : hits).at(-1);
-  if (chosen) return parseFloat(chosen[2].replace(",", "."));
+  if (chosen) return toAmount(chosen[2]);
 
   // 2) adjacent to a currency marker, either side: "RM 12.50" or "12.50 ringgit"
-  const before = t.match(/(?:rm|myr|ringgit|s\$|sgd|usd|\$|£|฿|¥)\s*(\d+(?:[.,]\d{1,2})?)/iu);
-  if (before) return parseFloat(before[1].replace(",", "."));
-  const after = t.match(/(\d+(?:[.,]\d{1,2})?)\s*(?:rm|myr|ringgit|sen|dollars?|pounds?|baht|yuan|yen)\b/iu);
-  if (after) return parseFloat(after[1].replace(",", "."));
+  const before = t.match(new RegExp(String.raw`(?:rm|myr|ringgit|s\$|sgd|usd|\$|£|฿|¥)\s*(${MONEY})`, "iu"));
+  if (before) return toAmount(before[1]);
+  const after = t.match(
+    new RegExp(String.raw`(${MONEY})\s*(?:rm|myr|ringgit|sen|dollars?|pounds?|baht|yuan|yen)\b`, "iu"),
+  );
+  if (after) return toAmount(after[1]);
 
   // 3) "twelve ringgit fifty (sen)" — spoken decimals
   const split = t.match(/(\d+)\s*(?:ringgit|dollars?|point|perpuluhan)\s*(\d{1,2})\b/iu);
@@ -202,8 +266,8 @@ export function extractAmount(raw: string): number | undefined {
   // 4) any bare number. Prefer one with decimals (money usually has them);
   //    otherwise take the LAST, not the largest — "99 Speedmart, spent 12"
   //    should be 12, and the old Math.max() is exactly why it used to say 99.
-  const digits = [...t.matchAll(/(\d+(?:[.,]\d{1,2})?)/g)]
-    .map((m) => parseFloat(m[1].replace(",", ".")))
+  const digits = [...t.matchAll(new RegExp(`(${MONEY})`, "g"))]
+    .map((m) => toAmount(m[1]))
     .filter((n) => Number.isFinite(n) && n > 0);
   if (digits.length) {
     const decimal = digits.find((n) => !Number.isInteger(n));
@@ -369,8 +433,15 @@ export function extractVendor(
 // Delete the first literal occurrence of the amount — "42.50", "42,50" or "42".
 function removeAmount(text: string, amount: number): string {
   const whole = String(Math.trunc(amount));
+  // How the user may have WRITTEN it, not just how JavaScript prints it. The
+  // grouped forms are here because extractAmount learned to read "RM2,000": if
+  // only the ungrouped "2000" were removed, the vendor came back as "RM2 000
+  // Raya Trip" — the amount left behind, in pieces, inside the merchant name.
+  const grouped = (n: number) => n.toLocaleString("en-US"); // 2,000 · 1,234.56
   const forms = [
+    grouped(amount), // 2,000
     amount.toFixed(2), // 42.50
+    grouped(Number(amount.toFixed(2))), // 1,234.56
     amount.toFixed(2).replace(".", ","), // 42,50
     String(amount), // 42.5
     ...(Number.isInteger(amount) ? [whole] : []),

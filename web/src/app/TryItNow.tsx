@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { parseVoiceLocal } from "@/lib/voiceParse";
 import { symbolOf } from "@/lib/format";
+import { classifyText, CATEGORY_STYLE, noteKeyFor } from "@/lib/classify";
+import { signOf, type Category } from "@/lib/recordKind";
 import { t as translate, type Locale } from "@/lib/i18n";
 
 // The three-second hook.
@@ -20,35 +22,20 @@ import { t as translate, type Locale } from "@/lib/i18n";
 // also the honest version of the privacy claim in the trust bar directly below:
 // the visitor can verify it by pulling their network tab.
 
-type BucketKey = "must" | "save" | "spend";
-
-// Which of the three starter buckets a spend lands in. Deliberately a small,
-// readable keyword table rather than a model call — it must resolve in the same
-// tick as the keystroke, work offline, and be inspectable by a judge asking
-// "so what happens when the AI is wrong?". In the real app this is the
-// household's own filing history; here it is the cold-start default.
-const MUST_PAID =
-  /rent|sewa|tnb|air|water|electric|elektrik|bill|bil|insurance|insuran|takaful|loan|pinjaman|astro|unifi|maxis|celcom|digi|umobile|streamyx|school|sekolah|tuition|tuisyen|nursery|taska|petrol|toll|tol|mortgage|房租|水电|保险|учеб|学费|கட்டணம்|किराया|बिजली/i;
-const SAVINGS =
-  /save|saving|simpan|tabung|asb|asnb|tabung haji|invest|labur|emergency fund|fd|fixed deposit|unit trust|epf|kwsp|储蓄|存钱|投资|சேமிப்பு|बचत|निवेश/i;
-
-function bucketFor(text: string): BucketKey {
-  if (SAVINGS.test(text)) return "save";
-  if (MUST_PAID.test(text)) return "must";
-  return "spend";
-}
-
-const BUCKET_STYLE: Record<BucketKey, { chip: string; bar: string; emoji: string }> = {
-  must: { chip: "bg-emerald-100 text-emerald-800 ring-emerald-200", bar: "bg-emerald-500", emoji: "🔒" },
-  save: { chip: "bg-sky-100 text-sky-800 ring-sky-200", bar: "bg-sky-500", emoji: "🌱" },
-  spend: { chip: "bg-amber-100 text-amber-800 ring-amber-200", bar: "bg-amber-500", emoji: "🫙" },
-};
+// Which category this lands in is decided by lib/classify.ts — the SAME table
+// the signed-in Record screen uses, so what a visitor sees here is not a
+// mock-up of the product's filing, it IS the product's filing.
+//
+// It moved out of this file because the version that lived here knew only
+// must-paid and savings, which meant the three-second hook classified "Salary
+// 5000" as *Spendings*: not merely imprecise but backwards, in front of the
+// judge the box exists to convince.
 
 interface Result {
   vendor: string;
   amount: number;
   currency: string;
-  bucket: BucketKey;
+  category: Category;
   confidence: number;
   /** Real wall-clock cost of the parse, in ms. Shown because it is the claim. */
   ms: number;
@@ -61,7 +48,9 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
   const [result, setResult] = useState<Result | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const EXAMPLES = [tr("try.eg1"), tr("try.eg2"), tr("try.eg3")];
+  // Four, not three: one of them is income, because a money app whose demo can
+  // only imagine money leaving has shown you half of it.
+  const EXAMPLES = [tr("try.eg1"), tr("try.eg2"), tr("try.eg3"), tr("try.eg4")];
 
   function run(raw: string) {
     const value = raw.trim();
@@ -79,12 +68,16 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
       setResult(null);
       return;
     }
+    const kind = classifyText(value);
     setResult({
       vendor: parsed.vendor || tr("try.unknownVendor"),
       amount: parsed.amount,
       currency: parsed.currency ?? "MYR",
-      bucket: bucketFor(value),
-      confidence: parsed.confidence,
+      category: kind.category,
+      // The lower of the two: a confident amount read off an ambiguous line is
+      // not a confident record, and showing the better half would be picking
+      // the flattering number.
+      confidence: Math.min(parsed.confidence, kind.confidence),
       ms,
     });
   }
@@ -94,8 +87,11 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
     run(value);
   }
 
-  const style = result ? BUCKET_STYLE[result.bucket] : null;
+  const style = result ? CATEGORY_STYLE[result.category] : null;
   const sym = result ? symbolOf(result.currency) : "";
+  // Money in reads "+", money out "−" — the same glyph-and-colour scheme as
+  // /records and the capture form, so a salary and a bill never look alike.
+  const sign = result ? signOf(result.category) : "out";
 
   return (
     <div className="hm-animate hm-delay-2 mx-auto mt-5 w-full max-w-xl sm:mt-8 rounded-3xl border border-amber-200 bg-white/90 p-4 text-left shadow-xl ring-1 ring-amber-100/70 backdrop-blur sm:p-5 dark:border-amber-900/50 dark:bg-zinc-900/85">
@@ -148,8 +144,13 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
               <span className="truncate text-base font-semibold text-zinc-900 dark:text-zinc-50">
                 {result.vendor}
               </span>
-              <span className="shrink-0 text-xl font-bold tabular-nums text-zinc-900 dark:text-zinc-50">
-                {sym} {result.amount.toFixed(2)}
+              <span
+                className={
+                  "shrink-0 text-xl font-bold tabular-nums " +
+                  (sign === "in" ? "text-amber-700 dark:text-amber-400" : "text-zinc-900 dark:text-zinc-50")
+                }
+              >
+                {sign === "in" ? "+" : "−"} {sym} {result.amount.toFixed(2)}
               </span>
             </div>
 
@@ -161,7 +162,7 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${style.chip}`}
               >
                 <span aria-hidden>{style.emoji}</span>
-                {tr(`try.bucket.${result.bucket}`)}
+                {tr(`rec.cat.${result.category}`)}
               </span>
               {result.confidence < 0.6 && (
                 <span className="text-[11px] text-amber-700">{tr("try.checkThis")}</span>
@@ -169,7 +170,7 @@ export default function TryItNow({ lang = "en" }: { lang?: Locale }) {
             </div>
 
             <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-              🍯 {tr(`try.honey.${result.bucket}`)}
+              🍯 {tr(noteKeyFor(result.category))}
             </p>
 
             {/* The claim, measured rather than asserted. */}

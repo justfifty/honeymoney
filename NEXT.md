@@ -113,6 +113,54 @@ narrated from a pace that was never computed.
 ✅ **`npm run check:ask`** — 8 new assertions, including that `afford` still refuses without
 income and says why, and that a goal question answers with no income at all.
 
+### Record now works the way the demo does — and it can read income
+
+The landing page asks a visitor for one line — "Grab 18.40" — and answers with a
+filed record in milliseconds. Then they sign up, and the app asked them for a
+form: sign, category, amount, vendor, bucket, currency, date. **The product got
+harder the moment you paid for it**, and the classification the demo did for free
+became a question. /record now leads with the same field and the same result
+card, with everything the form did kept behind "Edit details" — receipt scanner,
+duplicate warning, itemised lines, attribution and visibility, currency,
+back-dating, undo. Nothing was traded for the speed.
+
+`lib/classify.ts` is the shared table, so both surfaces file identically — and it
+knows **earnings**, which is the half that was missing. The demo classified
+"Salary 5000" as *Spendings*: not merely imprecise but backwards, in front of the
+judge the box exists to convince. It now recognises salary/gaji, bonus, komisen,
+freelance, dividend, rental income, pencen, elaun — and files a refund, a
+cashback or duit raya as money BACK rather than money earned. Income is tested
+first, because earnings words hide inside expense words ("rental income" contains
+*rent*, "EPF dividend" contains *EPF*); two matches lower the confidence instead
+of raising it, so the user is asked to correct it.
+
+⚠️ **`income_other` no longer creates an income source.** It is the "Something
+else" catch-all under `+ Money in` — a refund, a rebate, an ang pow — which is
+precisely the set that must not become a salary. The category being *stated* does
+not make the money *earned*. The 2026-08-26 fix stopped bare credits; this closes
+the same hole one door along, and it had to close before the classifier could
+file "cashback" automatically.
+
+**Two silent money bugs surfaced the moment typed lines were parsed**, both in
+`lib/voiceParse.ts`, both invisible rather than loud:
+
+| typed | was read as | now |
+|---|---|---|
+| `bonus 2000` | *no amount at all* — the card never appeared | RM2,000 |
+| `RM2,000 Raya trip` | **RM2.00** | RM2,000 |
+
+The first: any bare four-digit number was deleted as a YEAR before the amount was
+read. Right for OCR'd receipt text, wrong for a line a human typed — and RM2,000
+is one of the most ordinary sums in Malaysian household money. A year is now
+removed only where something beside it says "date". The second: every rule spelled
+its own money pattern as `\d+(?:[.,]\d{1,2})?`, which cannot read a thousands
+separator, so `RM2,000` matched as `2,00` → **RM2.00**, a five-hundred-fold
+under-read. One `MONEY` definition now, grouped form first. A receipt totalling
+`1,234.50` was reading as RM1.23 too.
+✅ **`npm run check:capture`** — 32 new assertions: 21 classifier cases in four
+languages, 9 amount-and-vendor cases including both bugs above, and money-back
+proved not to become a salary.
+
 ### 🛑 The outage: the site went unstyled, and the same cause did it on 2026-08-24
 
 **Symptom.** Every app route rendered as bare HTML on a white page — the landing showed

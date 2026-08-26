@@ -342,8 +342,8 @@ export async function addManualTransaction(
       ? "inflow"
       : "outflow";
 
-  // ONLY a stated income category creates an income source — never a bare
-  // direction.
+  // ONLY a stated EARNING creates an income source — never a bare direction, and
+  // never the money-in catch-all.
   //
   // The `+ Income` button posts category:"income"; a CSV import and a statement
   // commit post direction:"in" with no category, because a bank credit can be a
@@ -352,9 +352,19 @@ export async function addManualTransaction(
   // Shopee" into an income source with a monthly figure, inflating the
   // household's income and every ratio built on it.
   //
-  // An inflow with no stated category still records correctly as an inflow and
-  // still stays out of spend. It simply does not claim to be a salary.
-  const isStatedIncome = input.category === "income" || input.category === "income_other";
+  // ⚠️ `income_other` was on this list until 2026-08-26 and should not have
+  // been. It is the "Something else" option under `+ Money in` — a refund, a
+  // rebate, an ang pow, money back from a friend — which is precisely the set
+  // the paragraph above says must not become a salary. The category being
+  // STATED does not make the money EARNED: what a human asserted by choosing it
+  // is that money came in, not that it recurs monthly. lib/classify.ts now files
+  // "refund" and "cashback" here automatically, which turned a latent
+  // inconsistency into one that would fire on the first refund anybody typed.
+  //
+  // An inflow that is not an earning still records correctly as an inflow, still
+  // stays out of spend, and still shows in the ledger. It simply does not claim
+  // to be a salary.
+  const isStatedIncome = input.category === "income";
   const counterparty = isStatedIncome
     ? await ensureIncomeSourceNode(tenantId, input.vendorLabel)
     : null;

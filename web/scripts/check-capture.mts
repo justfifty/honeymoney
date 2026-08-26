@@ -16,8 +16,14 @@
 //   • and the fix itself nearly broke imports: a CSV credit carries a direction
 //     but no category, so "Refund - Shopee" would have become an income source
 //     with a monthly figure. Step 4 is that regression, kept as a test.
+//
+// Step 0 was added on 2026-08-26 with the one-line capture: the Record screen
+// now CLASSIFIES what you type, so the table that decides "salary" from
+// "refund" sits on the path to a written record, and is tested as one.
 
 import { pbList, pbCreate, pbDelete, pbStr } from "../src/lib/pocketbase.ts";
+import { classifyText } from "../src/lib/classify.ts";
+import { parseVoiceLocal } from "../src/lib/voiceParse.ts";
 import { addManualTransaction } from "../src/lib/graph.ts";
 import { getBucketProjection } from "../src/lib/projection.ts";
 import { getMoneyView } from "../src/lib/moneyView.ts";
@@ -36,6 +42,69 @@ const bucket = async (label:string, tier:number) => {
 };
 try {
   const must = await bucket("Must-paid",1); await bucket("Savings",2); const spend = await bucket("Spendings",3);
+
+  // ── 0. the classifier, which now decides what gets written ───────────────
+  //
+  // Every line here is what a Malaysian household actually types. The income
+  // rows are the ones that used to come back "spendings" — the direction wrong,
+  // not merely the bucket — and the last two are the trap: earnings words hide
+  // INSIDE expense words, so "rental income" must not be filed as rent nor "EPF
+  // dividend" as savings.
+  console.log("\n0. the one-line classifier (lib/classify.ts, 0 tokens, on-device):");
+  const CASES: [string, string][] = [
+    ["Grab 18.40", "spendings"],
+    ["kopi 6.50", "spendings"],
+    ["TNB bill 142", "must_paid"],
+    ["sewa rumah 1200", "must_paid"],
+    ["tuisyen Aisyah 300", "must_paid"],
+    ["Salary 5000", "income"],
+    ["gaji bulan ini 4200", "income"],
+    ["bonus 2000", "income"],
+    ["freelance invoice 1500", "income"],
+    ["dividend ASB 340", "income"],
+    ["komisen jualan 780", "income"],
+    ["pencen 1800", "income"],
+    ["refund Shopee 80", "income_other"],
+    ["cashback Touch n Go 12", "income_other"],
+    ["duit raya 200", "income_other"],
+    ["simpan 500", "savings"],
+    ["tabung ASB 300", "savings"],
+    ["rental income 700", "income"],
+    ["EPF dividend 1200", "income"],
+  ];
+  for (const [text, expected] of CASES) {
+    const got = classifyText(text).category;
+    ok(`"${text}" -> ${expected}`, got === expected, `got ${got}`);
+  }
+  ok("an ambiguous line asks to be checked", classifyText("save 500 from my salary").confidence < 0.6);
+  ok("a clean line does not", classifyText("Salary 5000").confidence >= 0.6);
+
+  // ── 0b. the amount, which is the one thing a record cannot be wrong about ──
+  //
+  // Both of these were silent: no error, no warning — a card that simply did not
+  // appear, or one showing RM2.00 where the user typed RM2,000. They surfaced
+  // the day the Record screen began parsing typed lines, and they are the reason
+  // the parser is tested here and not only through a receipt.
+  console.log("\n0b. what you typed is the amount that gets written:");
+  const AMOUNTS: [string, number, string][] = [
+    ["Grab 18.40", 18.4, "Grab"],
+    ["kopi 6.50", 6.5, "Kopi"],
+    // A bare 4-digit number used to be deleted as a YEAR before the amount was read.
+    ["bonus 2000", 2000, "Bonus"],
+    ["rent 2000", 2000, "Rent"],
+    // A thousands separator used to be read as a decimal point: RM2,000 -> RM2.00.
+    ["RM2,000 Raya trip", 2000, "Raya Trip"],
+    ["Salary 5,000", 5000, "Salary"],
+    ["gaji 4,200", 4200, "Gaji"],
+    // And the names that must survive their own digits.
+    ["99 Speedmart 12.30", 12.3, "99 Speedmart"],
+    ["7-Eleven 4.20", 4.2, "7-Eleven"],
+  ];
+  for (const [text, amount, vendor] of AMOUNTS) {
+    const parsed = parseVoiceLocal(text);
+    ok(`"${text}" -> ${amount} at ${vendor}`, parsed.amount === amount && parsed.vendor === vendor,
+       `got ${parsed.amount} at ${parsed.vendor}`);
+  }
 
   console.log("\nA brand-new household, nothing configured:");
   let mv = await getMoneyView(t.id);
@@ -82,6 +151,18 @@ try {
   mv = await getMoneyView(t.id);
   ok("income is unchanged by the credit", mv.totalIncome===6000, String(mv.totalIncome));
   ok("the credit is not counted as spend", mv.totalSpent===120, String(mv.totalSpent));
+
+  console.log("");
+  console.log("5. money BACK is not money EARNED (+ Money in / Something else):");
+  const cb = await addManualTransaction(t.id, { vendorLabel:"Cashback - TNG", amount:12, direction:"in", category:"income_other" });
+  made.push({c:"transactions",id:cb.transactionId});
+  const n3 = await pbList<{kind:string;label:string}>("nodes",{filter:`tenant = ${pbStr(t.id)}`});
+  // `income_other` created an income_source until 2026-08-26, so the classifier
+  // filing "cashback" there — correctly — would have made every refund a salary.
+  ok("no income_source invented for a stated non-earning", !n3.some(n=>n.kind==="income_source"&&n.label.includes("Cashback")));
+  mv = await getMoneyView(t.id);
+  ok("income is unchanged by money coming back", mv.totalIncome===6000, String(mv.totalIncome));
+  ok("…and it is not spend either", mv.totalSpent===120, String(mv.totalSpent));
 
   console.log("\n4. the derived views:");
   const proj = await getBucketProjection(t.id);
