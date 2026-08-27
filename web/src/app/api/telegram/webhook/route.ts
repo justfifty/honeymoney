@@ -64,6 +64,32 @@ async function commit(
 ): Promise<{ text: string; buttons: InlineButton[][] }> {
   const { extraction, analysis } = result;
 
+  // A household that keeps its records on its own devices cannot be served by a
+  // bot, and the honest answer is to say so rather than to fail silently or to
+  // reply with a stack trace. Checked BEFORE the OCR result is committed but
+  // AFTER it has been read, so the person gets the numbers off their receipt to
+  // type in themselves rather than losing the scan entirely.
+  //
+  // This one route needs its own handling because it answers a person on
+  // Telegram, not an HTTP client — lib/apiError.ts cannot help here.
+  const { isLocalOnly } = await import("@/lib/storageModeStore");
+  if (await isLocalOnly(tenantId)) {
+    const amt = extraction.amount ? `${extraction.currency || "MYR"} ${extraction.amount}` : "";
+    return {
+      text:
+        `🔒 Your household keeps its records on its own devices, so I cannot save this — ` +
+        `nothing from here reaches our server.
+
+` +
+        (extraction.vendor || amt
+          ? `I read: *${extraction.vendor || "?"}* ${amt}
+
+Add it in the app on your phone.`
+          : `Add it in the app on your phone.`),
+      buttons: [],
+    };
+  }
+
   const bucket = analysis?.bucket
     ? { id: analysis.bucket.nodeId, label: analysis.bucket.label }
     : await resolveWalletNode(tenantId);

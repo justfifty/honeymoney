@@ -293,6 +293,20 @@ export async function ingestReceipt(
 // the rate + source we converted at, in `raw.entered`. Without that, a figure
 // reviewed months later is unauditable: you'd see RM 42.10 with no way to know
 // it began life as S$ 12.00 at a Bank Negara rate on a particular day.
+/**
+ * Thrown when a write is attempted against a household that keeps its records
+ * on its own devices. Not a failure — the system working as the user asked.
+ */
+export class LocalOnlyRefused extends Error {
+  readonly storageMode = "local_only" as const;
+  constructor() {
+    super(
+      "This household keeps its records on its own devices. Nothing is stored on our server, including this.",
+    );
+    this.name = "LocalOnlyRefused";
+  }
+}
+
 export async function addManualTransaction(
   tenantId: string,
   input: {
@@ -338,6 +352,28 @@ export async function addManualTransaction(
   },
   actor?: Actor,
 ): Promise<IngestResult> {
+  // ── The storage mode, enforced at the FLOOR ────────────────────────────
+  //
+  // /api/transactions checked this and four other write paths did not:
+  // /api/graph, /api/import, /api/statement/commit and the Telegram webhook
+  // would all have written happily for a household that had been told the
+  // server refuses to store their records. A local-only household importing a
+  // CSV would have silently repopulated the database they had just had purged.
+  //
+  // A per-route guard is the wrong shape for a rule that must hold everywhere:
+  // it is enforced by whoever remembers, and the next write path added will be
+  // written by someone who does not know this rule exists. Every one of those
+  // routes reaches this function, so this is the one place that makes the
+  // guarantee true by construction.
+  //
+  // Throws rather than returning a result, because there is no partially-
+  // correct outcome: the caller asked to store something we have promised not
+  // to store. Each route turns this into its own 409.
+  const { isLocalOnly } = await import("./storageModeStore");
+  if (await isLocalOnly(tenantId)) {
+    throw new LocalOnlyRefused();
+  }
+
   // Which KIND of counterparty this is, decided before anything is written.
   // Money coming in arrives from an income_source; money going out goes to a
   // vendor. Filing a salary as a vendor is what left the graph with no income

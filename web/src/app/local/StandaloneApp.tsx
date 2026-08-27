@@ -20,6 +20,7 @@ import {
 } from "@/lib/localLedger";
 import { analyseLocal, type LocalAnalysis } from "@/lib/localAnalysis";
 import { exportStandalone } from "@/lib/localVault";
+import SpendCapture, { type Captured } from "../graph/SpendCapture";
 
 // HoneyMoney with no account and no network.
 //
@@ -83,6 +84,24 @@ export default function StandaloneApp() {
       await refresh();
     })();
   }, [refresh]);
+
+  // Receipt scanning matters MORE here than anywhere else in the app. A
+  // household with poor signal is the one that benefits most from not typing,
+  // and the OCR engine is the one heavy thing already cached on the device. So
+  // it fills the form rather than saving directly: the person still confirms,
+  // which is the rule everywhere else and doubly right when a misread number
+  // would go into the only copy of a record that exists.
+  //
+  // aiEnabled={false} is not a limitation, it is the point — it forces the
+  // on-device tesseract path and guarantees nothing is uploaded. There is no
+  // account here to have consented to anything.
+  function fromScan(c: Captured) {
+    if (c.amount) setAmount(String(c.amount));
+    if (c.vendor) setVendor(c.vendor);
+    if (c.occurredAt) setWhen(c.occurredAt.slice(0, 10));
+    setDirection("out");
+    setMsg("Read from the photo — check it, then save.");
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -161,6 +180,16 @@ export default function StandaloneApp() {
             ))}
           </div>
         </div>
+
+        {/* Scan first, type second. */}
+        {direction === "out" && (
+          <div className="mt-4">
+            <SpendCapture onResult={fromScan} lang="en" aiEnabled={false} />
+            <p className="mt-1 text-center text-[11px] text-zinc-400">
+              Read on this phone. The photo is not uploaded and never leaves the device.
+            </p>
+          </div>
+        )}
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-zinc-500">
