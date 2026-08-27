@@ -10,6 +10,7 @@ import { honeyInsight } from "./gemini";
 import { t, type Locale } from "./i18n";
 import { dataLabel } from "./dataLabels";
 import { redactPrivate, privateBucketIds, PRIVATE_LABEL } from "./privacy";
+import { deriveKind, type RecordKind } from "./recordKind";
 import type { BucketProjection } from "./types";
 
 interface PBNode {
@@ -36,6 +37,7 @@ interface PBTransaction {
   occurred_at: string;
   source: string;
   direction?: string; // "in" = credit/money-in (not spend); anything else = "out"
+  kind?: string; // inflow · outflow · transfer
   wallet_node: string;
   vendor_node: string;
   member?: string;
@@ -174,6 +176,13 @@ export interface RecentSpend {
   source: string | null;
   /** True when the vendor was withheld under the tier-3 privacy promise. */
   isPrivate?: boolean;
+  /**
+   * inflow · outflow · transfer. Carried so the recent list can tell a savings
+   * deposit from a salary — both are stored with direction "in", and showing
+   * both as "+" is what made "Saving −RM500" and "Saving +RM500" appear on the
+   * same day looking like a contradiction.
+   */
+  kind?: RecordKind;
 }
 
 export async function getRecentSpend(
@@ -188,17 +197,30 @@ export async function getRecentSpend(
     perPage: limit,
   });
 
-  const privateIds = opts.redact
-    ? privateBucketIds(
-        await pbList<{ id: string; kind: string; props: Record<string, unknown> | null }>("nodes", {
-          filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
-        }),
-      )
-    : new Set<string>();
+  // Fetched unconditionally now: the tier map below needs them whether or not
+  // redaction is on, and it is the same single query either way.
+  const bucketNodes = await pbList<{
+    id: string;
+    kind: string;
+    props: Record<string, unknown> | null;
+  }>("nodes", { filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'` });
+
+  const privateIds = opts.redact ? privateBucketIds(bucketNodes) : new Set<string>();
+
+  const bucketTierOf = new Map(
+    bucketNodes.map((b) => [b.id, Number((b.props as { bucket?: number } | null)?.bucket) || null]),
+  );
 
   const rows = txns.map((t) => ({
     id: t.id,
     direction: (t.direction === "in" ? "in" : "out") as "out" | "in",
+    // Derived rather than read straight off the row, so records written before
+    // the bucket became authoritative still resolve correctly here.
+    kind: deriveKind({
+      kind: t.kind,
+      direction: t.direction,
+      bucketTier: t.wallet_node ? (bucketTierOf.get(t.wallet_node) ?? null) : null,
+    }),
     amount: Number(t.amount),
     currency: t.currency || "MYR",
     occurred_at: t.occurred_at,

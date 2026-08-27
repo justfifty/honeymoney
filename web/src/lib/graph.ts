@@ -9,7 +9,7 @@ import { pbList, pbFirst, pbCreate, pbUpdate, pbStr, pbUploadFiles } from "./poc
 import { append } from "./ledger";
 import type { ParsedReceipt } from "./types";
 import type { DecodedAttachment } from "./attachments";
-import { kindOf, type Category, type RecordKind } from "./recordKind";
+import { deriveKind, kindOf, type Category, type RecordKind } from "./recordKind";
 import type { Visibility } from "./attribution";
 
 export interface Actor {
@@ -374,15 +374,6 @@ export async function addManualTransaction(
     throw new LocalOnlyRefused();
   }
 
-  // Which KIND of counterparty this is, decided before anything is written.
-  // Money coming in arrives from an income_source; money going out goes to a
-  // vendor. Filing a salary as a vendor is what left the graph with no income
-  // in it at all, and every figure derived from income reading zero.
-  const kind: RecordKind = input.category
-    ? kindOf(input.category)
-    : input.direction === "in"
-      ? "inflow"
-      : "outflow";
 
   // ONLY a stated EARNING creates an income source — never a bare direction, and
   // never the money-in catch-all.
@@ -421,6 +412,31 @@ export async function addManualTransaction(
       )
     : null;
   if (input.walletNodeId && !wallet) throw new Error("Unknown bucket for this household.");
+
+  // Which KIND of record this is. Decided HERE, after the bucket is known,
+  // because the destination is part of the answer.
+  //
+  // It used to be decided from `direction` alone whenever no category was sent
+  // — which is every CSV import, every statement commit, and every quick
+  // capture. So RM500 moved INTO the Savings bucket with the `−` button became
+  // an `outflow`, while the same RM500 via the `+` button became a `transfer`.
+  // The recent list then showed "Saving −RM500" and "Saving +RM500" on the same
+  // day: one act, two representations, and a household reasonably concluding
+  // the app could not make up its mind.
+  //
+  // The bucket is now authoritative for savings. Anything landing in a
+  // savings-tier bucket is a transfer however it was entered, so there is
+  // exactly one way for savings to appear.
+  //
+  // A stated category still wins, and that is what keeps the case the user
+  // actually asked about working: money somebody GAVE you for savings is
+  // category `income`, which is an inflow, because it really did arrive.
+  const bucketTier = wallet
+    ? Number((wallet.props as { bucket?: number } | null)?.bucket) || null
+    : null;
+  const kind: RecordKind = input.category
+    ? kindOf(input.category)
+    : deriveKind({ direction: input.direction, bucketTier });
 
   // No SPENT_AT edge for an inflow, and that is the point: SPENT_AT means
   // "this bucket paid this vendor". Income paid nobody, so inventing an edge

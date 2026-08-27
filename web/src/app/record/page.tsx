@@ -123,20 +123,28 @@ export default async function RecordPage() {
                   {r.vendor ?? tr("rec.unknownVendor")}
                 </span>
                 <span className="shrink-0 text-xs text-zinc-400">{shortDate(r.occurred_at)}</span>
-                {/* Same sign-and-colour scheme as RecordRow on /records: money
-                    in is +, amber; money out is −, dark grey. A bare figure in
-                    this list made a RM20,000 salary and a RM20,000 bill look
-                    identical at the exact moment the user is checking that what
-                    they typed landed the right way round. */}
+                {/* Same three-way scheme as RecordRow on /records. This list
+                    was the one that showed "Saving −RM500" and "Saving +RM500"
+                    on the same day, because it split on direction and a savings
+                    transfer is stored with direction "in". Transfers get "→" in
+                    green: nothing arrived, nothing was spent, and it is the one
+                    row here that is money you still have. */}
                 <span
+                  title={
+                    r.kind === "transfer"
+                      ? "Moved between your own pockets — neither income nor spending"
+                      : undefined
+                  }
                   className={
                     "shrink-0 tabular-nums font-medium " +
-                    (r.direction === "in"
-                      ? "text-amber-600 dark:text-amber-400"
-                      : "text-zinc-700 dark:text-zinc-300")
+                    (r.kind === "transfer"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : r.direction === "in"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-zinc-700 dark:text-zinc-300")
                   }
                 >
-                  {r.direction === "in" ? "+" : "−"}
+                  {r.kind === "transfer" ? "→" : r.direction === "in" ? "+" : "−"}
                   {fmtMoney(r.amount, r.currency)}
                 </span>
               </li>
