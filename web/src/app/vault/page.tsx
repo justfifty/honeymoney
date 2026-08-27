@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getContext } from "@/lib/household";
 import Logo from "../Logo";
 import LocalVault from "./LocalVault";
+import StorageChoice from "./StorageChoice";
 
 export const metadata: Metadata = {
   title: "Your copy · HoneyMoney",
@@ -53,6 +54,14 @@ export default async function VaultPage() {
         <LocalVault />
       </div>
 
+      {/* The switch sits BELOW the vault, and that order is the whole design.
+          Choosing local-only requires a current local copy, so a person who
+          meets the switch first would meet a disabled button and a rule they
+          have not had a chance to satisfy. Save first, then decide. */}
+      <div className="mt-8">
+        <StorageChoice />
+      </div>
+
       {/* The honest boundary. Without this section the page reads as "your data
           only lives on your device", which is not true and is exactly the
           overclaim this feature was built to start correcting. */}
@@ -77,12 +86,18 @@ export default async function VaultPage() {
             </h3>
             <ul className="mt-2 list-disc space-y-1.5 pl-5 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
               <li>
-                Your records are still stored on our server too, in readable form, and we can read
-                them. This copy is an addition, not a replacement.
+                Unless you switch to local-only below, your records are stored on our server too,
+                in readable form, and we can read them. This copy is an addition, not a
+                replacement.
               </li>
               <li>
                 Recording a new spend still needs the network. Offline captures queue on the device
                 and send later.
+              </li>
+              <li>
+                Local-only is a real trade, not a free upgrade: it turns off your score, forecasts,
+                household sharing and Ask Honey, because those are computed from records we would
+                no longer have. The switch says so before you use it.
               </li>
               <li>
                 The H-Score and the forecast are computed on our server. Offline you see the last

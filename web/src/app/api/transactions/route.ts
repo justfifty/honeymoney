@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/config";
 import { addManualTransaction } from "@/lib/graph";
 import { AuthError, requirePermission } from "@/lib/household";
+import { isLocalOnly } from "@/lib/storageModeStore";
 import { apiError } from "@/lib/apiError";
 import { decodeAttachments, type IncomingAttachment } from "@/lib/attachments";
 import type { Category } from "@/lib/recordKind";
@@ -22,6 +23,28 @@ export async function POST(request: Request) {
 
   try {
     const ctx = await requirePermission("add_record");
+
+    // The storage mode is a GUARANTEE, and a guarantee has to be enforced where
+    // the write happens rather than where the button is. A household that chose
+    // local-only was told we would not store their records; a UI that merely
+    // declines to call this route would make that a promise about our
+    // front-end, which is not what they agreed to. Anything reaching here --
+    // an old tab, a queued offline capture replaying, a hand-made request --
+    // is refused.
+    //
+    // 409 rather than 403: the caller is entitled to write, the household has
+    // simply chosen somewhere else for it to go, and the response says where.
+    if (await isLocalOnly(ctx.tenant.id)) {
+      return NextResponse.json(
+        {
+          error:
+            "This household keeps its records on its own devices. Nothing is stored on our server, including this.",
+          storageMode: "local_only",
+          storeLocallyAt: "/vault",
+        },
+        { status: 409 },
+      );
+    }
 
     let body: {
       walletNodeId?: string;
