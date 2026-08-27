@@ -39,9 +39,6 @@ const GROUPS: { titleKey: string; items: Item[] }[] = [
       // to wonder what those people can see.
       { href: "/sharing", key: "more.sharing", desc: "more.d.sharing", icon: "🔐", auth: true },
       { href: "/vault", key: "more.vault", desc: "more.d.vault", icon: "💾", auth: true },
-      // NOT auth-gated, deliberately: the offline version needs no account, and
-      // gating it behind one would hide it from exactly the people it is for.
-      { href: "/local", key: "more.local", desc: "more.d.local", icon: "📴" },
       { href: "/ledger", key: "more.ledger", desc: "more.d.ledger", icon: "⛓️", auth: true },
       { href: "/account", key: "more.account", desc: "more.d.account", icon: "⚙️", auth: true },
       // Setup was reachable only from the hamburger, so a user on a phone who

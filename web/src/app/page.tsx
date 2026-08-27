@@ -115,28 +115,6 @@ export default async function Home() {
           </figcaption>
         </figure>
 
-        {/* The way in for a household that cannot rely on a connection.
-            Placed on the landing page rather than buried in More, because
-            somebody on a signal that comes and goes has to find it in the
-            twenty minutes they have — and because a rural household is closer
-            to the middle of this market than the urban dual-income couple in
-            the deck. No account, no sign-in, no request. */}
-        <div className="mx-auto mt-8 max-w-2xl rounded-2xl border-2 border-amber-300 bg-amber-50/60 p-5 text-center dark:border-amber-800 dark:bg-amber-950/20">
-          <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-            No steady connection? Use it without an account.
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-            Install it once where there is signal, then record and add up your household&rsquo;s
-            spending with no network at all. Everything stays on your phone.
-          </p>
-          <Link
-            href="/local"
-            className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-amber-500 px-5 text-sm font-semibold text-white hover:bg-amber-600"
-          >
-            Open the offline version
-          </Link>
-        </div>
-
         {/* The Sankey above is one of six views. Saying so directly under it is
             the only place on the page where that claim is legible — a visitor
             has just looked at the picture and is primed to ask "is this all of

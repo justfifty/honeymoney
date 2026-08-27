@@ -269,69 +269,6 @@ export async function autoSyncIfStale(): Promise<boolean> {
   }
 }
 
-/**
- * Write a copy for a standalone household — no account, no server, no fetch.
- *
- * `sync()` above cannot serve this case: it fetches /api/account/export, which
- * needs a session and a network, and a household using HoneyMoney because they
- * have neither is exactly who this is for. Same file format either way, so a
- * standalone household that later creates an account can hand the same file to
- * an importer.
- */
-export async function exportStandalone(): Promise<SyncOutcome> {
-  if (!vaultAvailable()) return { ok: false, reason: "This browser cannot store data locally." };
-
-  const [records, household] = await Promise.all([
-    listLocalRecords().catch(() => []),
-    (await import("./localHousehold")).getLocalHousehold().catch(() => null),
-  ]);
-  const { localBucketNodes } = await import("./localHousehold");
-
-  const snapshot = {
-    exportedAt: new Date().toISOString(),
-    source: "standalone" as const,
-    household,
-    nodes: localBucketNodes(),
-    transactions: asAnalysable(records),
-    deviceOnlyRecords: records.length,
-  };
-  const text = JSON.stringify(snapshot, null, 2);
-  const bytes = new Blob([text]).size;
-
-  await idbPut(KEY_SNAPSHOT, snapshot);
-
-  const handle = await idbGet<FileSystemFileHandle>(KEY_HANDLE);
-  if (handle && (await ensureWritable(handle, true))) {
-    try {
-      const w = await handle.createWritable();
-      await w.write(text);
-      await w.close();
-      const meta: VaultMeta = {
-        lastSyncAt: new Date().toISOString(),
-        target: handle.name,
-        records: records.length,
-        bytes,
-        mode: "handle",
-      };
-      await idbPut(KEY_META, meta);
-      return { ok: true, meta };
-    } catch {
-      /* fall through to a download rather than leave them with nothing */
-    }
-  }
-
-  downloadFile(text);
-  const meta: VaultMeta = {
-    lastSyncAt: new Date().toISOString(),
-    target: "download",
-    records: records.length,
-    bytes,
-    mode: "download",
-  };
-  await idbPut(KEY_META, meta);
-  return { ok: true, meta, downloaded: true };
-}
-
 export interface SyncOutcome {
   ok: boolean;
   meta?: VaultMeta;
