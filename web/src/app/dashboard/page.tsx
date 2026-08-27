@@ -12,6 +12,7 @@ import { dataLabel } from "@/lib/dataLabels";
 import RecordRow from "../records/RecordRow";
 import PrivacyToggle from "./PrivacyToggle";
 import HoneyAsk from "./HoneyAsk";
+import DeviceOnlyNotice from "../DeviceOnlyNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ export default async function Dashboard() {
   if (!isDatabaseConfigured()) {
     return (
       <main className="min-h-full px-6 py-16">
+      <DeviceOnlyNotice where="the dashboard" />
         <SetupNotice reason={tr("dash.setup.reasonNoDb")} lang={locale} />
       </main>
     );

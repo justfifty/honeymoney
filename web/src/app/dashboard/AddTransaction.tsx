@@ -25,6 +25,7 @@ import { classifyText, CATEGORY_STYLE, noteKeyFor } from "@/lib/classify";
 import { parseVoiceLocal } from "@/lib/voiceParse";
 import { defaultVisibility, type Composition, type Visibility } from "@/lib/attribution";
 import { enqueue } from "@/lib/offlineQueue";
+import { appendLocalRecord } from "@/lib/localLedger";
 
 interface BucketOption {
   id: string;
@@ -372,6 +373,24 @@ export default function AddTransaction({
         return;
       }
       const data = await res.json();
+
+      // The household chose local-only storage, so the server refused — as it
+      // is supposed to. This is a SUCCESS, not an error, and it must not go
+      // through the retry queue: that would POST, get 409, retry five times and
+      // then present a correctly-working system to the user as a failure.
+      //
+      // Caught here rather than before the request because the mode is the
+      // server's fact, not the browser's. A client that decided for itself
+      // where to write would be wrong the moment the mode changed in another
+      // tab, on another device, or by another member of the household.
+      if (res.status === 409 && data.storageMode === "local_only") {
+        await appendLocalRecord(payload);
+        setMsg({ ok: true, text: tr("dash.add.savedLocally") });
+        clearDraft();
+        setBusy(false);
+        return;
+      }
+
       if (!res.ok) throw new Error(data.error ?? tr("dash.add.couldNotSave"));
 
       const text = tr("dash.add.saved", {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { pendingCaptures, signOutAndForget } from "@/lib/localTeardown";
+import { deviceOnlyRecords, pendingCaptures, signOutAndForget } from "@/lib/localTeardown";
 
 // Log out, and actually leave.
 //
@@ -25,6 +25,23 @@ export default function LogoutButton() {
   async function logout() {
     setBusy(true);
     try {
+      // Checked FIRST, and refused rather than confirmed. An unsent capture is
+      // one record; device-only records can be a household's entire history,
+      // and no dialog wording makes destroying that an acceptable thing to do
+      // on a mis-tap. Save the file, then sign out.
+      const deviceOnly = await deviceOnlyRecords();
+      if (deviceOnly > 0) {
+        window.alert(
+          [
+            `${deviceOnly} record${deviceOnly === 1 ? "" : "s"} exist only in this browser.`,
+            "Your household keeps records on its own devices, so these are not on our server and we have no copy. Signing out would delete them.",
+            'Open "Your copy" and press Save first — then sign out.',
+          ].join("\n\n"),
+        );
+        setBusy(false);
+        return;
+      }
+
       const pending = await pendingCaptures();
       if (
         pending > 0 &&

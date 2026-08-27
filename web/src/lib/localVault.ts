@@ -36,6 +36,8 @@
 // Drive, or Google Drive. They choose the location too — they just have to
 // choose it each time. The UI says which mode it is in rather than pretending.
 
+import { asAnalysable, listLocalRecords } from "./localLedger";
+
 const DB_NAME = "honeymoney-vault";
 const DB_VERSION = 1;
 const STORE = "vault";
@@ -297,6 +299,20 @@ export async function sync(opts: { interactive: boolean }): Promise<SyncOutcome>
     snapshot = JSON.parse(text) as VaultSnapshot;
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "Could not fetch your records." };
+  }
+
+  // Device-only records are folded in BEFORE the file is written. They exist
+  // nowhere else — not on our server, not in any backup — so a "copy" that
+  // omitted them would be the one file the household trusts and the one place
+  // their newest spending is missing.
+  const deviceOnly = await listLocalRecords().catch(() => []);
+  if (deviceOnly.length) {
+    const existing = Array.isArray(snapshot.transactions) ? snapshot.transactions : [];
+    const byId = new Map(existing.map((r) => [String((r as { id?: unknown }).id ?? ""), r]));
+    for (const r of asAnalysable(deviceOnly)) byId.set(String(r.id), r);
+    snapshot = { ...snapshot, transactions: [...byId.values()] };
+    snapshot.deviceOnlyRecords = deviceOnly.length;
+    text = JSON.stringify(snapshot, null, 2);
   }
 
   const records = Array.isArray(snapshot.transactions) ? snapshot.transactions.length : 0;

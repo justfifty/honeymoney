@@ -32,6 +32,24 @@
 // car park this morning.
 
 import { flush, list } from "./offlineQueue";
+import { countLocalRecords } from "./localLedger";
+
+/**
+ * Records that exist ONLY in this browser and nowhere else.
+ *
+ * In local-only mode these are the household's real records, not a cache, and
+ * `signOutAndForget` deletes the database they live in. Clearing them without
+ * asking would destroy data the user believed was saved — the single worst
+ * thing this application could do — so the caller must check this first and
+ * offer to write them to the chosen file.
+ */
+export async function deviceOnlyRecords(): Promise<number> {
+  try {
+    return await countLocalRecords();
+  } catch {
+    return 0;
+  }
+}
 
 /** How many offline captures are still waiting to reach the server. */
 export async function pendingCaptures(): Promise<number> {

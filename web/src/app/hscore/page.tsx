@@ -6,6 +6,7 @@ import { pbList, pbStr } from "@/lib/pocketbase";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import HScoreClient from "./HScoreClient";
+import DeviceOnlyNotice from "../DeviceOnlyNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function HScorePage() {
 
   return (
     <main className="mx-auto min-h-full w-full max-w-lg px-4 py-5 sm:px-6">
+      <DeviceOnlyNotice where="your score" />
       <header className="mb-5 flex items-baseline justify-between gap-2">
         <h1 className="font-display text-xl font-semibold tracking-tight">{tr("hscore.title")}</h1>
         {!ctx && (

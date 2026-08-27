@@ -8,12 +8,12 @@ import {
   forgetLocation,
   getMeta,
   hasLocation,
-  loadLocal,
   sync,
   vaultAvailable,
   type VaultMeta,
 } from "@/lib/localVault";
 import { analyseLocal, type LocalAnalysis } from "@/lib/localAnalysis";
+import { unifiedSnapshot } from "@/lib/unifiedRecords";
 
 // Choose where your records live, and read them with the network off.
 //
@@ -57,14 +57,19 @@ export default function LocalVault() {
   const [located, setLocated] = useState(false);
   const [meta, setMeta] = useState<VaultMeta | null>(null);
   const [analysis, setAnalysis] = useState<LocalAnalysis | null>(null);
+  const [deviceOnly, setDeviceOnly] = useState(0);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const refresh = useCallback(async () => {
     setMeta(await getMeta());
     setLocated(await hasLocation());
-    const snap = await loadLocal();
-    setAnalysis(snap ? analyseLocal(snap) : null);
+    // Merged, not just the synced snapshot: records typed on this device in
+    // local-only mode exist nowhere else, and analysis that omitted them would
+    // not be stale, it would be wrong.
+    const { snapshot, sources } = await unifiedSnapshot();
+    setDeviceOnly(sources.local);
+    setAnalysis(snapshot.transactions.length ? analyseLocal(snapshot) : null);
   }, []);
 
   useEffect(() => {
@@ -227,6 +232,15 @@ export default function LocalVault() {
           Worked out on this device from your own file. No network, no server, nothing sent
           anywhere — this section keeps working when everything else is offline.
         </p>
+        {deviceOnly > 0 && (
+          <p className="mt-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            <strong>{deviceOnly}</strong> of these{" "}
+            {deviceOnly === 1 ? "record exists" : "records exist"} only on this device — recorded
+            while your household was keeping records off our server. They are included in every
+            figure below. Save a copy above to write them into your file, or they live in this
+            browser alone.
+          </p>
+        )}
 
         {!analysis ? (
           <p className="mt-4 rounded-xl border border-dashed border-zinc-300 p-5 text-sm text-zinc-500 dark:border-zinc-700">
