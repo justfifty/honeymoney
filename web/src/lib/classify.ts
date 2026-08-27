@@ -150,6 +150,20 @@ export function classifyText(text: string, opts: { sign?: Sign } = {}): Classifi
 // /records — so it belongs with the model rather than being re-chosen in each
 // component and drifting apart.
 
+// ── WHY GREEN IS SAVINGS AND BLUE IS MUST-PAID ─────────────────────────────
+//
+// These two were the other way round, and green ended up meaning two different
+// things on the same screen: a savings transfer renders "→" in green in the
+// record lists and "Moved to savings" is green in the vault, while the
+// must-paid CHIP was green here. A colour that means "money you kept" in one
+// place and "money you owe" in another is worse than no colour at all.
+//
+// So green is savings, everywhere, and it is the only thing green means:
+// money you still have and chose to keep. The 🌱 already read that way.
+//
+// Must-paid takes sky blue, which is the right register for it anyway —
+// obligations are fixed and dependable rather than dangerous, and red or amber
+// would have made rent look like a mistake.
 export const CATEGORY_STYLE: Record<Category, { emoji: string; chip: string }> = {
   income: {
     emoji: "💰",
@@ -161,11 +175,11 @@ export const CATEGORY_STYLE: Record<Category, { emoji: string; chip: string }> =
   },
   savings: {
     emoji: "🌱",
-    chip: "bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:ring-sky-900",
+    chip: "bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:ring-emerald-900",
   },
   must_paid: {
     emoji: "🔒",
-    chip: "bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-200 dark:ring-emerald-900",
+    chip: "bg-sky-100 text-sky-800 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-200 dark:ring-sky-900",
   },
   spendings: {
     emoji: "🫙",
