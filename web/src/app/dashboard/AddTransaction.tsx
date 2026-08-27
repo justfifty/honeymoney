@@ -857,9 +857,14 @@ export default function AddTransaction({
         disabled={busy || (!bucket && !isIncome)}
         className={
           "mt-4 min-h-12 w-full rounded-full px-5 text-sm font-semibold text-white transition-colors disabled:opacity-50 " +
+          // Dark grey for a spend, matching SIGN_STYLE.out.fill and the "− Money
+          // out" tab above it. This said bg-amber-600 while the comment above
+          // claimed dark grey — two shades of orange a step apart, so the last
+          // thing you press before saving looked the same whichever way the
+          // money went. The tab, the chips and this button now agree.
           (isIncome
             ? "bg-amber-500 hover:bg-amber-600"
-            : "bg-amber-600 hover:bg-amber-700")
+            : "bg-zinc-700 hover:bg-zinc-800 dark:bg-zinc-600 dark:hover:bg-zinc-500")
         }
       >
         {busy ? tr("dash.add.saving") : `${tr(isIncome ? "dash.add.submitIn" : "dash.add.submit")} →`}
