@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Logo from "../Logo";
 import { Field, PasswordField } from "../AuthFields";
+import { clearPriorSession } from "@/lib/localTeardown";
 
 function LoginForm() {
   const router = useRouter();
@@ -30,6 +31,11 @@ function LoginForm() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || "Login failed");
+      // Before the new session renders anything: drop the previous one's local
+      // copy and cached pages. Signing out does this too, but sign-out is a
+      // button people forget, and on a shared household tablet the realistic
+      // sequence is signing in over somebody who walked away.
+      await clearPriorSession();
       router.push(next || (d.role === "admin" ? "/admin" : "/record"));
       router.refresh();
     } catch (e) {

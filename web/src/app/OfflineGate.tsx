@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { flush, list, offlineQueueAvailable, type QueuedCapture } from "@/lib/offlineQueue";
+import { autoSyncIfStale } from "@/lib/localVault";
 
 // Registers the service worker, drains the offline queue, and tells the user
 // which of those two things is currently true.
@@ -75,6 +76,11 @@ export default function OfflineGate() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
     void drain();
+    // Keep the household's own copy current without them having to think about
+    // it. Quiet by design: no permission prompt, no download, no error surfaced
+    // — a local-first promise that depends on remembering to press a button is
+    // not a promise. See autoSyncIfStale on why six hours and not six minutes.
+    void autoSyncIfStale();
 
     // Draining is separate from the connectivity read above: that hook only
     // reports the state, this listener acts on the transition.

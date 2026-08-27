@@ -35,7 +35,7 @@
 // and every scan after that is offline. Settings offers a button to do it
 // deliberately for someone who knows they are about to lose signal.
 
-const VERSION = "hm-v1";
+const VERSION = "hm-v2";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 const OCR = `${VERSION}-ocr`;
@@ -43,7 +43,46 @@ const KEEP = new Set([SHELL, ASSETS, OCR]);
 
 // Small, and every entry must exist or install fails. Kept to the offline page
 // and the icons it needs — anything larger belongs in the runtime caches.
-const PRECACHE = ["/offline.html", "/icon-192.png"];
+const PRECACHE = ["/icon-192.png"];
+
+// The offline page is cached under THIS key whatever URL actually served it.
+const OFFLINE_KEY = "/offline.html";
+
+/**
+ * Cache the offline page, defeating two things that silently broke it.
+ *
+ * 1. Cloudflare Pages serves clean URLs, so /offline.html answers 308 -> /offline
+ *    at the edge while the origin answers 200 for the .html. Whichever one is
+ *    reachable has to work.
+ * 2. `cache.put` REJECTS any response whose `redirected` flag is set. So a plain
+ *    `cache.add('/offline.html')` throws at the edge — and because install
+ *    tolerates per-URL failures, the worker installed happily with no offline
+ *    page at all. The fallback then degraded to a line of plain text, which is
+ *    exactly the moment a user most needs a real page.
+ *
+ * Rebuilding the Response from its body clears the redirected flag, so the copy
+ * we store is cacheable no matter how many hops it took to fetch.
+ */
+async function cacheOfflinePage(cache) {
+  for (const url of ["/offline.html", "/offline"]) {
+    try {
+      const res = await fetch(url, { redirect: "follow" });
+      if (!res.ok) continue;
+      const body = await res.blob();
+      await cache.put(
+        OFFLINE_KEY,
+        new Response(body, {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }),
+      );
+      return true;
+    } catch {
+      /* try the next spelling */
+    }
+  }
+  return false;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -55,6 +94,7 @@ self.addEventListener("install", (event) => {
       await Promise.all(
         PRECACHE.map((url) => cache.add(url).catch(() => undefined)),
       );
+      await cacheOfflinePage(cache);
       await self.skipWaiting();
     })(),
   );
@@ -102,7 +142,14 @@ async function networkFirst(request) {
   } catch {
     const hit = await cache.match(request);
     if (hit) return hit;
-    const offline = await cache.match("/offline.html");
+    let offline = await cache.match(OFFLINE_KEY);
+    // A worker that installed before this fix, or one whose install ran while
+    // the network was already failing, has no offline page. Try once more here
+    // rather than serving bare text forever.
+    if (!offline) {
+      await cacheOfflinePage(cache).catch(() => false);
+      offline = await cache.match(OFFLINE_KEY);
+    }
     return (
       offline ??
       new Response("Offline, and no cached copy of this page.", {

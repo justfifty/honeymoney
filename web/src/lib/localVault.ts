@@ -226,6 +226,47 @@ export async function loadLocal(): Promise<VaultSnapshot | null> {
   }
 }
 
+/**
+ * How stale a copy may get before an automatic sync is worth attempting.
+ *
+ * Six hours, not six minutes. An automatic sync costs a full export fetch, and
+ * the thing it protects against — losing access to the service — does not
+ * arrive on a six-minute timescale. Syncing after every keystroke would turn a
+ * safety net into a background data charge.
+ */
+const AUTO_SYNC_AFTER_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Sync quietly if the copy has gone stale, and do nothing otherwise.
+ *
+ * NON-INTERACTIVE by construction. It never prompts for file permission, never
+ * triggers a download, and never surfaces an error — a background task that
+ * throws a permission dialog at somebody mid-sentence is worse than a slightly
+ * old copy. When the file handle is not currently writable it still refreshes
+ * the browser-side snapshot, so offline analysis stays current even while the
+ * chosen file waits for the user's next visit to the vault screen.
+ *
+ * Returns true only if something was actually written.
+ */
+export async function autoSyncIfStale(): Promise<boolean> {
+  if (!vaultAvailable() || !navigator.onLine) return false;
+  try {
+    // Nothing to keep current until the user has opted in by choosing a
+    // location or taking at least one copy. Syncing for someone who has never
+    // used the feature would be fetching their whole record set uninvited.
+    const meta = await getMeta();
+    const located = await hasLocation();
+    if (!meta && !located) return false;
+    if (meta && Date.now() - new Date(meta.lastSyncAt).getTime() < AUTO_SYNC_AFTER_MS) {
+      return false;
+    }
+    const r = await sync({ interactive: false });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 export interface SyncOutcome {
   ok: boolean;
   meta?: VaultMeta;

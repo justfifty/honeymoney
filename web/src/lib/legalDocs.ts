@@ -653,7 +653,8 @@ const storage: LegalDoc = {
       en: {
         heading: "Clearing it",
         body: [
-          "Sign out to drop the session cookie.",
+          "Sign out. As of 27 August 2026 this does more than drop the session cookie: it deletes the local copy of your records, clears every page this app cached, and empties the browser storage it set. Anything you recorded offline and have not sent is sent first where possible, and you are warned and asked before anything unsent would be lost. The file you chose to keep your records in is NOT touched — that is yours, it may be on a drive or a memory card, and signing out of a website is no reason for us to reach through and erase it.",
+          "Signing IN also clears whatever a previous session left on the device, so one person cannot inherit another’s cached pages on a shared phone or tablet.",
           "Clear site data for honeymoney.app in your browser settings to remove everything above at once — including the offline cache and any queued records.",
           "Uninstall the app if you installed it to your home screen. This removes its storage with it.",
           "The quick-exit button on the Leaving and safety page clears this app's local storage and caches on its way out. It cannot clear your browser history, and no web page can.",
@@ -662,7 +663,8 @@ const storage: LegalDoc = {
       ms: {
         heading: "Membersihkannya",
         body: [
-          "Log keluar untuk menggugurkan kuki sesi.",
+          "Log keluar. Mulai 27 Ogos 2026 ini melakukan lebih daripada menggugurkan kuki sesi: ia memadamkan salinan tempatan rekod anda, membersihkan setiap halaman yang di-cache oleh aplikasi ini, dan mengosongkan storan pelayar yang ditetapkannya. Apa-apa yang anda rekod di luar talian dan belum dihantar akan dihantar dahulu jika boleh, dan anda diberi amaran dan ditanya sebelum apa-apa yang belum dihantar hilang. Fail yang anda pilih untuk menyimpan rekod anda TIDAK disentuh — ia milik anda, mungkin berada pada pemacu atau kad memori, dan log keluar daripada laman web bukan alasan untuk kami memadamkannya.",
+          "Log MASUK juga membersihkan apa-apa yang ditinggalkan oleh sesi sebelumnya pada peranti itu, supaya seorang tidak mewarisi halaman cache orang lain pada telefon atau tablet yang dikongsi.",
           "Bersihkan data tapak bagi honeymoney.app dalam tetapan pelayar anda untuk membuang semua di atas sekali gus — termasuk cache luar talian dan sebarang rekod yang menunggu.",
           "Nyahpasang aplikasi jika anda memasangnya ke skrin utama. Ini membuang storannya sekali.",
           "Butang keluar pantas pada halaman Keluar dan keselamatan membersihkan storan tempatan dan cache aplikasi ini semasa keluar. Ia tidak boleh membersihkan sejarah pelayar anda, dan tiada halaman web yang boleh.",
