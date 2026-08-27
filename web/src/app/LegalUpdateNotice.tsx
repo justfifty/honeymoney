@@ -18,7 +18,26 @@ import { hasAcceptedCurrent } from "@/lib/agreements";
 // is a worse outcome than a day's delay in re-acknowledgement — and a blocking
 // dialog is answered by whichever button dismisses it fastest, which is the
 // opposite of reading. It sits on every page until it is dealt with.
+/**
+ * OFF while the product is still being built.
+ *
+ * The bar is correct and stays in the tree, because a materially revised notice
+ * has to be GIVEN again and this is what gives it. But during build the version
+ * constants move most days, so it would sit on every screen permanently — and a
+ * banner that is always there is a banner nobody reads. Training the only two
+ * people using the app to dismiss it now is the surest way to have it ignored
+ * on the day it matters.
+ *
+ * ⚠️ TURN THIS ON BEFORE ANY REAL HOUSEHOLD SIGNS UP. Set LEGAL_UPDATE_NOTICE=1
+ * in the environment, or flip the default here. Until then /legal-update is
+ * still reachable, the consent ledger still records which version each answer
+ * was given under, and /api/account/reaccept still works — nothing is being
+ * skipped, only left unannounced.
+ */
+const NOTICE_ENABLED = process.env.LEGAL_UPDATE_NOTICE === "1";
+
 export default async function LegalUpdateNotice() {
+  if (!NOTICE_ENABLED) return null;
   const ctx = await getContext().catch(() => null);
   if (!ctx) return null;
   // One thing at a time: an account already counting down to deletion has a
