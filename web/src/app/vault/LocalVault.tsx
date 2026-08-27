@@ -248,19 +248,32 @@ export default function LocalVault() {
           </p>
         ) : (
           <div className="mt-4 space-y-5">
+            {/* Four figures, not three. "Moved to savings" is its own line
+                because it is neither in nor out — putting RM500 away is not
+                income and not expenditure, and squeezing it into either is what
+                makes a savings deposit look like a minus. */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {/* Savings gets GREEN, not the amber of spending and not the grey
+                  of a neutral total. It is the only figure here that is money
+                  you still have and chose to keep, and colouring it like an
+                  expense is most of why a savings deposit reads as a loss. */}
               {[
-                ["Records", String(analysis.transactions)],
-                ["Money in", money(analysis.totalIn)],
-                ["Money out", money(analysis.totalOut)],
-                ["Net", money(analysis.net)],
-              ].map(([label, value]) => (
+                ["Money in", money(analysis.totalIn), "text-zinc-900 dark:text-zinc-100"],
+                ["Money out", money(analysis.totalOut), "text-zinc-900 dark:text-zinc-100"],
+                ["Moved to savings", money(analysis.moved), "text-emerald-600 dark:text-emerald-400"],
+                ["Left over", money(analysis.net), "text-zinc-900 dark:text-zinc-100"],
+              ].map(([label, value, tone]) => (
                 <div
                   key={label}
-                  className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
+                  className={
+                    "rounded-xl border p-3 " +
+                    (label === "Moved to savings"
+                      ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/20"
+                      : "border-zinc-200 dark:border-zinc-800")
+                  }
                 >
                   <p className="text-xs text-zinc-500">{label}</p>
-                  <p className="mt-0.5 text-lg font-semibold tabular-nums">{value}</p>
+                  <p className={`mt-0.5 text-lg font-semibold tabular-nums ${tone}`}>{value}</p>
                 </div>
               ))}
             </div>
@@ -334,6 +347,18 @@ export default function LocalVault() {
             )}
 
             <p className="text-xs leading-relaxed text-zinc-500">
+              {analysis.moved > 0 && (
+                <>
+                  <strong className="text-emerald-700 dark:text-emerald-400">
+                    Moved to savings is not spending.
+                  </strong>{" "}
+                  It is your money changing pocket, so it is left out of both money in and money
+                  out — counting it as income would make you look better off than you are, and
+                  counting it as spending would say it was gone. Money somebody{" "}
+                  <em>gave</em> you for savings is different: that is real money arriving, so record
+                  it as income and it counts in.{" "}
+                </>
+              )}
               Covers {analysis.from?.slice(0, 10) ?? "—"} to {analysis.to?.slice(0, 10) ?? "—"}.
               {analysis.voided > 0 && ` ${analysis.voided} removed record(s) are not counted.`}
               {analysis.excluded > 0 &&

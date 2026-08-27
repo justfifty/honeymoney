@@ -27,6 +27,8 @@
 //      destroy records the user believed were saved, which is the single worst
 //      thing this app could do.
 
+import { deriveKind, kindOf, SAVINGS_TIER, type Category, type RecordKind } from "./recordKind";
+
 const DB_NAME = "honeymoney-vault";
 const DB_VERSION = 1;
 const STORE = "vault";
@@ -38,6 +40,13 @@ export interface LocalRecord {
   occurred_at: string;
   amount: number;
   direction: "out" | "in";
+  /**
+   * inflow | outflow | transfer. Carried explicitly rather than inferred from
+   * `direction`, because a savings deposit is direction "in" and kind
+   * "transfer" — inferring would make it income and inflate every ratio built
+   * on income. See lib/recordKind.ts.
+   */
+  kind: RecordKind;
   currency: string;
   vendorLabel: string;
   note: string;
@@ -137,6 +146,14 @@ export async function appendLocalRecord(
     occurred_at: typeof payload.occurredAt === "string" ? payload.occurredAt : now,
     amount: Number(payload.amount) || 0,
     direction: payload.direction === "in" ? "in" : "out",
+    // The category is the authority where it exists — it is what the user
+    // actually chose. deriveKind is the fallback for a payload without one.
+    kind: payload.category
+      ? kindOf(payload.category as Category)
+      : deriveKind({
+          direction: typeof payload.direction === "string" ? payload.direction : undefined,
+          bucketTier: payload.bucketTier === SAVINGS_TIER ? SAVINGS_TIER : null,
+        }),
     currency: typeof payload.currency === "string" ? payload.currency : "MYR",
     vendorLabel: typeof payload.vendorLabel === "string" ? payload.vendorLabel : "",
     note: typeof payload.note === "string" ? payload.note : "",
@@ -180,6 +197,7 @@ export function asAnalysable(rows: LocalRecord[]): Record<string, unknown>[] {
     id: r.id,
     amount: r.amount,
     direction: r.direction,
+    kind: r.kind,
     currency: r.currency,
     occurred_at: r.occurred_at,
     note: r.note,

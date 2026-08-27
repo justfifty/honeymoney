@@ -28,6 +28,8 @@ export interface LocalTxn {
   id: string;
   amount: number;
   direction?: string;
+  /** inflow | outflow | transfer. See lib/recordKind.ts — the third one matters. */
+  kind?: string;
   currency?: string;
   occurred_at: string;
   note?: string;
@@ -66,6 +68,13 @@ export interface LocalAnalysis {
   excluded: number;
   totalIn: number;
   totalOut: number;
+  /**
+   * Money moved between the household's own pockets — savings deposits and
+   * partner-to-partner settling. Reported as its own figure because it is
+   * neither income nor expenditure, and folding it into either is the mistake
+   * this field exists to make impossible.
+   */
+  moved: number;
   net: number;
   buckets: LocalBucket[];
   months: LocalMonth[];
@@ -116,6 +125,7 @@ export function analyseLocal(snapshot: {
 
   let totalIn = 0;
   let totalOut = 0;
+  let moved = 0;
   let voided = 0;
   let excluded = 0;
   let from: string | null = null;
@@ -137,10 +147,48 @@ export function analyseLocal(snapshot: {
 
     const amount = num(t.amount);
     const isIn = t.direction === "in";
+
+    // Tracked before the transfer branch below returns: the period covered is a
+    // fact about every record, and a week in which somebody only moved money to
+    // savings still happened.
     const when = String(t.occurred_at ?? "");
     if (when) {
       if (!from || when < from) from = when;
       if (!to || when > to) to = when;
+    }
+
+    // ── TRANSFERS ARE NEITHER IN NOR OUT ──────────────────────────────────
+    //
+    // A savings deposit sits behind the `+` button, because putting money away
+    // feels like a plus, but it is a TRANSFER: the household moved RM500 from
+    // one pocket to another and is not richer for it. Counting it as income
+    // inflates every ratio built on income — savings rate, essential burden,
+    // debt service, all of them — and counting it as spending would say the
+    // money is gone when you still have it.
+    //
+    // This module split purely on `direction` and so counted savings as money
+    // in. lib/attribution.ts householdNet had the rule right on the server; the
+    // local analysis did not, which meant the offline totals disagreed with the
+    // online ones by exactly the amount somebody had saved.
+    const kind = t.kind ?? (isIn ? "inflow" : "outflow");
+    if (kind === "transfer") {
+      moved += amount;
+      // Still counted per bucket below, because "how much went into Savings" is
+      // a real question — it is only the household IN/OUT totals it must stay
+      // out of.
+      if (t.wallet_node) {
+        const id = t.wallet_node;
+        const b = buckets.get(id) ?? {
+          id,
+          label: t.expand?.wallet_node?.label || labelOf.get(id) || "Unlabelled",
+          total: 0,
+          count: 0,
+        };
+        b.total += amount;
+        b.count++;
+        buckets.set(id, b);
+      }
+      continue;
     }
 
     if (isIn) totalIn += amount;
@@ -220,6 +268,7 @@ export function analyseLocal(snapshot: {
     excluded,
     totalIn,
     totalOut,
+    moved,
     net: totalIn - totalOut,
     buckets: [...buckets.values()].sort((a, b) => b.total - a.total),
     months: [...months.values()].sort((a, b) => b.key.localeCompare(a.key)).slice(0, 12),

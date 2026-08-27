@@ -267,22 +267,34 @@ export default function RecordRow({
               {record.source === "telegram" ? "auto" : record.source}
             </span>
           )}
-          {/* Both directions carry a sign and a colour. Money in used to be a
-              bare "+" in emerald and money out had NO sign at all, so the two
-              were told apart by the presence of a character — easy to miss in a
-              scanning list, and invisible to anyone who cannot separate green
-              from black. Now "+" in brand orange and "−" in dark grey: the sign
-              carries the meaning on its own, and the colour reinforces it. */}
+          {/* THREE signs, not two, because there are three kinds of record.
+              A savings deposit is stored with direction "in", so it rendered as
+              "+RM500" in the same orange as a salary — telling the reader they
+              were RM500 better off when they had merely moved their own money.
+              That is the whole of the +/− confusion.
+              
+              Transfers now get "→" in green: not a plus, because nothing
+              arrived; not a minus, because nothing was spent; green because it
+              is the one row on the list that is money you still have and chose
+              to keep. The symbol carries the meaning on its own, so it survives
+              anyone who cannot separate the colours. */}
           <span
             className={`font-medium tabular-nums ${
               record.voided
                 ? "text-zinc-400 line-through"
-                : record.direction === "in"
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-zinc-700 dark:text-zinc-300"
+                : record.kind === "transfer"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : record.direction === "in"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-zinc-700 dark:text-zinc-300"
             }`}
+            title={
+              record.kind === "transfer"
+                ? "Moved between your own pockets — neither income nor spending"
+                : undefined
+            }
           >
-            {record.direction === "in" ? "+" : "−"}
+            {record.kind === "transfer" ? "→" : record.direction === "in" ? "+" : "−"}
             {fmtMoney(record.amount, ccy)}
           </span>
 
