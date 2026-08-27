@@ -32,11 +32,12 @@
     "check:tally": "npx --yes tsx --env-file=.env.local scripts/check-tally.mts",
     "check:vault": "npx --yes tsx scripts/check-vault.mts",
     "vault:install": "npx --yes tsx --env-file=.env.local scripts/install-vault-collection.mts",
-    "check:capture": "npx --yes tsx --env-file=.env.local scripts/check-capture.mts"
+    "check:capture": "npx --yes tsx --env-file=.env.local scripts/check-capture.mts",
+    "ocr:assets": "node scripts/stage-ocr-assets.mjs --apply"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.1",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "pdfjs-dist": "^4.10.38",
     "react": "19.2.4",
     "react-dom": "19.2.4",

@@ -148,6 +148,26 @@ export function visibleFilter(viewerMemberId: string | null | undefined): string
 }
 
 /**
+ * A PocketBase filter fragment dropping records the payer took out of the
+ * household's arithmetic.
+ *
+ * Applied in the QUERY, alongside `visibleFilter`, and for the same reason: an
+ * aggregate that has to remember to filter is an aggregate that will one day
+ * forget. There are six separate read paths that sum a household's money
+ * (money view, projection, H-Score, focus view, radar, dedupe) and a rule
+ * enforced in five of them is not a rule.
+ *
+ * Old rows have the field unset, which `!= true` matches — so nothing that
+ * counted yesterday stops counting today.
+ *
+ * NOT applied to the record LIST. The payer must still see their own excluded
+ * record, and so must the household where the row is otherwise shared: taking
+ * something out of a total is not the same as hiding it, and conflating the two
+ * would delete a row from view that its owner never asked to hide.
+ */
+export const inHouseholdTotals = `exclude_from_totals != true`;
+
+/**
  * Does a set of records net to zero at household level?
  *
  * A partner-to-partner repayment is a `transfer` between two members: RM200

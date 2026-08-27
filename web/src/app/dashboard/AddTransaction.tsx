@@ -24,6 +24,7 @@ import {
 import { classifyText, CATEGORY_STYLE, noteKeyFor } from "@/lib/classify";
 import { parseVoiceLocal } from "@/lib/voiceParse";
 import { defaultVisibility, type Composition, type Visibility } from "@/lib/attribution";
+import { enqueue } from "@/lib/offlineQueue";
 
 interface BucketOption {
   id: string;
@@ -115,6 +116,9 @@ export default function AddTransaction({
   // because the control does not render for a household of one.
   const [paidBy, setPaidBy] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>("shared");
+  // Off unless the payer asks. A total that quietly omits real spending is a
+  // worse failure than a visible one — see the migration note on the field.
+  const [excludeFromTotals, setExcludeFromTotals] = useState(false);
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
   // Shown, not stored. The itemised rows are what makes a scan checkable at a
   // glance -- "did it read my receipt or just guess a number?" -- but the
@@ -304,10 +308,7 @@ export default function AddTransaction({
       const rate = rateFor(ccy);
       const base = toMYR(value, ccy);
 
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const payload = {
           // Omitted for income: the API accepts an inflow with no bucket, and
           // sending buckets[0] is what filed every salary against Must-paid.
           ...(isIncome ? {} : { walletNodeId: bucket }),
@@ -317,6 +318,7 @@ export default function AddTransaction({
           category,
           paidBy: paidBy ?? undefined,
           visibility,
+          excludeFromTotals,
           // True: a human chose this, rather than it being defaulted by a
           // migration. That distinction is what makes "reclassifying is a user
           // action" checkable later.
@@ -334,8 +336,41 @@ export default function AddTransaction({
                 },
               }
             : {}),
-        }),
-      });
+      };
+
+      // Offline: keep it on the device and tell the user, rather than failing.
+      //
+      // The check is `navigator.onLine` FIRST and a caught fetch error second,
+      // because the two are different situations. A known-offline device should
+      // never attempt the request at all — the attempt costs a timeout the user
+      // waits through, on the screen where speed is the entire product. A fetch
+      // that fails while the browser believes it is online is the harder case
+      // (a captive portal, the laptop origin being down) and is caught below.
+      if (!navigator.onLine) {
+        await enqueue(payload);
+        setMsg({ ok: true, text: tr("dash.add.queued") });
+        clearDraft();
+        setBusy(false);
+        return;
+      }
+
+      let res: Response;
+      try {
+        res = await fetch("/api/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // The network said yes and then did not deliver. Same outcome as being
+        // offline from the user's side, so it gets the same handling: the
+        // capture survives.
+        await enqueue(payload);
+        setMsg({ ok: true, text: tr("dash.add.queued") });
+        clearDraft();
+        setBusy(false);
+        return;
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? tr("dash.add.couldNotSave"));
 
@@ -664,6 +699,7 @@ export default function AddTransaction({
           members={members}
           paidBy={paidBy}
           visibility={visibility}
+          excludeFromTotals={excludeFromTotals}
           onPaidBy={(id) => {
             setPaidBy(id);
             // Recompute the default rather than leaving a stale choice: changing
@@ -676,7 +712,13 @@ export default function AddTransaction({
               }),
             );
           }}
-          onVisibility={setVisibility}
+          onVisibility={(v) => {
+            setVisibility(v);
+            // A record that stops being private cannot stay out of the totals:
+            // everyone can see it, so a total that omits it is a discrepancy.
+            if (v === "shared") setExcludeFromTotals(false);
+          }}
+          onExcludeFromTotals={setExcludeFromTotals}
           lang={lang}
         />
       </div>

@@ -32,7 +32,7 @@ const COPY: Record<string, { label: string; help: string }> = {
   },
   ai_processing: {
     label: "AI features",
-    help: "Ask Honey and receipt scanning send the text you capture to an AI provider. Turning this off switches both features off.",
+    help: "Ask Honey and receipt scanning send the text you capture to an AI provider, which may be outside Malaysia. Never your password, your email, your H-Score, or another member's records. Do not put account numbers, IC numbers or other people's details into a prompt. Core budgeting, forecasts and the H-Score all work with this off.",
   },
   partner_offers: {
     label: "Matched financial products",
@@ -100,6 +100,10 @@ export default function PrivacyControls() {
         What you have agreed to. Each one saves the moment you change it.{" "}
         <Link href="/privacy" className="text-amber-600 hover:underline">
           Read the full notice
+        </Link>{" "}
+        ·{" "}
+        <Link href="/legal/ai" className="text-amber-600 hover:underline">
+          What the AI features send
         </Link>
       </p>
 

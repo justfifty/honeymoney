@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       category?: Category;
       paidBy?: string;
       visibility?: Visibility;
+      excludeFromTotals?: boolean;
       attributionAsserted?: boolean;
     };
     try {
@@ -106,6 +107,7 @@ export async function POST(request: Request) {
         category: body.category,
         paidBy: body.paidBy,
         visibility: body.visibility,
+        excludeFromTotals: body.excludeFromTotals === true,
         attributionAsserted: body.attributionAsserted,
       },
       { id: ctx.user.id, email: ctx.user.email },

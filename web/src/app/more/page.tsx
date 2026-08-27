@@ -34,6 +34,11 @@ const GROUPS: { titleKey: string; items: Item[] }[] = [
     titleKey: "more.g.household",
     items: [
       { href: "/household", key: "more.household", desc: "more.d.household", icon: "👪", auth: true },
+      // First in the household group after the member list, because a person
+      // who has just seen who is in their household is exactly the person about
+      // to wonder what those people can see.
+      { href: "/sharing", key: "more.sharing", desc: "more.d.sharing", icon: "🔐", auth: true },
+      { href: "/vault", key: "more.vault", desc: "more.d.vault", icon: "💾", auth: true },
       { href: "/ledger", key: "more.ledger", desc: "more.d.ledger", icon: "⛓️", auth: true },
       { href: "/account", key: "more.account", desc: "more.d.account", icon: "⚙️", auth: true },
       // Setup was reachable only from the hamburger, so a user on a phone who

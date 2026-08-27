@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -94,6 +95,38 @@ export default function HouseholdManager({
     }
   }
 
+  // Removing someone was the one household operation with a server endpoint
+  // and no way to reach it: roles could be changed forever but membership was
+  // one-way. For a shared-money app that is not a missing button, it is a trap.
+  //
+  // The confirm() is deliberate and is the only one in this file. Changing a
+  // role is reversible in a tap; removing somebody is not something to do by
+  // mis-clicking next to a dropdown, and an owner doing it has time to read a
+  // sentence.
+  async function remove(memberId: string, name: string) {
+    if (
+      !window.confirm(
+        `Remove ${name} from this household?
+
+They lose access immediately. The records they entered stay in the household's history — removing those would change past totals for everybody.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/household/member?memberId=${memberId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not remove them.");
+      setMembers((ms) => ms.filter((m) => m.id !== memberId));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not remove them.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function changeRole(memberId: string, role: AccessRole) {
     setBusy(true);
     setErr(null);
@@ -169,19 +202,47 @@ export default function HouseholdManager({
               </div>
 
               {canManage && !m.isMe ? (
-                <select
-                  value={m.accessRole}
-                  disabled={busy}
-                  onChange={(e) => changeRole(m.id, e.target.value as AccessRole)}
-                  className={`${field} text-xs`}
-                  title={ROLE_HINT[m.accessRole]}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={m.accessRole}
+                    disabled={busy}
+                    onChange={(e) => changeRole(m.id, e.target.value as AccessRole)}
+                    className={`${field} text-xs`}
+                    title={ROLE_HINT[m.accessRole]}
+                  >
+                    {ROLES.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => remove(m.id, m.displayName || "this member")}
+                    disabled={busy}
+                    title="Remove from household"
+                    aria-label={`Remove ${m.displayName || "this member"} from the household`}
+                    className="rounded-lg border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-rose-400 hover:text-rose-600 disabled:opacity-50 dark:border-zinc-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : m.isMe ? (
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    {m.accessRole}
+                  </span>
+                  {/* Your own way out sits on your own row, next to everyone
+                      else's Remove button. Putting it only on a settings page
+                      somewhere else is how "you can leave at any time" becomes
+                      true in the documentation and false in practice. */}
+                  <Link
+                    href="/sharing/leave"
+                    className="rounded-lg border border-zinc-300 px-2 py-1 text-xs text-zinc-500 hover:border-amber-400 hover:text-amber-600 dark:border-zinc-700"
+                  >
+                    Leave
+                  </Link>
+                </div>
               ) : (
                 <span className="rounded bg-zinc-100 px-2 py-1 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                   {m.accessRole}
@@ -199,6 +260,34 @@ export default function HouseholdManager({
             Invite someone
           </h2>
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            {/* What an invite does and does not do, before one is created.
+                Everyone assumes inviting someone into a "household" hands them
+                the books — that is what the word means everywhere else — so the
+                correction has to arrive before the code is generated, not in a
+                notice they will read afterwards if ever. */}
+            <div className="mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
+              <p>
+                <strong className="text-zinc-800 dark:text-zinc-200">
+                  They will not see your financial information.
+                </strong>{" "}
+                Joining a household does not open your records. Each person chooses what they share,
+                per kind of data, and almost everything is private until they switch it on — your
+                individual transactions, receipts, goals, score and forecast included.
+              </p>
+              <p className="mt-1.5">
+                They receive a code that expires, that you can revoke before it is used, and that
+                they have to accept themselves. Nobody is added silently.
+              </p>
+              <p className="mt-1.5">
+                <Link href="/legal/sharing" className="font-medium underline underline-offset-2">
+                  Household sharing notice
+                </Link>{" "}
+                ·{" "}
+                <Link href="/sharing" className="font-medium underline underline-offset-2">
+                  What you are sharing right now
+                </Link>
+              </p>
+            </div>
             <div className="flex flex-wrap items-end gap-3">
               <label className="flex min-w-36 flex-1 flex-col gap-1 text-xs text-zinc-500">
                 Their name

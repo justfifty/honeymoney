@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · HoneyMoney</title>
+    <style>
+      :root { color-scheme: light dark; --ink: #111; --bg: #fff; --muted: #6b7280; --amber: #f59e0b; }
+      @media (prefers-color-scheme: dark) { :root { --ink: #f4f4f5; --bg: #09090b; --muted: #a1a1aa; } }
+      * { box-sizing: border-box; margin: 0; }
+      body {
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--ink); background: var(--bg);
+        min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+      }
+      main { max-width: 30rem; }
+      h1 { font-size: 1.6rem; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
+      p { color: var(--muted); margin-bottom: 1rem; }
+      ul { color: var(--muted); padding-left: 1.2rem; margin-bottom: 1.25rem; }
+      li { margin-bottom: 0.35rem; }
+      strong { color: var(--ink); }
+      a.btn {
+        display: inline-block; min-height: 44px; line-height: 44px;
+        padding: 0 20px; border-radius: 12px; background: var(--amber);
+        color: #fff; font-weight: 600; text-decoration: none;
+      }
+      .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); display: inline-block; margin-right: 8px; }
+    </style>
+  </head>
+  <body>
+    <!--
+      The page a visitor gets when there is no network AND no cached copy of
+      what they asked for.
+
+      It says what still works rather than only what does not. HoneyMoney runs
+      partly from a machine that is sometimes off, so "offline" here is an
+      ordinary state rather than an exception — and a person who has just
+      photographed a receipt needs to know whether to bother keeping the photo.
+      The answer is yes, and this is where they find that out.
+    -->
+    <main>
+      <h1><span class="dot"></span>You are offline</h1>
+      <p>
+        HoneyMoney could not reach the network, and it has no saved copy of this particular page.
+      </p>
+      <p><strong>What still works right now:</strong></p>
+      <ul>
+        <li>Scanning a receipt — the OCR engine runs on your device, not on our server.</li>
+        <li>Typing a spend. It is saved on this device and syncs by itself when you are back.</li>
+        <li>Any page you have already opened on this device.</li>
+      </ul>
+      <p><strong>What needs the network:</strong> your dashboard totals, the H-Score, Ask Honey, and anything anyone else in your household has entered.</p>
+      <a class="btn" href="/record">Record a spend anyway</a>
+      <p style="margin-top:1.25rem;font-size:0.85rem">
+        Nothing you enter while offline is lost. It waits on this device and is sent when a
+        connection returns.
+      </p>
+    </main>
+  </body>
+</html>

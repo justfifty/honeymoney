@@ -27,7 +27,12 @@ import { pbCreate, pbList, pbStr } from "./pocketbase";
  * The version someone accepted is the version that binds them until they accept
  * a newer one, which is why the row stores the version rather than a boolean.
  */
-export const TERMS_VERSION = "2026-08-26";
+// 2026-08-27: the deal changed, so the version did. Added — the service is
+// free of charge and what that does and does not promise; the H-Score is not a
+// credit score and nobody may require you to show it; forecasts are estimates;
+// your duties towards the other people (and children) whose details you enter;
+// and the Telegram channel named as a separate choice with a third party in it.
+export const TERMS_VERSION = "2026-08-27";
 
 /** The operating entity named in the terms. */
 export const OPERATOR = "JUST50";

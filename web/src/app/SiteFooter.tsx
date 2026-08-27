@@ -41,9 +41,15 @@ export default async function SiteFooter() {
             among nine product links is how they stop being findable. Both are
             in the always-on static snapshot, so they survive the origin being
             down; a notice that needs the laptop on is not given either. */}
-        <p className="flex items-center gap-x-3 text-zinc-400">
+        <p className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-zinc-400">
           <Link href="/privacy" className="hover:text-amber-600">{tr("footer.privacy")}</Link>
           <Link href="/terms" className="hover:text-amber-600">{tr("footer.terms")}</Link>
+          {/* The other nine notices reach the footer through their hub rather
+              than individually. Eleven legal links in a row is a wall nobody
+              reads, and the hub is where the one-line summaries live that make
+              the right document findable. */}
+          <Link href="/legal" className="hover:text-amber-600">{tr("footer.notices")}</Link>
+          <Link href="/sharing" className="hover:text-amber-600">{tr("footer.sharing")}</Link>
           <span>{tr("footer.meta")}</span>
         </p>
       </div>

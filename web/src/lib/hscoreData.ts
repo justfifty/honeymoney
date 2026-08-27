@@ -9,6 +9,7 @@
 // configuration choice rather than a rewrite.
 
 import { pbList, pbFirst, pbCreate, pbUpdate, pbStr } from "./pocketbase";
+import { inHouseholdTotals } from "./attribution";
 import { computeAllocations } from "./projection";
 import { privateBucketIds, PRIVATE_TIER } from "./privacy";
 import { goalManual, trackedByGoal } from "./goals";
@@ -102,7 +103,7 @@ export async function getHScore(
     pbList<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<PBEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<PBTxn>("transactions", {
-      filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(pbTime(from))}`,
+      filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(pbTime(from))} && ${inHouseholdTotals}`,
       perPage: 1000,
     }),
   ]);

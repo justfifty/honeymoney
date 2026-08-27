@@ -7,6 +7,7 @@ import { listMembers } from "@/lib/household";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
+import JustInTimeNotice from "../JustInTimeNotice";
 import StatementImport from "./StatementImport";
 import CsvImport from "./CsvImport";
 
@@ -61,6 +62,35 @@ export default async function ImportPage() {
           <Link href="/" className="text-zinc-500 hover:underline">← {tr("nav.home")}</Link>
         </nav>
       </header>
+
+      {/* The upload notice, ABOVE the upload controls and not linked from
+          beneath them. A statement is the single most sensitive thing anyone
+          hands this app: it carries every counterparty a household paid, and
+          usually somebody else's name and account number too. Whoever is about
+          to select that file is the person who should be told to look at it
+          first, at the moment they can still act on the advice. */}
+      <div className="mt-6 space-y-3">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <p className="font-semibold">Before you upload</p>
+          <p className="mt-1">
+            Upload only documents you are authorised to use. Receipts and statements often contain
+            personal information about other people as well as you — names, account numbers,
+            addresses. HoneyMoney processes the file only to extract the figures for the feature you
+            chose. Review it, and redact anything unnecessary, before you upload.
+          </p>
+          <p className="mt-2 text-amber-800/90 dark:text-amber-300/90">
+            Muat naik hanya dokumen yang anda berhak gunakan. Resit dan penyata selalunya mengandungi
+            maklumat peribadi orang lain selain anda. Semaknya dan tapiskan apa yang tidak perlu
+            sebelum memuat naik.
+          </p>
+        </div>
+        <JustInTimeNotice doc="storage">
+          <p>
+            A bank PDF is read in your browser from its text layer — the file itself is not sent to
+            us or to any AI provider unless you explicitly choose cloud extraction below.
+          </p>
+        </JustInTimeNotice>
+      </div>
 
       {/* CSV FIRST, and never gated. This page used to show nothing at all
           without an AI provider configured, which put the entire import feature

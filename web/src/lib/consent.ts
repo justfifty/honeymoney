@@ -21,7 +21,14 @@ import { pbList, pbCreate, pbStr } from "./pocketbase";
  * re-ask for the purposes that actually changed instead of pretending old
  * consent covers new processing.
  */
-export const NOTICE_VERSION = "2026-08-24";
+// 2026-08-27: materially revised. New disclosures — Telegram and the
+// OpenTimestamps calendars named as recipients, the AI providers named
+// individually, the database's actual location corrected (it is not Singapore),
+// employer/sponsor reporting written down as a guarantee before the feature
+// exists, and a section on the other people who appear in a household's
+// records. Every one of those is a new class of recipient or a changed fact, so
+// existing consent is now shown as stale and re-asked rather than assumed.
+export const NOTICE_VERSION = "2026-08-27";
 
 export type Purpose =
   | "core_processing"

@@ -183,18 +183,55 @@ function SignupForm() {
 
         {/* Acceptance has to be VISIBLE to be acceptance. The server records a
             row against this version either way, and a row saying someone agreed
-            to something they were never shown is evidence of the wrong thing. */}
+            to something they were never shown is evidence of the wrong thing.
+            The data-minimisation sentence is here rather than only in the notice
+            because it is the answer to the question a person is actually asking
+            at this button: what are you about to take from me? */}
         <p className="text-xs leading-relaxed text-zinc-500">
           By creating an account you agree to our{" "}
           <Link href="/terms" className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300">
-            Terms of Service
+            Terms of Use
           </Link>{" "}
-          and confirm you have read the{" "}
+          and acknowledge the{" "}
           <Link href="/privacy" className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300">
             Privacy Notice
           </Link>
-          . HoneyMoney is not financial advice.
+          . HoneyMoney collects only what is needed to create and secure your account and to provide
+          the features you choose. The three boxes above are optional and are not a condition of
+          signing up.
         </p>
+
+        {/* Two facts a new account holder should meet BEFORE the account
+            exists, not after they have entered a month of spending. */}
+        <ul className="space-y-1 text-xs leading-relaxed text-zinc-500">
+          <li>
+            🔒 <strong className="text-zinc-600 dark:text-zinc-400">Private by default.</strong> If
+            you later share a household, your individual transactions, receipts, goals, score and
+            forecast stay private unless you switch them on.
+          </li>
+          <li>
+            ⚠️{" "}
+            <strong className="text-zinc-600 dark:text-zinc-400">
+              Educational tool, not financial advice.
+            </strong>{" "}
+            HoneyMoney is not a bank or a licensed adviser and guarantees no outcome.{" "}
+            <Link
+              href="/legal/disclaimer"
+              className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              Where that line sits
+            </Link>
+          </li>
+          <li>
+            📄 All eleven notices, in English and Bahasa Malaysia:{" "}
+            <Link
+              href="/legal"
+              className="underline underline-offset-2 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              honeymoney.app/legal
+            </Link>
+          </li>
+        </ul>
 
         {tooShort && <p className="text-[11px] text-zinc-400">Password needs at least 8 characters.</p>}
         {!tooShort && password.length >= 8 && strength.score < 2 && (

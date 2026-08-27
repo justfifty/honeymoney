@@ -193,5 +193,12 @@ export function categoryFor(subScore: CategoryDef["addresses"]): CategoryDef | n
 export const DISCLAIMER_KEY = "dir.disclaimer";
 export const REGISTRY_LINKS = [
   { labelKey: "dir.registry.bnm", url: "https://www.bnm.gov.my/regulations/fsp-directory" },
-  { labelKey: "dir.registry.sc", url: "https://www.sc.com.my/regulation/licensing-and-registration" },
+  // Checked live 2026-08-27: the old path
+  // /regulation/licensing-and-registration serves SC's 404 page. It mattered
+  // more than an ordinary dead link — this is the register the directory tells
+  // users to verify a licence against, so "check the regulator yourself" was an
+  // instruction that led to a 404 while the listing beside it still displayed a
+  // licence number. Re-verify these two registry URLs whenever the directory is
+  // touched; regulators reorganise their sites and the failure is silent.
+  { labelKey: "dir.registry.sc", url: "https://www.sc.com.my/regulation/licensing/licensed-and-registered-persons" },
 ];

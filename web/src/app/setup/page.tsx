@@ -12,6 +12,7 @@ import SealedBackup from "./SealedBackup";
 import { listVaults } from "@/lib/vault";
 import AiStatus from "./AiStatus";
 import PrivacyControls from "./PrivacyControls";
+import DataDashboard from "./DataDashboard";
 
 export const dynamic = "force-dynamic";
 export const metadata = {
@@ -76,8 +77,50 @@ export default async function SetupPage() {
           {/* Privacy sits ABOVE delete deliberately: withdrawing one purpose is
               the proportionate action, and a user who can only find the nuclear
               option will use the nuclear option. */}
-          <Section title="🔒 Privacy & your data" tone="plain">
+          {/* The dashboard sits ABOVE the toggles. A person opening this
+              screen is answering "what do they have on me?" before they can
+              sensibly answer "what should I switch off?", and a page that opens
+              with controls asks the second question first. */}
+          <Section id="data" title="📊 What we hold about you" tone="plain">
+            <DataDashboard />
+          </Section>
+
+          <Section id="privacy" title="🔒 Privacy & your data" tone="plain">
             <PrivacyControls />
+            {/* Consent governs what WE may do with your records. Sharing governs
+                what the people in your household can see. They are different
+                questions with different answers, so they get different screens —
+                but a user looking for "who can see my spending" will look here
+                first, and finding only the consent toggles would send them away
+                believing the answer is everyone. */}
+            <p className="mt-5 border-t border-zinc-200 pt-4 text-sm leading-relaxed text-zinc-600 dark:border-zinc-800 dark:text-zinc-400">
+              These control what <em>we</em> may do with your records. What the people in your
+              household can see is a separate set of choices —{" "}
+              <Link href="/sharing" className="font-medium text-amber-600 hover:underline">
+                Sharing &amp; privacy
+              </Link>
+              . Your individual transactions, receipts, goals, score and forecast are private there
+              by default.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              Every notice we owe you, separately and in both languages:{" "}
+              <Link href="/legal" className="font-medium text-amber-600 hover:underline">
+                Notices
+              </Link>{" "}
+              — including the{" "}
+              <Link href="/legal/ai" className="font-medium text-amber-600 hover:underline">
+                AI notice
+              </Link>
+              , the{" "}
+              <Link href="/legal/hscore" className="font-medium text-amber-600 hover:underline">
+                H-Score limits
+              </Link>{" "}
+              and the{" "}
+              <Link href="/legal/retention" className="font-medium text-amber-600 hover:underline">
+                retention schedule
+              </Link>
+              .
+            </p>
           </Section>
 
           {/* Sealed backup sits between privacy and delete on purpose: it is
@@ -242,7 +285,11 @@ export default async function SetupPage() {
   );
 }
 
-function Section({ title, tone, children }: { title: string; tone: "plain" | "good" | "warn"; children: React.ReactNode }) {
+// `id` is optional but load-bearing where it is passed: /privacy and the
+// /settings/privacy redirect both deep-link to #privacy, and a notice that
+// promises "manage this in Settings" has to land the reader ON the controls
+// rather than at the top of a long page for them to hunt down.
+function Section({ id, title, tone, children }: { id?: string; title: string; tone: "plain" | "good" | "warn"; children: React.ReactNode }) {
   const ring =
     tone === "good"
       ? "border-emerald-200 bg-emerald-50/50 dark:border-emerald-900 dark:bg-emerald-950/20"
@@ -250,7 +297,7 @@ function Section({ title, tone, children }: { title: string; tone: "plain" | "go
         ? "border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20"
         : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900";
   return (
-    <section className={`mt-6 rounded-2xl border p-5 text-sm leading-relaxed ${ring}`}>
+    <section id={id} className={`mt-6 scroll-mt-20 rounded-2xl border p-5 text-sm leading-relaxed ${ring}`}>
       <h2 className="mb-3 text-base font-semibold">{title}</h2>
       {children}
     </section>

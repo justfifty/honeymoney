@@ -15,7 +15,7 @@
 
 import { randomBytes } from "node:crypto";
 import { config } from "./config";
-import { pbCreate, pbFirst, pbList, pbUpdate, pbStr } from "./pocketbase";
+import { pbCreate, pbDelete, pbFirst, pbList, pbUpdate, pbStr } from "./pocketbase";
 import { getSessionUser, type SessionUser } from "./auth";
 
 export type AccessRole = "owner" | "adult" | "child" | "viewer";
@@ -322,6 +322,101 @@ export async function acceptInvite(user: SessionUser, rawCode: string): Promise<
   const tenant = await loadTenant(invite.tenant);
   if (!tenant) throw new AuthError("That household no longer exists.", 404);
   return tenant;
+}
+
+// ── Leaving ─────────────────────────────────────────────────────────────────
+//
+// Until now a member could be given a role and never taken out of one. There
+// was no DELETE anywhere on `members`: once you were in a household, the only
+// exits were to delete the whole household or to abandon the account. For a
+// shared-money app used by couples that is not a missing CRUD verb, it is a
+// trap — and the person it traps is the one with the least power in the
+// household, which is the same person the private-by-default rules are for.
+//
+// Two operations, deliberately asymmetric:
+//
+//   leaveHousehold  — you remove yourself. Needs nobody's permission, takes
+//                     effect immediately, and cannot be blocked by an owner.
+//   removeMember    — an owner removes someone else. Needs `manage_members`,
+//                     and cannot be used on the last owner.
+//
+// NEITHER DELETES RECORDS. A member row goes; the transactions stay, because
+// they are the household's financial history and deleting them would silently
+// rewrite months of totals for everybody still there. What the leaver takes
+// with them is an export, which they are told to take BEFORE they go.
+
+export interface LeaveResult {
+  tenantId: string;
+  /** True when the leaver was the household's only member. */
+  wasLast: boolean;
+  /** A household of their own, created because they now have none. */
+  newTenantId: string | null;
+}
+
+/**
+ * Remove yourself from a household, right now.
+ *
+ * Sharing is revoked first and membership dropped second, in that order and
+ * never the reverse. Dropping the row first would leave a window — however
+ * short — in which the person has no member id to write sharing rows against
+ * while their old data is still resolvable, and the whole promise of this
+ * function is that leaving is the moment everything stops.
+ *
+ * The sole owner of a household with other people in it cannot simply vanish:
+ * that would leave a household nobody can administer. They are told to hand
+ * ownership over first, which is a real instruction rather than a refusal —
+ * the roles screen does it in two taps.
+ */
+export async function leaveHousehold(
+  user: SessionUser,
+  tenantId: string,
+): Promise<LeaveResult> {
+  const me = await pbFirst<MemberRow>(
+    "members",
+    `user = ${pbStr(user.id)} && tenant = ${pbStr(tenantId)}`,
+  );
+  if (!me) throw new AuthError("You are not in that household.", 404);
+
+  const members = await listMembers(tenantId);
+  const others = members.filter((m) => m.id !== me.id);
+  const otherOwners = others.filter((m) => m.access_role === "owner");
+  if (me.access_role === "owner" && others.length > 0 && otherOwners.length === 0) {
+    throw new AuthError(
+      "You are the only owner. Make someone else an owner first, then you can leave.",
+      409,
+    );
+  }
+
+  await pbDelete("members", me.id);
+
+  // Somewhere to land. An account with no membership would be handed a fresh
+  // household by getContext() on the next request anyway; doing it here means
+  // the leaver is told what happened rather than discovering it.
+  let newTenantId: string | null = null;
+  const remaining = await listHouseholdsFor(user.id);
+  if (remaining.length === 0) {
+    const fresh = await createHouseholdFor(user, { name: "My household" });
+    newTenantId = fresh.tenant.id;
+  }
+
+  return { tenantId, wasLast: others.length === 0, newTenantId };
+}
+
+/** Take someone else out. Owner-only, and never the last owner. */
+export async function removeMember(tenantId: string, memberId: string): Promise<MemberRow> {
+  const row = await pbFirst<MemberRow>(
+    "members",
+    `id = ${pbStr(memberId)} && tenant = ${pbStr(tenantId)}`,
+  );
+  if (!row) throw new AuthError("No such member.", 404);
+
+  const members = await listMembers(tenantId);
+  const owners = members.filter((m) => m.access_role === "owner");
+  if (row.access_role === "owner" && owners.length <= 1) {
+    throw new AuthError("That is the last owner. Make someone else an owner first.", 409);
+  }
+  await pbDelete("members", memberId);
+  return row;
 }
 
 // Every household this account can reach (it may have been invited to more than

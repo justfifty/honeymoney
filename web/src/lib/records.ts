@@ -6,6 +6,9 @@ import { pbList, pbStr } from "./pocketbase";
 import { redactPrivate, privateBucketIds, PRIVATE_TIER } from "./privacy";
 import { deriveKind, type RecordKind } from "./recordKind";
 import { visibleFilter, type Visibility } from "./attribution";
+import { getHouseholdShares } from "./sharingStore";
+import { redactUnshared, detailAccessCounts } from "./sharingRedact";
+import { logDetailAccess } from "./sharingStore";
 
 export interface SpendRecord {
   id: string;
@@ -40,6 +43,11 @@ export interface SpendRecord {
    * exists to hide.
    */
   attachments: string[];
+  /**
+   * The payer asked for this record to sit outside household totals. The row is
+   * still theirs and still real; it simply does not move the shared number.
+   */
+  excludeFromTotals: boolean;
 }
 
 export type Period = "day" | "week" | "month";
@@ -68,6 +76,7 @@ interface PBTxn {
   paid_by?: string | null;
   visibility?: string | null;
   attribution_asserted?: boolean;
+  exclude_from_totals?: boolean;
   attachments?: string[] | string | null;
   raw?: { entered?: { amount: number; currency: string; perMYR: number; rateSource: string } } | null;
   expand?: { vendor_node?: { label: string }; wallet_node?: { id: string; label: string } };
@@ -109,6 +118,15 @@ export async function getSpendRecords(
     viewerMemberId?: string | null;
     /** Enforce the tier-3 promise. Off for the fictional demo personas. */
     redact?: boolean;
+    /** Name written into the access log. The viewer's display name. */
+    viewerLabel?: string | null;
+    /**
+     * Set false for reads that are not a person looking at a screen — an
+     * export, a recomputation, a background job. A log that records the
+     * server's own housekeeping as "viewed your transactions" would frighten
+     * people about nothing and bury the accesses that matter.
+     */
+    logAccess?: boolean;
   } = {},
 ): Promise<SpendRecord[]> {
   const filter =
@@ -174,13 +192,41 @@ export async function getSpendRecords(
       : t.attachments
         ? [t.attachments]
         : [],
+    excludeFromTotals: Boolean(t.exclude_from_totals),
   }));
 
-  return redactPrivate(rows, {
+  const tierRedacted = redactPrivate(rows, {
     privateIds,
     viewerMemberId: opts.viewerMemberId,
     enabled: Boolean(opts.redact),
   });
+
+  // Second pass: the payer's own per-data-type choices. See lib/sharingRedact
+  // for why this is not folded into redactPrivate — different inputs, different
+  // question, and a merged function could not answer "why is this row hidden?".
+  if (!opts.redact) return tierRedacted;
+
+  const shares = await getHouseholdShares(tenantId);
+  const shareOpts = { shares, viewerMemberId: opts.viewerMemberId, enabled: true };
+
+  // Logged BEFORE redaction, from the rows the viewer is actually about to
+  // read. Counting after would count zero for everything hidden, which is
+  // correct, and zero for everything shown, which is not — the redacted copy no
+  // longer carries the payer id that says whose data it was.
+  if (opts.logAccess !== false) {
+    for (const [subject, count] of detailAccessCounts(tierRedacted, shareOpts, "transactions")) {
+      void logDetailAccess({
+        tenantId,
+        subjectMemberId: subject,
+        viewerMemberId: opts.viewerMemberId,
+        viewerLabel: opts.viewerLabel,
+        type: "transactions",
+        count,
+      });
+    }
+  }
+
+  return redactUnshared(tierRedacted, shareOpts);
 }
 
 // Monday-based week start (local time).

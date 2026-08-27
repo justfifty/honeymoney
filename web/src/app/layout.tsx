@@ -7,6 +7,8 @@ import SiteFooter from "./SiteFooter";
 import HoneyField from "./HoneyField";
 import InstallPrompt from "./InstallPrompt";
 import PendingDeletionNotice from "./PendingDeletionNotice";
+import LegalUpdateNotice from "./LegalUpdateNotice";
+import OfflineGate from "./OfflineGate";
 import BottomNav from "./BottomNav";
 import ChromeGate from "./ChromeGate";
 
@@ -127,6 +129,8 @@ export default async function RootLayout({
         <HoneyField />
         <SiteHeader />
         <PendingDeletionNotice />
+        <LegalUpdateNotice />
+        <OfflineGate />
         <div className="flex flex-1 flex-col">{children}</div>
         <ChromeGate hideOn={SELF_CHROME}>
           <SiteFooter />

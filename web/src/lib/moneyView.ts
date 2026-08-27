@@ -4,6 +4,7 @@
 // Reuses getBucketProjection() so the allocation walk stays in one place.
 
 import { pbList, pbStr } from "./pocketbase";
+import { inHouseholdTotals } from "./attribution";
 import { getBucketProjection } from "./projection";
 import { collapsePrivateVendors, privateBucketIds } from "./privacy";
 import { countsAsSpend } from "./recordKind";
@@ -108,7 +109,7 @@ export async function getMoneyView(tenantId: string, opts: MoneyViewOpts = {}): 
     getBucketProjection(tenantId),
     pbList<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<PBTxn>("transactions", {
-      filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)}`,
+      filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)} && ${inHouseholdTotals}`,
     }),
   ]);
 

@@ -35,6 +35,30 @@ const OCR_LANG: Record<string, string> = {
   hi: "hin",
 };
 
+// The engine and language models we serve ourselves — staged by
+// web/scripts/stage-ocr-assets.mjs into public/ocr/ and precached by the
+// service worker.
+//
+// WHY THIS EXISTS AT ALL: tesseract.js defaults to fetching its worker, its
+// WASM core and its traineddata from a CDN at the moment you press scan. So the
+// feature we describe as running on your device did not run without the
+// internet — the catch below even said so, and then fell back to English, which
+// also had to be downloaded. Pointing at our own origin makes the claim true:
+// after one scan the files are in the service worker cache and the network is
+// never needed again.
+const OCR_PATHS = {
+  workerPath: "/ocr/worker.min.js",
+  corePath: "/ocr/",
+  langPath: "/ocr",
+  // The models are stored gzipped, which is how tessdata ships them.
+  gzip: true,
+} as const;
+
+// Only these two are staged locally. The other four still work — online, from
+// the CDN — and offline they fall through to English, which reads the digits.
+// See the staging script on why 65 MB of models is the wrong trade.
+const LOCAL_LANGS = new Set(["eng", "msa"]);
+
 export interface Captured {
   vendor?: string;
   amount?: number;
@@ -109,19 +133,27 @@ export default function SpendCapture({
     try {
       const { recognize } = await import("tesseract.js");
       const ocrLang = OCR_LANG[lang] ?? "eng";
+      const logger = (m: { status: string; progress: number }) => {
+        if (m.status === "recognizing text") {
+          setStatus(tr("g.cap.scanning", { pct: Math.round(m.progress * 100) }));
+        }
+      };
+      // A language we host is read from our origin; one we do not is left to
+      // tesseract's own default so it can still fetch it when there IS a
+      // network. Forcing langPath for every language would break the four
+      // non-staged locales online as well as off, which would be a worse
+      // outcome than the one being fixed.
+      const opts = LOCAL_LANGS.has(ocrLang)
+        ? { ...OCR_PATHS, logger }
+        : { workerPath: OCR_PATHS.workerPath, corePath: OCR_PATHS.corePath, logger };
       let data;
       try {
-        ({ data } = await recognize(file, ocrLang, {
-          logger: (m: { status: string; progress: number }) => {
-            if (m.status === "recognizing text") {
-              setStatus(tr("g.cap.scanning", { pct: Math.round(m.progress * 100) }));
-            }
-          },
-        }));
+        ({ data } = await recognize(file, ocrLang, opts));
       } catch {
-        // The language pack may not be downloadable (offline, or no such pack).
-        // English still reads the digits, which is the half that matters most.
-        ({ data } = await recognize(file, "eng"));
+        // No model for that language, or no network to fetch one. English is
+        // staged locally, so this fallback works offline — which is the whole
+        // point of it and was not true before.
+        ({ data } = await recognize(file, "eng", { ...OCR_PATHS, logger }));
       }
 
       const parsed = parseReceiptText(data.text || "", knownVendors);

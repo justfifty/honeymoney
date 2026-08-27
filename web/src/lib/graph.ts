@@ -327,6 +327,12 @@ export async function addManualTransaction(
     paidBy?: string;
     /** Task 6: private ⇒ only the payer sees it. Defaults to shared. */
     visibility?: Visibility;
+    /**
+     * The payer asked for this to sit outside household totals. Separate from
+     * `visibility` because they answer different questions — see the
+     * 1756200004_sharing migration.
+     */
+    excludeFromTotals?: boolean;
     /** True when a human chose the attribution, false when we defaulted it. */
     attributionAsserted?: boolean;
   },
@@ -407,6 +413,7 @@ export async function addManualTransaction(
     kind,
     ...(input.paidBy || input.memberId ? { paid_by: input.paidBy ?? input.memberId } : {}),
     visibility: input.visibility ?? "shared",
+    exclude_from_totals: input.excludeFromTotals === true,
     // Absent ⇒ false ⇒ "nobody said this, we defaulted it", which is exactly
     // what the brief asks migrated attribution to be marked as.
     attribution_asserted: Boolean(input.attributionAsserted),

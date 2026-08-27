@@ -4,6 +4,7 @@
 // Falls back to a deterministic rule-based insight when Gemini is unconfigured.
 
 import { pbList, pbStr } from "./pocketbase";
+import { inHouseholdTotals } from "./attribution";
 import { isGeminiConfigured } from "./config";
 import { honeyInsight } from "./gemini";
 import { t, type Locale } from "./i18n";
@@ -102,7 +103,7 @@ export async function getBucketProjection(
     pbList<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<PBEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
     pbList<PBTransaction>("transactions", {
-      filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)}`,
+      filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)} && ${inHouseholdTotals}`,
     }),
   ]);
 
@@ -181,7 +182,7 @@ export async function getRecentSpend(
   opts: { viewerMemberId?: string | null; redact?: boolean } = {},
 ): Promise<RecentSpend[]> {
   const txns = await pbList<PBTransaction>("transactions", {
-    filter: `tenant = ${pbStr(tenantId)}`,
+    filter: `tenant = ${pbStr(tenantId)} && ${inHouseholdTotals}`,
     sort: "-occurred_at",
     expand: "vendor_node",
     perPage: limit,

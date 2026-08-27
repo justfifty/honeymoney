@@ -51,6 +51,63 @@ const nextConfig: NextConfig = {
       }
     : {}),
 
+  // Security headers, set at the origin rather than at the edge.
+  //
+  // WHY HERE: deploy/pages/_headers covers what Cloudflare Pages serves itself
+  // — the static snapshot. Every signed-in route (/dashboard, /setup, /sharing,
+  // /api/*) is PROXIED to this server by _worker.js, and a proxied response
+  // carries the origin's headers, not the edge's. Measured 2026-08-27:
+  // honeymoney.app/setup came back with no security headers at all. Setting
+  // them here is the only place that covers both paths.
+  //
+  // Deliberately NOT a full Content-Security-Policy. A real CSP for Next.js
+  // needs per-request nonces threaded through the document, and a half-done one
+  // either breaks hydration or is trivially bypassed — both worse than the
+  // targeted directives below. `frame-ancestors` is the exception: it cannot
+  // break rendering and it is the clickjacking defence that matters for an app
+  // showing somebody's bank balances.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // The terms now say "traffic is encrypted in transit". HSTS is what
+          // makes that an enforced fact rather than a hope — without it the
+          // first request of a session can still be downgraded to plaintext.
+          // No `preload`: that is a one-way submission to a browser-vendor list
+          // and is not a decision to take on a household's behalf mid-pilot.
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Both, because X-Frame-Options is what older browsers honour and
+          // frame-ancestors is what current ones do.
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // The camera is genuinely used — receipt capture — so it stays for
+          // this origin. Everything else a finance app has no business asking
+          // for is denied outright rather than left to a permission prompt.
+          {
+            key: "Permissions-Policy",
+            value:
+              "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()",
+          },
+        ],
+      },
+      {
+        // Never let a signed-in page or an API response sit in a shared cache.
+        // On a household device this is the difference between "log out" and
+        // "log out, and the next person presses Back".
+        source: "/api/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
+        ],
+      },
+    ];
+  },
+
   // pdfjs (statement import) does its own conditional loading of Node built-ins
   // and expects to resolve its .mjs entry at runtime. Bundling it breaks both.
   serverExternalPackages: ["pdfjs-dist"],

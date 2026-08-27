@@ -75,7 +75,11 @@ export default function PrivacyPage() {
       <footer className="mt-14 border-t border-zinc-200 pt-6 text-sm text-zinc-500 dark:border-zinc-800">
         <p>
           Manage what you have agreed to in{" "}
-          <Link href="/settings/privacy" className="font-medium text-amber-600 hover:underline">
+          {/* /setup#privacy, not /settings/privacy: the settings screen has
+              always lived at /setup, and this link — the one that makes the
+              withdrawal right reachable — used to 404. /settings/privacy is
+              kept as a 308 for the copies of this notice already in the wild. */}
+          <Link href="/setup#privacy" className="font-medium text-amber-600 hover:underline">
             Settings → Privacy
           </Link>
           , or download everything we hold from the same screen.

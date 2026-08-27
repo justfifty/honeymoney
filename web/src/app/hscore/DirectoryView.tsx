@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 // A directory, not a recommendation engine — and the component is written so
 // that it could not become one without someone deliberately changing its
 // signature. It takes a category and a sort order. It is never handed a score,
@@ -81,10 +82,17 @@ export default function DirectoryView({
             <li key={l.id} className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-sm font-semibold">{l.provider}</h3>
+                {/* `noopener noreferrer` is doing privacy work here, not only
+                    the usual tab-hijack prevention: without noreferrer the
+                    provider's server learns which HoneyMoney page the visitor
+                    came from, and the directory routes from a weak sub-score.
+                    A referrer header saying /hscore is a small disclosure about
+                    someone's finances made to a bank, by us, on their behalf. */}
                 <a
                   href={l.url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  title="Opens the provider's own site. HoneyMoney sends them nothing about you."
                   className="shrink-0 text-xs text-amber-600 hover:underline"
                 >
                   {new URL(l.url).hostname.replace(/^www\./, "")} ↗
@@ -133,6 +141,21 @@ export default function DirectoryView({
       {/* Persistent, not dismissible, on every directory page. */}
       <footer className="sticky bottom-0 -mx-4 mt-6 border-t border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95">
         <p className="text-[11px] leading-relaxed text-zinc-500">{tr(DISCLAIMER_KEY)}</p>
+        {/* The leaving notice, in the persistent footer rather than as an
+            interstitial on the link. An interstitial that appears on every
+            outbound tap is dismissed unread within a week, and it would also be
+            the only thing standing between a user and a regulator's own
+            register — which is a link we WANT people to follow. Stated once,
+            always visible, never in the way. */}
+        <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-500">
+          Following any link here takes you to that organisation&apos;s own site, where their terms
+          and privacy notice apply instead of ours. HoneyMoney does not send them your records, your
+          H-Score, or anything else about you, and this list is not personalised — it is the same
+          for everyone.{" "}
+          <Link href="/legal/sponsors" className="underline underline-offset-2">
+            Sponsors, partners and referrals
+          </Link>
+        </p>
       </footer>
     </div>
   );

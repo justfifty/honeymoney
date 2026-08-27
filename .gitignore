@@ -118,3 +118,7 @@ deploy/domcloud/.pbhost
 deploy/.pb-backup-key
 deploy/.r2-credentials.json
 restored/
+
+# Staged by web/scripts/stage-ocr-assets.mjs — 28 MB of OCR engine + language
+# models. Regenerate with `npm run ocr:assets`, never commit.
+web/public/ocr/

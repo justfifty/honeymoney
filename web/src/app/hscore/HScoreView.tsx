@@ -293,6 +293,12 @@ function Methodology({ tr, txns30d }: { tr: Tr; txns30d: number }) {
           {tr("hscore.method.period", { days: METHODOLOGY.windowDays, n: txns30d })}
         </p>
         <p className="mt-2 italic text-zinc-400">{tr("hscore.method.opinion")}</p>
+        {/* The one sentence that has to be next to the number itself, not only
+            in the terms. A score in a finance app looks like a credit score to
+            anyone who has met one, and the moment a user believes a landlord or
+            a lender might see it, the app has acquired a power over them that it
+            was never supposed to have. Stated where the score is read. */}
+        <p className="mt-2 font-medium text-zinc-500 dark:text-zinc-400">{tr("hscore.method.notcredit")}</p>
       </div>
     </details>
   );

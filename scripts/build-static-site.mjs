@@ -70,7 +70,34 @@ const BASE = (argBase > -1 ? process.argv[argBase + 1] : "https://honeymoney-app
 // already asking people to agree to it. An agreement nobody can read is not an
 // agreement, and the failure was silent — the page existed, the build was fine,
 // and only the public URL was wrong.
-const ROUTES = ["/", "/demo", "/guide", "/learn", "/gallery", "/deck", "/privacy", "/terms"];
+// The legal pack joins the snapshot for the same reason /privacy and /terms
+// already had: a notice reachable only while the laptop is awake has not been
+// GIVEN. All eleven are public, static and login-free, so there is nothing to
+// gain by leaving nine of them behind the tunnel.
+const LEGAL_DOCS = [
+  "disclaimer",
+  "hscore",
+  "ai",
+  "sharing",
+  "sponsors",
+  "storage",
+  "retention",
+  "acceptable-use",
+  "licences",
+];
+
+const ROUTES = [
+  "/",
+  "/demo",
+  "/guide",
+  "/learn",
+  "/gallery",
+  "/deck",
+  "/privacy",
+  "/terms",
+  "/legal",
+  ...LEGAL_DOCS.map((d) => `/legal/${d}`),
+];
 
 const log = (...a) => console.log("  ", ...a);
 
