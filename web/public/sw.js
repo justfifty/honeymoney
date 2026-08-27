@@ -35,7 +35,7 @@
 // and every scan after that is offline. Settings offers a button to do it
 // deliberately for someone who knows they are about to lose signal.
 
-const VERSION = "hm-v2";
+const VERSION = "hm-v3";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 const OCR = `${VERSION}-ocr`;
@@ -43,7 +43,12 @@ const KEEP = new Set([SHELL, ASSETS, OCR]);
 
 // Small, and every entry must exist or install fails. Kept to the offline page
 // and the icons it needs — anything larger belongs in the runtime caches.
-const PRECACHE = ["/icon-192.png"];
+// /local is precached rather than merely cached-on-visit, because it is the
+// one route whose whole purpose is to open for somebody with no connection. A
+// household that installs the app on a hilltop and drives home must find it
+// working, not find the offline fallback page. It is a static route with no
+// session in it, so caching it is safe in a way /dashboard is not.
+const PRECACHE = ["/icon-192.png", "/local"];
 
 // The offline page is cached under THIS key whatever URL actually served it.
 const OFFLINE_KEY = "/offline.html";

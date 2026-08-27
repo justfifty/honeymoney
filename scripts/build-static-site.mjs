@@ -89,6 +89,10 @@ const LEGAL_DOCS = [
 const ROUTES = [
   "/",
   "/demo",
+  // The account-free offline app. It must be in the always-on snapshot: the
+  // whole point is that it loads for somebody with no connection and no
+  // session, which is exactly when the origin is least likely to answer.
+  "/local",
   "/guide",
   "/learn",
   "/gallery",
