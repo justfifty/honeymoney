@@ -94,9 +94,12 @@ export async function countTenantRecords(tenantId: string): Promise<number> {
 
 export interface PurgeResult {
   transactions: number;
+  /** Scanned-but-unconfirmed receipts. They hold the rawest data we ever have. */
+  captures: number;
   nodes: number;
   edges: number;
   snapshots: number;
+  channels: number;
 }
 
 /**
@@ -105,6 +108,11 @@ export interface PurgeResult {
  * ── WHAT GOES, AND WHY EACH ───────────────────────────────────────────────
  *
  *   transactions      the records themselves, and their attached receipt files
+ *   pending_captures  scanned receipts awaiting confirmation. `payload` holds
+ *                     the rawest data in the system -- itemised lines off a
+ *                     shopping receipt -- so leaving these would leave the most
+ *                     detailed thing we ever hold
+ *   channel_links     a Telegram chat id is a durable handle to a person
  *   nodes / edges     the knowledge graph: buckets, vendors, goals, income
  *                     sources. Leaving these would leave a readable map of a
  *                     household's finances — every merchant they use and every
@@ -128,16 +136,27 @@ export interface PurgeResult {
  * on, and the count returned is what actually went.
  */
 export async function purgeTenantRecords(tenantId: string): Promise<PurgeResult> {
-  const out: PurgeResult = { transactions: 0, nodes: 0, edges: 0, snapshots: 0 };
+  const out: PurgeResult = { transactions: 0, captures: 0, nodes: 0, edges: 0, snapshots: 0, channels: 0 };
   const filter = `tenant = ${pbStr(tenantId)}`;
 
   // Transactions first. They reference nodes, and an orphaned transaction is a
   // worse intermediate state than an orphaned node.
+  // pending_captures was missed on the first pass and is the one that would
+  // have hurt: it holds `payload`, the raw parsed contents of a receipt or
+  // statement that was scanned and never confirmed. A purge that left those
+  // behind would leave the most detailed thing the app ever holds -- the
+  // line items off somebody's shopping -- sitting in a database under a mode
+  // promising we hold none. Found by auditing every tenant-scoped collection
+  // for revealing fields rather than by trusting the list.
+  //
+  // channel_links goes too: a Telegram chat id is a durable handle to a person.
   for (const [collection, key] of [
     ["transactions", "transactions"],
+    ["pending_captures", "captures"],
     ["edges", "edges"],
     ["nodes", "nodes"],
     ["hscore_snapshots", "snapshots"],
+    ["channel_links", "channels"],
   ] as const) {
     let rows: { id: string }[] = [];
     try {

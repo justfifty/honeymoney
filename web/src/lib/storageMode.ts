@@ -85,10 +85,13 @@ export const MODES: ModeSpec[] = [
       "Your records are on THIS device only. Signing in on a phone as well as a laptop gives you two separate sets, and they do not merge.",
       "If you lose the device and the file you chose, the records are gone. We will not have a copy to restore from — that is the point, and it is not reversible.",
       "Receipt images already uploaded are deleted with everything else.",
+      "Cloud AI stops for your whole household. Receipt scanning still works on your device, but the smarter cloud-assisted reading does not.",
+      "For up to 14 days our encrypted off-site backups still contain a copy, because they are whole-database snapshots on a rolling cycle and we cannot cut one household out of one. After that, no.",
     ],
     gains: [
       "We cannot read your records, because we do not have them.",
-      "Nothing about your money crosses a border, because nothing about your money leaves your device.",
+      "Nothing about your money crosses a border. Cloud AI is switched off for your household while this mode is on, so a receipt cannot be sent abroad to be read even if AI features were previously agreed to.",
+      "Unconfirmed receipt scans and any Telegram link are deleted along with everything else.",
     ],
   },
 ];

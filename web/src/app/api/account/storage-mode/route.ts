@@ -162,7 +162,10 @@ export async function POST(request: Request) {
       purged,
       purgedAt,
       effect: [
-        `Deleted from our server: ${purged.transactions} records, ${purged.nodes} graph nodes, ${purged.edges} links and ${purged.snapshots} score snapshots. We no longer hold them and cannot get them back.`,
+        `Deleted from our server: ${purged.transactions} records, ${purged.captures} unconfirmed receipt scans, ${purged.nodes} graph nodes, ${purged.edges} links and ${purged.snapshots} score snapshots. We no longer hold them and cannot get them back.`,
+        // Said unprompted, because it is the one thing that makes "you hold
+        // nothing of mine" untrue today and nobody would think to ask.
+        "One honest exception: our encrypted off-site backups are whole-database snapshots on a rolling 14-day cycle, so copies taken before today still contain your records until they age out. We cannot surgically remove one household from a snapshot. After 14 days no backup contains them either.",
         "Your account, your household and the evidence of your privacy choices remain, because you still need to sign in and we still need to be able to prove we honoured this.",
         "New records are stored on this device only. The server will refuse to write them.",
         "Your H-Score, forecasts, household sharing and Ask Honey are now off. Open Your copy to read and analyse your records.",

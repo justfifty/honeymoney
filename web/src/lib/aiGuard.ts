@@ -104,6 +104,26 @@ export function assertClassAllowed(cls: DataClass, provider: AiProvider): void {
   if (cls > cloudMaxClass()) throw new DataClassRefused(cls, provider);
 }
 
+/**
+ * The storage mode narrows the provider, before consent is even consulted.
+ *
+ * Ordered this way on purpose: consent answers "may we process at all", and
+ * this answers "may it leave the device" — and a household that said no to the
+ * second has answered it for every purpose, whatever they agreed to before.
+ */
+export async function providerForTenant(
+  cls: DataClass,
+  tenantId: string | null | undefined,
+  requested?: AiProvider,
+): Promise<AiProvider | null> {
+  const chosen = providerForClass(cls, requested);
+  if (isLocalProvider(chosen)) return chosen;
+  if (await cloudAiAllowedForTenant(tenantId)) return chosen;
+  // No cloud, and no local engine to fall back to: the honest answer is that
+  // this feature is unavailable, not a quiet downgrade to sending it anyway.
+  return isProviderConfigured("ollama") ? "ollama" : null;
+}
+
 // ── consent ─────────────────────────────────────────────────────────────────
 
 /**
@@ -123,6 +143,33 @@ export async function aiConsentGiven(userId: string | null | undefined): Promise
   if (!userId) return true;
   try {
     return await hasConsent(userId, "ai_processing");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * May a household that keeps its records off our server use a CLOUD model?
+ *
+ * No. A household in local-only mode has been told their data does not leave
+ * their device, and a receipt sent to Google to be read leaves their device —
+ * consent to "AI features" given months earlier under a different storage
+ * arrangement does not cover it. The two settings would otherwise contradict
+ * each other, and the one that loses would be the one the user chose most
+ * deliberately.
+ *
+ * Local models are unaffected: an on-device or on-our-hardware model processes
+ * without anything crossing a border, which is the whole distinction
+ * `isLocalProvider` exists to draw. Receipt OCR in the browser is unaffected
+ * too — it was never an AI provider call.
+ *
+ * Fails CLOSED on a read error, like every other gate in this file.
+ */
+export async function cloudAiAllowedForTenant(tenantId: string | null | undefined): Promise<boolean> {
+  if (!tenantId) return true;
+  try {
+    const { isLocalOnly } = await import("./storageModeStore");
+    return !(await isLocalOnly(tenantId));
   } catch {
     return false;
   }
