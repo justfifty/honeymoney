@@ -9,6 +9,24 @@ export const metadata: Metadata = {
     "Track your household spending with no account and no connection. Install once where there is signal, then use it anywhere — the records stay on your phone.",
 };
 
+// ── STEP 3 OF THE UNIFICATION ──────────────────────────────────────────────
+//
+// This page used to be a second app, and that was the right criticism of it:
+// the main app could not work offline, so /local existed to do what /dashboard
+// could not. Now that every write lands on the device first and the views show
+// what has not synced, a signed-in household never needs a different app —
+// they need THE app, which already behaves this way.
+//
+// So the duplication is resolved by scope rather than by deletion. Anyone with
+// an account is sent to the real thing. What remains here is the only case the
+// main app genuinely cannot serve: somebody who has no account, because
+// creating one needs a network they do not have.
+//
+// The redirect is CLIENT-side, in StandaloneApp, not a server redirect. A
+// server redirect would need a session, which needs a network, which is exactly
+// what this route promises not to need — and it would turn the one page
+// guaranteed to load offline into one that cannot.
+//
 // Deliberately a STATIC page with no auth check and no data fetch.
 //
 // Every other route in this app calls getContext(), which needs a session,
@@ -40,6 +58,14 @@ export default function LocalPage() {
         <strong>No account. No connection. Nothing sent anywhere.</strong> Record what your household
         spends, see where it goes, and keep the lot on this phone. It works with the aeroplane mode
         on.
+      </p>
+      <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+        Already have an account? The main app works this way too now — everything you record saves
+        to your phone first and syncs when it can. Use{" "}
+        <Link href="/record" className="font-medium text-amber-600 hover:underline">
+          the app you already have
+        </Link>
+        ; this page is for people who cannot reach a sign-up at all.
       </p>
 
       {/* The one honest catch, said before they invest any typing in it — not

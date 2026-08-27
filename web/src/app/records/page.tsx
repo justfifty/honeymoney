@@ -37,7 +37,6 @@ const RANGES: { key: string; labelKey: string }[] = [
 function Notice({ tr, reason }: { tr: Tr; reason: string }) {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <LocalOverlay where="this list" />
       <div className="rounded-2xl border border-amber-300 bg-amber-50 p-8 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
         <h2 className="text-lg font-semibold">{tr("rec.notice.title")}</h2>
         <p className="mt-2 text-sm">{reason}</p>
@@ -49,7 +48,36 @@ function Notice({ tr, reason }: { tr: Tr; reason: string }) {
   );
 }
 
-export default async function RecordsPage({
+/**
+ * Wraps whatever the page renders with the local overlay.
+ *
+ * Outside the try/catch on purpose: the records page builds its entire <main>
+ * inside one, and the unsynced-records notice must show even when the body
+ * below it is the database-unavailable message — that is precisely the moment
+ * somebody has records on their phone and no server to compare them against.
+ */
+function WithLocal({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
+        <LocalOverlay where="this list" />
+      </div>
+      {children}
+    </>
+  );
+}
+
+export default async function RecordsPage(props: {
+  searchParams: Promise<{ period?: string; range?: string; ccy?: string; voided?: string }>;
+}) {
+  return (
+    <WithLocal>
+      <RecordsBody {...props} />
+    </WithLocal>
+  );
+}
+
+async function RecordsBody({
   searchParams,
 }: {
   searchParams: Promise<{ period?: string; range?: string; ccy?: string; voided?: string }>;

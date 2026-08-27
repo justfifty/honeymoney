@@ -71,11 +71,26 @@ export default function StandaloneApp() {
     );
   }, []);
 
+  const [signedIn, setSignedIn] = useState(false);
+
   useEffect(() => {
     // Both branches set state after an await, or after a capability check that
     // cannot run on the server. Wrapped in one async body so the lint rule sees
     // no synchronous setState in the effect itself.
     void (async () => {
+      // Is there an account on this device? Checked client-side and tolerantly:
+      // offline this throws and the answer is "carry on", which is the correct
+      // answer — somebody with no connection should get the working page, not a
+      // redirect they cannot follow.
+      try {
+        const r = await fetch("/api/health", { method: "GET" });
+        if (r.ok) {
+          const me = await fetch("/api/account/consent");
+          if (me.ok) setSignedIn(true);
+        }
+      } catch {
+        /* offline: exactly who this page is for */
+      }
       if (!localModeAvailable()) {
         setSupported(false);
         return;
@@ -157,6 +172,23 @@ export default function StandaloneApp() {
 
   return (
     <div className="space-y-8">
+      {/* One app, once you have an account. Shown rather than redirected: a
+          person who deliberately opened the offline page mid-journey should not
+          be bounced somewhere that may not load. */}
+      {signedIn && (
+        <div className="rounded-xl border border-zinc-300 bg-zinc-50 p-4 text-sm dark:border-zinc-700 dark:bg-zinc-900/60">
+          <p className="font-medium">You are signed in — you do not need this page.</p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+            The main app saves to your phone first and syncs when it can, so it works offline too —
+            and it keeps your score, your household and your history.{" "}
+            <Link href="/record" className="font-medium text-amber-600 hover:underline">
+              Go there instead
+            </Link>
+            . Anything you record here stays on this device and is not part of your account.
+          </p>
+        </div>
+      )}
+
       {/* ── Capture. First, biggest, fewest fields. ─────────────────────── */}
       <form onSubmit={save} className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
         <div className="flex items-center justify-between gap-3">
