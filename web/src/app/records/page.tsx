@@ -15,7 +15,7 @@ import { t } from "@/lib/i18n";
 import CurrencySwitcher from "../graph/CurrencySwitcher";
 import RecordRow from "./RecordRow";
 import RatesNote from "../RatesNote";
-import DeviceOnlyNotice from "../DeviceOnlyNotice";
+import LocalOverlay from "../LocalOverlay";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ const RANGES: { key: string; labelKey: string }[] = [
 function Notice({ tr, reason }: { tr: Tr; reason: string }) {
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
-      <DeviceOnlyNotice where="this list" />
+      <LocalOverlay where="this list" />
       <div className="rounded-2xl border border-amber-300 bg-amber-50 p-8 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
         <h2 className="text-lg font-semibold">{tr("rec.notice.title")}</h2>
         <p className="mt-2 text-sm">{reason}</p>

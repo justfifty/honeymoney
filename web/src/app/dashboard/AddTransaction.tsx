@@ -24,8 +24,12 @@ import {
 import { classifyText, CATEGORY_STYLE, noteKeyFor } from "@/lib/classify";
 import { parseVoiceLocal } from "@/lib/voiceParse";
 import { defaultVisibility, type Composition, type Visibility } from "@/lib/attribution";
-import { enqueue } from "@/lib/offlineQueue";
-import { appendLocalRecord } from "@/lib/localLedger";
+import {
+  appendLocalRecord,
+  deleteLocalRecord,
+  listLocalRecords,
+  syncLedger,
+} from "@/lib/localLedger";
 
 interface BucketOption {
   id: string;
@@ -339,77 +343,43 @@ export default function AddTransaction({
             : {}),
       };
 
-      // Offline: keep it on the device and tell the user, rather than failing.
+      // ── LOCAL FIRST, ALWAYS ────────────────────────────────────────────
       //
-      // The check is `navigator.onLine` FIRST and a caught fetch error second,
-      // because the two are different situations. A known-offline device should
-      // never attempt the request at all — the attempt costs a timeout the user
-      // waits through, on the screen where speed is the entire product. A fetch
-      // that fails while the browser believes it is online is the harder case
-      // (a captive portal, the laptop origin being down) and is caught below.
-      if (!navigator.onLine) {
-        await enqueue(payload);
-        setMsg({ ok: true, text: tr("dash.add.queued") });
-        clearDraft();
-        setBusy(false);
-        return;
-      }
-
-      let res: Response;
-      try {
-        res = await fetch("/api/transactions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } catch {
-        // The network said yes and then did not deliver. Same outcome as being
-        // offline from the user's side, so it gets the same handling: the
-        // capture survives.
-        await enqueue(payload);
-        setMsg({ ok: true, text: tr("dash.add.queued") });
-        clearDraft();
-        setBusy(false);
-        return;
-      }
-      const data = await res.json();
-
-      // The household chose local-only storage, so the server refused — as it
-      // is supposed to. This is a SUCCESS, not an error, and it must not go
-      // through the retry queue: that would POST, get 409, retry five times and
-      // then present a correctly-working system to the user as a failure.
+      // The record lands on this device before anything is sent anywhere. That
+      // is the inversion that makes "local-first" true rather than aspirational:
+      // previously the server was tried first and local storage was a fallback
+      // for when that failed, which meant the app worked offline only by
+      // accident of error handling.
       //
-      // Caught here rather than before the request because the mode is the
-      // server's fact, not the browser's. A client that decided for itself
-      // where to write would be wrong the moment the mode changed in another
-      // tab, on another device, or by another member of the household.
-      if (res.status === 409 && data.storageMode === "local_only") {
-        await appendLocalRecord(payload);
-        setMsg({ ok: true, text: tr("dash.add.savedLocally") });
-        clearDraft();
-        setBusy(false);
-        return;
-      }
+      // Consequences worth being explicit about:
+      //   • A save can no longer fail because of the network. There is nothing
+      //     to fail — the write is to IndexedDB and it is done.
+      //   • The user is told it saved immediately, because it did.
+      //   • Whether it also reaches the server is a separate, later, invisible
+      //     question. Cloud storage is a consented option, not the definition
+      //     of a record existing.
+      const local = await appendLocalRecord(payload, "local_first");
 
-      if (!res.ok) throw new Error(data.error ?? tr("dash.add.couldNotSave"));
+      // Sync in the background. Deliberately not awaited: making the user wait
+      // for a round trip would reintroduce exactly the dependency the line
+      // above removed.
+      void syncLedger();
 
-      const text = tr("dash.add.saved", {
+      const text = tr("dash.add.savedLocalFirst", {
         amount: base.toFixed(2),
         vendor,
-        label: data.stored.walletLabel,
       });
-      // The record saved. If its photo did not, say so rather than letting the
-      // user believe a receipt is attached that is not there — they can still
-      // re-attach it by editing, but only if they know.
-      setMsg(
-        data.stored.attachmentError
-          ? { ok: true, text: `${text} · ${tr("cap.attachFailed")}` }
-          : { ok: true, text },
-      );
-      if (data.stored.transactionId) setLastSaved({ id: data.stored.transactionId, text });
+      setMsg({ ok: true, text });
+      // Undo now targets the LOCAL id. The record may not have a server id yet
+      // — it may never get one — so keying undo on the server's response would
+      // have made it work only for people with a connection, which is the
+      // opposite of the point.
+      setLastSaved({ id: local.id, text });
       clearDraft();
       lineRef.current?.focus();
-      router.refresh(); // re-render buckets + Honey with the new record
+      // Still refreshed: the server-rendered buckets and Honey line update for
+      // records that did sync, and the client overlay picks up the rest.
+      router.refresh();
     } catch (err) {
       setMsg({ ok: false, text: err instanceof Error ? err.message : tr("dash.add.couldNotSave") });
     } finally {
@@ -422,10 +392,24 @@ export default function AddTransaction({
     if (!lastSaved) return;
     setUndoing(true);
     try {
-      const res = await fetch(`/api/transactions/${lastSaved.id}?reason=undo`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? tr("dash.add.undoFailed"));
+      // Local first here too, and in this order for a reason: the local copy is
+      // the one the user is looking at, so removing it is what makes undo feel
+      // like it worked. It also cannot fail.
+      const record = (await listLocalRecords()).find((r) => r.id === lastSaved.id);
+      await deleteLocalRecord(lastSaved.id);
+
+      // If it had already reached the server, void it there too. Voided rather
+      // than deleted, because the server keeps an append-only ledger and a
+      // record that vanishes without a reversal is exactly what that ledger
+      // exists to make impossible.
+      //
+      // A failure here is NOT surfaced as an undo failure: the user's copy is
+      // gone, which is what they asked for, and the next sync reconciles. Only
+      // an unsynced record has nothing to do, which is the common case.
+      if (record?.serverId) {
+        void fetch(`/api/transactions/${record.serverId}?reason=undo`, { method: "DELETE" }).catch(
+          () => undefined,
+        );
       }
       setLastSaved(null);
       setMsg({ ok: true, text: tr("dash.add.undone") });

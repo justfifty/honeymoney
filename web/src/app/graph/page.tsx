@@ -16,7 +16,7 @@ import { t as translate } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { normalizeCurrency, fmtMoney } from "@/lib/format";
 import { can, resolveViewTenant, listHouseholdsFor } from "@/lib/household";
-import DeviceOnlyNotice from "../DeviceOnlyNotice";
+import LocalOverlay from "../LocalOverlay";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +68,7 @@ export default async function GraphPage({
   if (!isDatabaseConfigured()) {
     return (
       <main className="mx-auto max-w-3xl px-6 py-16">
-      <DeviceOnlyNotice where="the graph" />
+      <LocalOverlay where="the graph" />
         <p className="text-sm">
           PocketBase isn&apos;t configured — start it with <code>npm run pb:start</code>, then reload.
         </p>

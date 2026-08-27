@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { flush, list, offlineQueueAvailable, type QueuedCapture } from "@/lib/offlineQueue";
 import { autoSyncIfStale } from "@/lib/localVault";
+import { pendingSync, stuckRecords, syncLedger } from "@/lib/localLedger";
 
 // Registers the service worker, drains the offline queue, and tells the user
 // which of those two things is currently true.
@@ -42,14 +43,22 @@ export default function OfflineGate() {
     () => true,
   );
   const [queued, setQueued] = useState<QueuedCapture[]>([]);
+  const [ledgerWaiting, setLedgerWaiting] = useState(0);
+  const [ledgerStuck, setLedgerStuck] = useState(0);
   const [justSent, setJustSent] = useState(0);
 
   const refresh = useCallback(async () => {
     setQueued(await list());
+    setLedgerWaiting((await pendingSync().catch(() => [])).length);
+    setLedgerStuck((await stuckRecords().catch(() => [])).length);
   }, []);
 
   const drain = useCallback(async () => {
     if (!navigator.onLine) return;
+    // The ledger is the live path; the queue is legacy and drained so that
+    // anything already sitting in it from before the inversion is not stranded
+    // on somebody's phone forever.
+    await syncLedger().catch(() => undefined);
     const r = await flush();
     if (r.sent > 0) {
       setJustSent(r.sent);
@@ -99,8 +108,8 @@ export default function OfflineGate() {
     };
   }, [refresh, drain]);
 
-  const waiting = queued.filter((q) => !q.stuck).length;
-  const stuck = queued.filter((q) => q.stuck).length;
+  const waiting = queued.filter((q) => !q.stuck).length + ledgerWaiting;
+  const stuck = queued.filter((q) => q.stuck).length + ledgerStuck;
 
   if (online && waiting === 0 && stuck === 0 && justSent === 0) return null;
   if (!offlineQueueAvailable() && online) return null;

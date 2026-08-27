@@ -45,9 +45,27 @@ export interface LocalRecord {
   paid_by: string | null;
   visibility: "private" | "shared";
   exclude_from_totals: boolean;
-  /** Marks the row as never having been on a server. */
-  origin: "local_only";
+  /**
+   * Where this record was born. "local_only" for a household that keeps
+   * records off the server; "local_first" for the ordinary path, which now
+   * also writes here before anything is sent.
+   */
+  origin: "local_only" | "local_first";
   createdAt: string;
+  /** The exact body the API would have received. Replayed verbatim on sync. */
+  payload?: Record<string, unknown>;
+  /**
+   * When the server acknowledged it. Null means it has not been sent, which is
+   * ALSO what the old offline queue meant — so this one field replaces that
+   * whole second store. One place a record can be, in one of two states,
+   * instead of two stores that could disagree about which held the truth.
+   */
+  syncedAt?: string | null;
+  /** The server's id once it has one, so the two copies can be matched up. */
+  serverId?: string | null;
+  /** Attempts made. Used to stop hammering a server that keeps refusing. */
+  attempts?: number;
+  lastError?: string;
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -106,7 +124,10 @@ export async function countLocalRecords(): Promise<number> {
  * hundreds of rows, not millions, and keeping it as one value means a sync
  * writes one consistent snapshot instead of racing a cursor.
  */
-export async function appendLocalRecord(payload: Record<string, unknown>): Promise<LocalRecord> {
+export async function appendLocalRecord(
+  payload: Record<string, unknown>,
+  origin: LocalRecord["origin"] = "local_only",
+): Promise<LocalRecord> {
   const now = new Date().toISOString();
   const rec: LocalRecord = {
     id:
@@ -123,8 +144,17 @@ export async function appendLocalRecord(payload: Record<string, unknown>): Promi
     paid_by: typeof payload.paidBy === "string" ? payload.paidBy : null,
     visibility: payload.visibility === "private" ? "private" : "shared",
     exclude_from_totals: payload.excludeFromTotals === true,
-    origin: "local_only",
+    origin,
     createdAt: now,
+    syncedAt: null,
+    serverId: null,
+    attempts: 0,
+    // The payload is kept verbatim so the sync can replay EXACTLY what the
+    // user submitted. Reconstructing it from the parsed fields would quietly
+    // drop anything this interface does not model -- attachments, entered
+    // currency, the category -- and the record that reached the server would
+    // not be the record they made.
+    payload,
   };
   const rows = await read();
   rows.push(rec);
@@ -159,4 +189,86 @@ export function asAnalysable(rows: LocalRecord[]): Record<string, unknown>[] {
     exclude_from_totals: r.exclude_from_totals,
     expand: r.vendorLabel ? { vendor_node: { label: r.vendorLabel } } : undefined,
   }));
+}
+
+// ── sync state ──────────────────────────────────────────────────────────────
+
+/** Records written locally that the server has not acknowledged. */
+export async function pendingSync(): Promise<LocalRecord[]> {
+  return (await read())
+    .filter((r) => r.origin === "local_first" && !r.syncedAt && (r.attempts ?? 0) < 5)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+/** Records that failed enough times to stop retrying and start telling someone. */
+export async function stuckRecords(): Promise<LocalRecord[]> {
+  return (await read()).filter((r) => r.origin === "local_first" && !r.syncedAt && (r.attempts ?? 0) >= 5);
+}
+
+export async function markSynced(id: string, serverId: string | null): Promise<void> {
+  const rows = await read();
+  const i = rows.findIndex((r) => r.id === id);
+  if (i < 0) return;
+  rows[i] = { ...rows[i], syncedAt: new Date().toISOString(), serverId };
+  await write(rows);
+}
+
+export async function markAttempt(id: string, error: string): Promise<void> {
+  const rows = await read();
+  const i = rows.findIndex((r) => r.id === id);
+  if (i < 0) return;
+  rows[i] = { ...rows[i], attempts: (rows[i].attempts ?? 0) + 1, lastError: error };
+  await write(rows);
+}
+
+/**
+ * Send everything the server has not seen, oldest first.
+ *
+ * Oldest first is not tidiness: duplicate detection compares a new spend
+ * against recent ones, and replaying out of order can make a legitimate second
+ * coffee look like a duplicate of the first.
+ *
+ * A synced record is KEPT, not deleted. It is still the local copy that makes
+ * the app work offline — the sync flag only records that the server has it too.
+ * Deleting on success is what the old queue did, and it is why the app went
+ * blind the moment the network came back.
+ */
+export async function syncLedger(): Promise<{ sent: number; failed: number }> {
+  const out = { sent: 0, failed: 0 };
+  if (typeof navigator !== "undefined" && !navigator.onLine) return out;
+
+  for (const rec of await pendingSync()) {
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rec.payload ?? {}),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      // The household switched to local-only while this was waiting. That is
+      // not a failure to retry — the record belongs here now, permanently.
+      if (res.status === 409 && data.storageMode === "local_only") {
+        const rows = await read();
+        const i = rows.findIndex((r) => r.id === rec.id);
+        if (i >= 0) {
+          rows[i] = { ...rows[i], origin: "local_only", syncedAt: null };
+          await write(rows);
+        }
+        continue;
+      }
+
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      await markSynced(rec.id, data?.stored?.transactionId ?? null);
+      out.sent++;
+    } catch (e) {
+      await markAttempt(rec.id, e instanceof Error ? e.message : String(e));
+      out.failed++;
+      // Stop on the first failure while offline: the next twenty will fail too,
+      // and burning through them only inflates every attempt count towards the
+      // give-up threshold for one outage.
+      if (typeof navigator !== "undefined" && !navigator.onLine) break;
+    }
+  }
+  return out;
 }
