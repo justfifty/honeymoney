@@ -64,8 +64,12 @@ $pbUrl   = 'https://honeymoney-pb.domcloud.dev'
 function Note($m) { Write-Host "  $m" }
 
 # -- 1. a password that has never been anywhere ------------------------------
-$bytes = [byte[]]::new(24)
-[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+# RNGCryptoServiceProvider, not RandomNumberGenerator::Fill. Fill() is .NET 5+
+# and this runs on Windows PowerShell 5.1, which is .NET Framework 4.x -- the
+# newer call fails with "does not contain a method named 'Fill'".
+$bytes = New-Object byte[] 24
+$rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
 $pw = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
 Note "generated a $($pw.Length)-character password (not shown)"
 
@@ -78,11 +82,16 @@ Note "generated a $($pw.Length)-character password (not shown)"
 # the key once settings encryption is on -- "invalid settings db data or missing
 # encryption key" -- so a CLI call that skips it fails in a way that looks like
 # a corrupt database rather than a missing variable.
+#
+# SOURCING THE KEY IS NOT ENOUGH. The variable has to be in the environment AND
+# the CLI has to be told to look for it. Omitting the flag while the variable is
+# set fails identically to not having the key at all, which is how this was
+# missed the first time: the export line looked like it had done the job.
 $remote = @"
 set -euo pipefail
 cd ~/public_html
 set -a; . ~/.env.pocketbase; set +a
-./pocketbase superuser upsert '$Email' '$pw' --dir ./pb_data
+./pocketbase superuser upsert '$Email' '$pw' --dir ./pb_data --encryptionEnv=PB_ENCRYPTION_KEY
 echo OK
 "@
 # Written BOM-less and scp'd rather than piped: PowerShell's pipeline emits a
