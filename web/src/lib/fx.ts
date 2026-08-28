@@ -39,6 +39,19 @@ export const SOURCE_URL: Record<RateSource, string> = {
 };
 
 let memo: { table: RateTable; at: number } | null = null;
+// One refresh in flight at a time, shared by every concurrent request. Without
+// it, a burst of cold requests each opened its own pair of provider calls.
+let inflight: Promise<RateTable> | null = null;
+// Best table assembled so far by the in-flight refresh — what a cold render
+// falls back to when its budget runs out, instead of the indicative table.
+let partial: RateTable | null = null;
+
+// How long a COLD render (no memo at all) is allowed to wait on the central
+// banks before it gives up and renders the indicative table. BNM measures
+// 400 ms-1 s and the timeout below is 4 s, so this is the difference between a
+// first page view that takes a beat and one that takes five seconds. Whatever
+// the refresh finds still lands in the memo for the very next request.
+const COLD_WAIT_MS = Number(process.env.FX_COLD_WAIT_MS ?? 700);
 
 const QUOTES = CURRENCIES.map((c) => c.code).filter((c) => c !== BASE);
 
@@ -179,32 +192,104 @@ export interface RatesResult {
   live: boolean;
 }
 
-// Merge all providers, best-source-first, one currency at a time.
+// Merge all providers, best-source-first, one currency at a time. Single-flight:
+// concurrent callers share one refresh rather than each opening their own.
+function refresh(): Promise<RateTable> {
+  if (inflight) return inflight;
+  inflight = (async () => {
+    // Each provider merges into `partial` the instant IT settles, rather than
+    // everything waiting on the slowest. That matters for the cold path below:
+    // the ECB feed measures ~30-450 ms and BNM ~400-1000 ms, so a first render
+    // that gave up on the whole batch got the indicative table even though a
+    // real one had already arrived.
+    const rank: Record<string, number> = { indicative: 0, cache: 1, ecb: 2, bnm: 3 };
+    const merge = (src: Partial<RateTable>) => {
+      const next = { ...(partial ?? staticTable()) };
+      for (const [code, rate] of Object.entries(src)) {
+        // Providers land in arbitrary order, so compare by authority rather
+        // than by arrival — otherwise a slow ECB could overwrite BNM.
+        if (rate && rank[rate.source] >= rank[next[code]?.source ?? "indicative"]) {
+          next[code] = rate;
+        }
+      }
+      next[BASE] = { perMYR: 1, source: "bnm", sourceUrl: SOURCE_URL.bnm, asOf: "" };
+      partial = next;
+    };
+    partial = staticTable();
+
+    const [bnm, ecb, cached] = await Promise.all([
+      fetchBNM().then((r) => (merge(r), r)).catch(() => ({}) as Partial<RateTable>),
+      fetchECB().then((r) => (merge(r), r)).catch(() => ({}) as Partial<RateTable>),
+      fetchCached().then((r) => (merge(r), r)).catch(() => ({}) as Partial<RateTable>),
+    ]);
+
+    const table = staticTable();
+    // lowest priority first — each better source overwrites the last
+    for (const src of [cached, ecb, bnm]) {
+      for (const [code, rate] of Object.entries(src)) {
+        if (rate) table[code] = rate;
+      }
+    }
+    table[BASE] = { perMYR: 1, source: "bnm", sourceUrl: SOURCE_URL.bnm, asOf: "" };
+
+    const gotLive = Object.values(table).some((r) => r.source === "bnm" || r.source === "ecb");
+    // NOT awaited. Writing ~12 rows to PocketBase is bookkeeping for the NEXT
+    // cold start; making the page that triggered it wait for those writes to
+    // land put a dozen round trips in front of the user's first paint.
+    if (gotLive) void persist(table).catch(() => undefined);
+
+    memo = { table, at: Date.now() };
+    return table;
+  })().finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+/**
+ * Rates for rendering, with a hard rule: this is called from the ROOT LAYOUT, so
+ * whatever it costs is paid by every page of the app before anything appears.
+ *
+ * Three cases, cheapest first:
+ *   • Fresh memo      → returned instantly, no network at all.
+ *   • Stale memo      → the stale table is returned INSTANTLY and the refresh
+ *                       runs behind it (stale-while-revalidate). Rates that are
+ *                       a few hours old are the correct trade against making
+ *                       somebody wait to see their own balance; central banks
+ *                       publish at most daily.
+ *   • No memo (cold)  → wait, but only up to COLD_WAIT_MS. Past that the
+ *                       indicative table renders — labelled "indicative", as it
+ *                       always has been — and the refresh finishes in the
+ *                       background so the next request is live.
+ *
+ * `force` (used by the /api/fx refresh path) still waits for the real thing.
+ */
 export async function getRates(opts: { force?: boolean } = {}): Promise<RatesResult> {
-  if (!opts.force && memo && Date.now() - memo.at < CACHE_MS) {
+  if (opts.force) {
+    const table = await refresh();
+    return summarize(table, new Date().toISOString());
+  }
+
+  if (memo) {
+    const age = Date.now() - memo.at;
+    if (age >= CACHE_MS) void refresh().catch(() => undefined); // revalidate behind the response
     return summarize(memo.table, new Date(memo.at).toISOString());
   }
 
-  const [bnm, ecb, cached] = await Promise.all([
-    fetchBNM().catch(() => ({}) as Partial<RateTable>),
-    fetchECB().catch(() => ({}) as Partial<RateTable>),
-    fetchCached().catch(() => ({}) as Partial<RateTable>),
-  ]);
-
-  const table = staticTable();
-  // lowest priority first — each better source overwrites the last
-  for (const src of [cached, ecb, bnm]) {
-    for (const [code, rate] of Object.entries(src)) {
-      if (rate) table[code] = rate;
-    }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const table = await Promise.race([
+      refresh().catch(() => partial ?? staticTable()),
+      new Promise<RateTable>((resolve) => {
+        timer = setTimeout(() => resolve(partial ?? staticTable()), COLD_WAIT_MS);
+      }),
+    ]);
+    return summarize(table, new Date().toISOString());
+  } finally {
+    // Losing timer cleared, or it would hold the event loop open past the
+    // response for as long as the budget lasts.
+    if (timer) clearTimeout(timer);
   }
-  table[BASE] = { perMYR: 1, source: "bnm", sourceUrl: SOURCE_URL.bnm, asOf: "" };
-
-  const gotLive = Object.values(table).some((r) => r.source === "bnm" || r.source === "ecb");
-  if (gotLive) await persist(table);
-
-  memo = { table, at: Date.now() };
-  return summarize(table, new Date().toISOString());
 }
 
 function summarize(table: RateTable, fetchedAt: string): RatesResult {
