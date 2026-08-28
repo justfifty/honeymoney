@@ -7,7 +7,7 @@ import { TERMS_VERSION } from "@/lib/agreements";
 import Logo from "../Logo";
 
 export const metadata: Metadata = {
-  title: "Notices · HoneyMoney",
+  title: "Notices",
   description:
     "Every notice HoneyMoney owes you, separately: privacy, terms, the advice boundary, the H-Score's limits, AI, household sharing, sponsors, storage, retention, acceptable use and licences.",
 };

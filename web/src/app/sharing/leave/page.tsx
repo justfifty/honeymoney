@@ -6,7 +6,7 @@ import LeaveHousehold from "./LeaveHousehold";
 import QuickExit from "./QuickExit";
 
 export const metadata: Metadata = {
-  title: "Leaving and safety · HoneyMoney",
+  title: "Leaving and safety",
   description:
     "How to stop sharing, leave a household, take your data with you, and what the other people will and will not be able to see.",
 };

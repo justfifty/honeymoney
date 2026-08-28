@@ -4,7 +4,7 @@ import { NOTICE_SECTIONS } from "./notice";
 import { NOTICE_VERSION } from "@/lib/consent";
 
 export const metadata: Metadata = {
-  title: "Privacy notice · HoneyMoney",
+  title: "Privacy notice",
   description:
     "What HoneyMoney collects, why, who else sees it, and how to stop it. Issued under Malaysia's PDPA 2010, in English and Bahasa Malaysia.",
 };

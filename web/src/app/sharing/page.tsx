@@ -6,7 +6,7 @@ import SharingControls from "./SharingControls";
 import ShareLog from "./ShareLog";
 
 export const metadata: Metadata = {
-  title: "Sharing · HoneyMoney",
+  title: "Sharing",
   description:
     "Choose, per kind of data, what your household can see — and see who has looked. Almost everything is private until you say otherwise.",
 };

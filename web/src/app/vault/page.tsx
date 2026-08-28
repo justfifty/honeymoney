@@ -6,7 +6,7 @@ import LocalVault from "./LocalVault";
 import StorageChoice from "./StorageChoice";
 
 export const metadata: Metadata = {
-  title: "Your copy · HoneyMoney",
+  title: "Your copy",
   description:
     "Keep a complete, current copy of your records in a location you choose — your phone, a drive, anywhere — and read and analyse it with no network at all.",
 };

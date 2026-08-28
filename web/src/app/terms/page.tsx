@@ -4,7 +4,7 @@ import { TERMS_SECTIONS } from "./notice";
 import { TERMS_VERSION, OPERATOR } from "@/lib/agreements";
 
 export const metadata: Metadata = {
-  title: "Terms of service · HoneyMoney",
+  title: "Terms of service",
   description:
     "What HoneyMoney does, what it does not do, and what you agree to by using it. In English and Bahasa Malaysia.",
 };

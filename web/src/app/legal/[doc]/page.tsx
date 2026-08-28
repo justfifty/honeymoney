@@ -26,7 +26,7 @@ export async function generateMetadata({
   params: Promise<{ doc: string }>;
 }): Promise<Metadata> {
   const doc = legalDoc((await params).doc);
-  if (!doc) return { title: "Not found · HoneyMoney" };
+  if (!doc) return { title: "Not found" };
   return { title: `${doc.en.title} · HoneyMoney`, description: doc.en.summary };
 }
 

@@ -5,7 +5,7 @@ import { TERMS_VERSION } from "@/lib/agreements";
 import ReacceptButton from "./ReacceptButton";
 
 export const metadata: Metadata = {
-  title: "What changed · HoneyMoney",
+  title: "What changed",
   description:
     "A plain summary of the latest changes to HoneyMoney's privacy notice and terms of service, and the link to read both in full.",
 };
