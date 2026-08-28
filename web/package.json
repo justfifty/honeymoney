@@ -34,6 +34,7 @@
     "vault:install": "npx --yes tsx --env-file=.env.local scripts/install-vault-collection.mts",
     "check:capture": "npx --yes tsx --env-file=.env.local scripts/check-capture.mts",
     "check:signout": "npx --yes tsx scripts/check-signout.mts",
+    "check:goals": "npx --yes tsx --env-file=.env.local scripts/check-goals.mts",
     "ocr:assets": "node scripts/stage-ocr-assets.mjs --apply"
   },
   "dependencies": {

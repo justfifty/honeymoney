@@ -35,17 +35,51 @@ export default function GoalsManager({
   canWrite,
   categories,
   members = [],
+  viewerMemberId = null,
 }: {
   goals: Goal[];
   canWrite: boolean;
   categories: Category[];
   /** Empty for a household of one — the owner picker then has nothing to ask. */
   members?: GoalMember[];
+  /** Which roster entry is reading. Null when signed out (the demo view). */
+  viewerMemberId?: string | null;
 }) {
   const [adding, setAdding] = useState(false);
 
   const active = goals.filter((g) => g.pct < 100);
   const achieved = goals.filter((g) => g.pct >= 100);
+
+  /**
+   * Grouped by whose it is, and the viewer's own first.
+   *
+   * A flat list with a name badge on some rows answers "whose is this?" one
+   * goal at a time. It does not answer the question that was actually asked —
+   * "how am I doing" — which needs the person's own targets in one place, next
+   * to each other, not scattered through the household's by percentage.
+   *
+   * Sections only appear when there is something to put in them, so a household
+   * of one and a household that has never assigned a goal both see exactly the
+   * flat list they see today. The grouping is not a new layout everyone pays
+   * for; it appears when it starts carrying information.
+   */
+  const groups: { key: string; label: string; goals: Goal[] }[] = [];
+  if (members.length > 1 && active.some((g) => g.owner)) {
+    const mine = viewerMemberId ? active.filter((g) => g.owner === viewerMemberId) : [];
+    const shared = active.filter((g) => !g.owner);
+    const others = active.filter((g) => g.owner && g.owner !== viewerMemberId);
+    if (mine.length) groups.push({ key: "mine", label: "Yours", goals: mine });
+    if (shared.length) groups.push({ key: "shared", label: "🏠 The household's", goals: shared });
+    // One section per other person rather than a lump labelled "theirs": in a
+    // family of four, "everyone who is not you" is not a group anybody thinks in.
+    for (const m of members) {
+      if (m.id === viewerMemberId) continue;
+      const theirs = others.filter((g) => g.owner === m.id);
+      if (theirs.length) groups.push({ key: m.id, label: m.name, goals: theirs });
+    }
+  } else {
+    groups.push({ key: "all", label: "", goals: active });
+  }
 
   return (
     <div className="mt-6 space-y-4">
@@ -75,8 +109,17 @@ export default function GoalsManager({
         </p>
       )}
 
-      {active.map((g) => (
-        <GoalCard key={g.id} goal={g} canWrite={canWrite} />
+      {groups.map((group) => (
+        <div key={group.key} className="space-y-4">
+          {group.label && (
+            <h2 className="pt-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              {group.label}
+            </h2>
+          )}
+          {group.goals.map((g) => (
+            <GoalCard key={g.id} goal={g} canWrite={canWrite} members={members} />
+          ))}
+        </div>
       ))}
 
       {/* Achievements — a record of the targets you've reached */}
@@ -105,12 +148,68 @@ export default function GoalsManager({
   );
 }
 
-function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
+function GoalCard({
+  goal,
+  canWrite,
+  members,
+}: {
+  goal: Goal;
+  canWrite: boolean;
+  members: GoalMember[];
+}) {
   const router = useRouter();
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [owning, setOwning] = useState(false);
   const done = goal.pct >= 100;
+
+  /**
+   * Move a goal between "the household's" and "somebody's".
+   *
+   * Whose a goal is was askable only at creation, which made it the one
+   * property of a goal you could not change your mind about — and the goals
+   * that most need reassigning are the ones that already exist, made before
+   * there was anything to ask. A household that had been saving for a year
+   * could not mark a single one of its goals as anybody's.
+   */
+  async function setVisibility(next: "shared" | "private") {
+    setOwning(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/goals", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goalId: goal.id, visibility: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn’t change that.");
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn’t change that.");
+    } finally {
+      setOwning(false);
+    }
+  }
+
+  async function setOwner(next: string) {
+    setOwning(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/goals", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ goalId: goal.id, owner: next || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Couldn’t change whose goal this is.");
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn’t change whose goal this is.");
+    } finally {
+      setOwning(false);
+    }
+  }
 
   const monthsLeft = goal.targetDate ? monthsUntil(goal.targetDate) : null;
   const neededPerMonth = monthsLeft && goal.remaining > 0 ? goal.remaining / monthsLeft : null;
@@ -140,6 +239,42 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
     }
   }
 
+  /**
+   * Somebody else's hidden goal, from a seat that may not read it.
+   *
+   * Rendered as its own small card rather than by threading `redacted` through
+   * the full one. The full card is a progress bar, a percentage, a target date,
+   * a "RM X to go", and a control to add money to it — and every one of those is
+   * either meaningless here or actively wrong: the redaction zeroes the target,
+   * so the ordinary card would say "RM3,100 of RM0" and "RM0 to go", and the
+   * manual-add box would let a partner put money into a goal they cannot see.
+   *
+   * What it does show is the amount, because that money is in the household's
+   * liquid savings and its H-Score either way. See redact() in lib/goals.ts.
+   */
+  if (goal.redacted) {
+    return (
+      <div className="rounded-2xl border border-dashed border-zinc-300 bg-zinc-50/60 p-5 dark:border-zinc-700 dark:bg-zinc-900/40">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <span className="text-2xl" aria-hidden="true">🔒</span>
+            <span>
+              <span className="block font-medium text-zinc-600 dark:text-zinc-300">
+                {goal.name}
+                {goal.ownerName && <span className="text-zinc-400"> · {goal.ownerName}</span>}
+              </span>
+              <span className="block text-xs text-zinc-500">{rm(goal.current)} put away</span>
+            </span>
+          </span>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-zinc-500">
+          Kept private. The amount counts toward the household&rsquo;s savings and H-Score — what it
+          is for is not shown.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       className={
@@ -162,6 +297,14 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
               {goal.ownerName && (
                 <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
                   {goal.ownerName}
+                </span>
+              )}
+              {goal.visibility === "private" && !goal.redacted && (
+                <span
+                  title="Only you can see what this goal is. The household sees the amount."
+                  className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950/60 dark:text-amber-200"
+                >
+                  🔒 Hidden
                 </span>
               )}
             </p>
@@ -254,6 +397,44 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
             For savings that happened outside HoneyMoney. Money you record against this goal is
             counted automatically.
           </p>
+
+          {/* Only where there is more than one person to choose between. In a
+              household of one the answer is never in doubt and the control
+              would be a permanent piece of furniture answering nothing. */}
+          {members.length > 1 && (
+            <label className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+              Whose goal
+              <select
+                value={goal.owner ?? ""}
+                disabled={owning}
+                onChange={(e) => setOwner(e.target.value)}
+                className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-950 disabled:opacity-50"
+              >
+                <option value="">🏠 The household</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              {owning && <span>saving…</span>}
+            </label>
+          )}
+
+          {/* Offered only once the goal belongs to somebody — there is nobody to
+              keep the household's own goal from. */}
+          {members.length > 1 && goal.owner && (
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-zinc-500">
+              <input
+                type="checkbox"
+                checked={goal.visibility === "private"}
+                disabled={owning}
+                onChange={(e) => setVisibility(e.target.checked ? "private" : "shared")}
+                className="h-3.5 w-3.5 accent-amber-500"
+              />
+              Keep this one to yourself — the household still sees the amount, not what it is for
+            </label>
+          )}
         </div>
       )}
     </div>
@@ -277,6 +458,10 @@ function NewGoalForm({
   // Defaults to the household, which is what every goal was before this and the
   // right default for two people saving toward the same thing.
   const [owner, setOwner] = useState("");
+  // Visible by default. Hiding a goal from the person you share money with is a
+  // decision worth making deliberately, so it is a thing you tick, not a thing
+  // you forget to untick.
+  const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -294,6 +479,7 @@ function NewGoalForm({
           category,
           targetDate: date || undefined,
           owner: owner || null,
+          visibility: owner && hidden ? "private" : "shared",
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -351,11 +537,25 @@ function NewGoalForm({
           </label>
         )}
       </div>
-      {members.length > 1 && (
-        <p className="mt-2 text-xs text-zinc-500">
-          A personal goal still shows on the household&rsquo;s dashboard — it says whose it is, it
-          does not hide it.
-        </p>
+      {/* Only offered once the goal belongs to somebody. "Hide the household's
+          own goal from the household" is not a coherent thing to ask. */}
+      {members.length > 1 && owner && (
+        <label className="mt-3 flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <input
+            type="checkbox"
+            checked={hidden}
+            onChange={(e) => setHidden(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-amber-500"
+          />
+          <span>
+            Keep this one to yourself
+            <span className="mt-0.5 block text-[11px] text-zinc-500">
+              The others will see that you are putting money away, and how much — that is what
+              keeps the household&rsquo;s totals and your H-Score honest. What they will not see is
+              the name, the target or the date.
+            </span>
+          </span>
+        </label>
       )}
       {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
       <div className="mt-4 flex gap-2">

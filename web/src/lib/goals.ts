@@ -34,6 +34,11 @@ export const GOAL_CATEGORIES = [
 
 const EMOJI_BY_CAT: Record<string, string> = Object.fromEntries(GOAL_CATEGORIES.map((c) => [c.key, c.emoji]));
 
+export type GoalVisibility = "shared" | "private";
+
+/** The placeholder a redacted goal's name collapses to. Rendered with a 🔒. */
+export const PRIVATE_GOAL_LABEL = "Personal goal";
+
 export interface Goal {
   id: string;
   name: string;
@@ -64,6 +69,19 @@ export interface Goal {
   owner: string | null;
   /** The owner's display name, resolved for the UI. Null for a shared goal. */
   ownerName: string | null;
+  /**
+   * "shared" — everyone in the household sees the goal in full.
+   * "private" — only the owner does. Everyone else gets it redacted, not erased.
+   *
+   * Meaningless without an owner: a household goal is the household's by
+   * definition and there is nobody to keep it from.
+   */
+  visibility: GoalVisibility;
+  /**
+   * True when THIS reader is being shown the redacted form. Lets the card render
+   * a lock instead of guessing from missing fields.
+   */
+  redacted: boolean;
   /** Capped at 100 for the BAR only. Use `pctRaw` for the number shown. */
   pct: number;
   /** Uncapped. Past 100 is a success state, not an overflow bug. */
@@ -135,7 +153,25 @@ function mapGoal(
   const tracked = round(trackedById.get(n.id) ?? 0);
   const current = round(tracked + manual);
   const category = String(n.props?.category ?? "custom");
-  const owner = (n.props?.owner as string) || null;
+  // An owner that no longer resolves to a member of this household is treated
+  // as no owner at all, and that is not tidiness — it is the difference between
+  // a goal being visible and not.
+  //
+  // Members can be removed (household.ts removeMember), and the goals they
+  // owned keep the departed id. Every screen then groups by owner: the badge
+  // renders blank, and /goals builds its sections by walking the CURRENT roster,
+  // so a goal belonging to nobody on it matched no section and disappeared from
+  // the page. A savings target does not stop existing because the person who
+  // named it left; it becomes the household's, which is what it now says.
+  const rawOwner = (n.props?.owner as string) || null;
+  const owner = rawOwner && memberNames.has(rawOwner) ? rawOwner : null;
+  // Absent means SHARED, and that is both the migration-safe reading (every goal
+  // that predates this field was visible to the household) and the product
+  // decision: a personal goal is seen by default, and hiding it is a thing you
+  // choose. Transparency is the default a couple should have to opt out of, not
+  // opt into.
+  // A goal with no owner is always shared — there is nobody to keep it from.
+  const visibility: GoalVisibility = owner && n.props?.visibility === "private" ? "private" : "shared";
   const pctRaw = target > 0 ? Math.round((current / target) * 100) : 0;
   return {
     id: n.id,
@@ -153,8 +189,10 @@ function mapGoal(
     // Absent means the household's, which is what every goal that predates this
     // was — so old goals keep meaning exactly what they meant, with no
     // migration and nothing to get wrong.
-    owner: owner,
+    owner,
     ownerName: owner ? (memberNames.get(owner) ?? null) : null,
+    visibility,
+    redacted: false,
     // The BAR clamps so it cannot draw past its container; the NUMBER does not,
     // because 120% of a goal is an achievement and rounding it down to 100%
     // quietly takes it away from whoever earned it.
@@ -167,7 +205,49 @@ function mapGoal(
   };
 }
 
-export async function listGoals(tenantId: string): Promise<Goal[]> {
+/**
+ * Hide a private goal from everyone but its owner — REDACTED, not erased.
+ *
+ * This is the same promise tier-3 buckets already make, and deliberately the
+ * same shape (see lib/privacy.ts): what a goal IS becomes private, what it is
+ * WORTH stays visible.
+ *
+ * Why not hide it outright. Goal progress is summed into the household's
+ * liquid savings, which is the emergency-buffer component of the H-Score — one
+ * score, persisted and snapshotted nightly for the household, not per viewer.
+ * A goal that vanished for one partner would give the two of them different
+ * scores off the same records, with no way to reconcile them, and would corrupt
+ * the snapshot history depending on who happened to load the page. Money that
+ * silently leaves a shared total is not privacy; it is a discrepancy.
+ *
+ * So the household keeps seeing that somebody is putting money away, and how
+ * much. What it stops seeing is what for — the name, the emoji, the category,
+ * the deadline, and the target, because "RM 30,000 by December" describes the
+ * plan as plainly as its name does. Funding transparency, spending autonomy.
+ */
+function redact(g: Goal): Goal {
+  return {
+    ...g,
+    name: PRIVATE_GOAL_LABEL,
+    emoji: "🔒",
+    category: "custom",
+    targetDate: null,
+    // Zeroed rather than kept: a target is the ambition, and a bar filled to 8%
+    // of RM50,000 tells you what somebody is planning almost as well as a label.
+    target: 0,
+    pct: 0,
+    pctRaw: 0,
+    remaining: 0,
+    targetHistory: [],
+    // `current`, `tracked` and `manual` survive on purpose — see above.
+    redacted: true,
+  };
+}
+
+export async function listGoals(
+  tenantId: string,
+  opts: { viewerMemberId?: string | null } = {},
+): Promise<Goal[]> {
   const [nodes, linked, members] = await Promise.all([
     pbList<GoalNode>("nodes", {
       filter: `tenant = ${pbStr(tenantId)} && kind = 'goal'`,
@@ -193,7 +273,13 @@ export async function listGoals(tenantId: string): Promise<Goal[]> {
 
   // Sorted by RAW percentage so a goal at 120% sorts above one at exactly 100,
   // rather than the two being tied by a cap that exists only for the bar.
-  return nodes.map((n) => mapGoal(n, trackedById, memberNames)).sort((a, b) => b.pctRaw - a.pctRaw);
+  const viewer = opts.viewerMemberId ?? null;
+  return nodes
+    .map((n) => {
+      const g = mapGoal(n, trackedById, memberNames);
+      return g.visibility === "private" && g.owner !== viewer ? redact(g) : g;
+    })
+    .sort((a, b) => b.pctRaw - a.pctRaw);
 }
 
 export async function createGoal(input: {
@@ -203,6 +289,8 @@ export async function createGoal(input: {
   targetDate?: string;
   /** A roster member id, or null/undefined for a household goal. */
   owner?: string | null;
+  /** Defaults to shared. Only meaningful on a goal that has an owner. */
+  visibility?: GoalVisibility;
 }): Promise<void> {
   const ctx = await requirePermission("manage_graph");
   const name = (input.name ?? "").trim();
@@ -222,6 +310,7 @@ export async function createGoal(input: {
       target_date: input.targetDate || "",
       target_history: [],
       owner: await validOwner(ctx.tenant.id, input.owner),
+      visibility: input.visibility === "private" ? "private" : "shared",
     },
   });
 }
@@ -293,7 +382,13 @@ export async function adjustGoalManual(
  */
 export async function updateGoal(
   goalId: string,
-  patch: { name?: string; target?: number; targetDate?: string | null; owner?: string | null },
+  patch: {
+    name?: string;
+    target?: number;
+    targetDate?: string | null;
+    owner?: string | null;
+    visibility?: GoalVisibility;
+  },
 ): Promise<void> {
   const ctx = await requirePermission("manage_graph");
   const node = await goalNode(goalId, ctx.tenant.id);
@@ -322,6 +417,13 @@ export async function updateGoal(
 
   if (patch.targetDate !== undefined) props.target_date = patch.targetDate || "";
   if (patch.owner !== undefined) props.owner = await validOwner(ctx.tenant.id, patch.owner);
+  if (patch.visibility !== undefined) {
+    props.visibility = patch.visibility === "private" ? "private" : "shared";
+  }
+  // Handing a goal to the household un-hides it, because "private" means
+  // "private to its owner" and a goal with no owner has none. Leaving the flag
+  // set would give the household a locked card nobody on earth could open.
+  if (!props.owner) props.visibility = "shared";
 
   body.props = props;
   await pbUpdate("nodes", goalId, body);

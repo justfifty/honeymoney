@@ -27,7 +27,12 @@ export default async function GoalsPage() {
 
   const { tenantId, ctx } = await resolveViewTenant();
   const [goals, members] = tenantId
-    ? await Promise.all([listGoals(tenantId), listMembers(tenantId)])
+    ? await Promise.all([
+        // The viewer decides what they may see: a private goal is redacted for
+        // everyone except its owner.
+        listGoals(tenantId, { viewerMemberId: ctx?.memberId ?? null }),
+        listMembers(tenantId),
+      ])
     : [[], []];
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
 
@@ -49,6 +54,7 @@ export default async function GoalsPage() {
         canWrite={canWrite}
         categories={GOAL_CATEGORIES.map((c) => ({ key: c.key, emoji: c.emoji, label: c.label }))}
         members={members.map((m) => ({ id: m.id, name: m.display_name }))}
+        viewerMemberId={ctx?.memberId ?? null}
       />
     </main>
   );

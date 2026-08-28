@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     category?: string;
     targetDate?: string;
     owner?: string | null;
+    visibility?: "shared" | "private";
   };
   try {
     body = await request.json();
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       category: body.category,
       targetDate: body.targetDate,
       owner: body.owner ?? null,
+      visibility: body.visibility,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -53,6 +55,7 @@ export async function PATCH(request: Request) {
     target?: number;
     targetDate?: string | null;
     owner?: string | null;
+    visibility?: "shared" | "private";
   };
   try {
     body = await request.json();
@@ -70,6 +73,7 @@ export async function PATCH(request: Request) {
       target: body.target,
       targetDate: body.targetDate,
       owner: body.owner,
+      visibility: body.visibility,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

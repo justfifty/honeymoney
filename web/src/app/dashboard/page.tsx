@@ -136,9 +136,14 @@ export default async function Dashboard() {
       }),
       // Added to the existing batch rather than awaited after it, so goals cost
       // the dashboard no extra wall-clock at all.
-      listGoals(tenantId),
+      listGoals(tenantId, { viewerMemberId: ctx?.memberId ?? null }),
     ]);
     const bucketOptions = bucketNodes.map((b) => ({ id: b.id, label: dataLabel(locale, b.label) }));
+    // 0 = mine, 1 = the household's, 2 = somebody else's. Signed out (the demo
+    // view) there is no "mine", so everything falls to the household band and
+    // the existing percentage order stands untouched.
+    const rank = (owner: string | null) =>
+      owner && owner === ctx?.memberId ? 0 : owner ? 2 : 1;
 
     const totalAllocated = projection.reduce((s, b) => s + b.allocated, 0);
     const totalProjected = projection.reduce((s, b) => s + b.projected_spend, 0);
@@ -276,7 +281,18 @@ export default async function Dashboard() {
               </Link>
             </h2>
             <div className="grid gap-3 sm:grid-cols-2">
-              {goals.slice(0, 4).map((g) => (
+              {/* The viewer's own goals first, then the household's, then
+                  everyone else's — and only the first four fit, so the ordering
+                  decides what a person actually sees. listGoals sorts by
+                  percentage, which is the right order for "which goal is
+                  furthest along" and the wrong one for "how am I doing": in a
+                  family of four it can fill all four slots with other people's
+                  targets. A stable sort, so within each band the percentage
+                  order survives. */}
+              {[...goals]
+                .sort((a, b) => rank(a.owner) - rank(b.owner))
+                .slice(0, 4)
+                .map((g) => (
                 <div
                   key={g.id}
                   className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
@@ -294,21 +310,39 @@ export default async function Dashboard() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                    {/* Green, because a goal is money you still have and chose
-                        to keep — the one thing green means in this app. `pct`
-                        clamps so the bar cannot draw past its container. */}
-                    <div className="h-full bg-emerald-500" style={{ width: `${g.pct}%` }} />
-                  </div>
-                  <div className="mt-2 flex justify-between text-xs text-zinc-500">
-                    {/* pctRaw, not pct: 120% of a goal is an achievement, and
-                        rounding it to 100 quietly takes it from whoever earned it. */}
-                    <span>
-                      <span className="hm-money">{rm(g.current)}</span> {tr("dash.of")}{" "}
-                      <span className="hm-money">{rm(g.target)}</span>
-                    </span>
-                    <span className="font-medium text-emerald-700 dark:text-emerald-400">{g.pctRaw}%</span>
-                  </div>
+                  {/* A goal somebody has kept private shows its AMOUNT and
+                      nothing else. Redaction zeroes the target, so the ordinary
+                      bar and "of RM0" would be worse than useless here — and the
+                      amount is not optional: it is in the household's liquid
+                      savings and its H-Score either way. */}
+                  {g.redacted ? (
+                    <p className="mt-3 text-xs text-zinc-500">
+                      <span className="hm-money font-medium text-zinc-700 dark:text-zinc-300">
+                        {rm(g.current)}
+                      </span>{" "}
+                      {tr("dash.goals.private")}
+                    </p>
+                  ) : (
+                    <>
+                      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                        {/* Green, because a goal is money you still have and chose
+                            to keep — the one thing green means in this app. `pct`
+                            clamps so the bar cannot draw past its container. */}
+                        <div className="h-full bg-emerald-500" style={{ width: `${g.pct}%` }} />
+                      </div>
+                      <div className="mt-2 flex justify-between text-xs text-zinc-500">
+                        {/* pctRaw, not pct: 120% of a goal is an achievement, and
+                            rounding it to 100 quietly takes it from whoever earned it. */}
+                        <span>
+                          <span className="hm-money">{rm(g.current)}</span> {tr("dash.of")}{" "}
+                          <span className="hm-money">{rm(g.target)}</span>
+                        </span>
+                        <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                          {g.pctRaw}%
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
