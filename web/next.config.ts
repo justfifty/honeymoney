@@ -51,6 +51,26 @@ const nextConfig: NextConfig = {
       }
     : {}),
 
+  // Start the real fetch on finger-DOWN, not finger-up.
+  //
+  // Next already pings its prefetcher when a pointer lands on a Link — hover on
+  // a mouse, touchstart on a phone. By default that pulls only the route's
+  // loading boundary, i.e. the skeleton we were going to show anyway. This
+  // upgrades that same intent to a full prefetch of the page.
+  //
+  // What it buys on a phone: a tap physically takes 70-120 ms between finger
+  // down and finger up, and a warm origin render of these routes measures
+  // 30-100 ms. Spending the tap's own duration on the fetch is often the whole
+  // fetch — the content is there when the finger lifts, and the navigation is
+  // a swap rather than a wait.
+  //
+  // Deliberately NOT the same thing as prefetching everything in the viewport.
+  // This fires on intent, so nothing is fetched that a pointer was not aimed
+  // at, and the origin does no speculative work for links nobody touches.
+  experimental: {
+    dynamicOnHover: true,
+  },
+
   // Security headers, set at the origin rather than at the edge.
   //
   // WHY HERE: deploy/pages/_headers covers what Cloudflare Pages serves itself

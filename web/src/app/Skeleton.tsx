@@ -49,7 +49,7 @@ export default function Skeleton({
     // aria-busy + role=status so a screen reader announces "loading" once
     // rather than reading out a wall of empty boxes.
     <main
-      className={`mx-auto min-h-full w-full min-w-0 ${width} px-4 py-8 sm:px-6 sm:py-12`}
+      className={`hm-skeleton mx-auto min-h-full w-full min-w-0 ${width} px-4 py-8 sm:px-6 sm:py-12`}
       role="status"
       aria-busy="true"
       aria-live="polite"
@@ -83,7 +83,7 @@ export default function Skeleton({
 export function ChartSkeleton() {
   return (
     <main
-      className="mx-auto min-h-full w-full min-w-0 max-w-5xl px-4 py-4 sm:px-6 sm:py-6"
+      className="hm-skeleton mx-auto min-h-full w-full min-w-0 max-w-5xl px-4 py-4 sm:px-6 sm:py-6"
       role="status"
       aria-busy="true"
       aria-live="polite"

@@ -87,13 +87,155 @@ h1, h2, h3, .font-display {
 .hm-delay-3 { animation-delay: 0.24s; }
 .hm-delay-4 { animation-delay: 0.32s; }
 
-/* Card hover lift for interactive surfaces. */
-.hm-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.hm-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -12px rgba(20, 35, 26, 0.25); }
+/* Card hover lift for interactive surfaces.
+   Gated on (hover: hover) deliberately. A phone has no hover, but it FAKES one:
+   tap a card and the browser applies :hover and leaves it applied until you tap
+   somewhere else. So every card you touched stayed lifted, which reads as a
+   selection the app never made. Tailwind's own hover: utilities are already
+   gated this way; this hand-written rule was the one that was not. */
+@media (hover: hover) {
+  .hm-lift { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .hm-lift:hover { transform: translateY(-3px); box-shadow: 0 12px 30px -12px rgba(20, 35, 26, 0.25); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .hm-animate { animation: none; }
   .hm-lift:hover { transform: none; }
+}
+
+/* ── Touch response ─────────────────────────────────────────────────────────
+   The app had no pressed state anywhere. On a phone that is the whole
+   difference between "instant" and "broken": you tap a tab, and until the
+   server answers, NOTHING on screen acknowledges the tap. The honest reading of
+   a control that does not respond is that it did not register, so you tap it
+   again — and now there are two navigations racing.
+
+   None of this makes the network faster. It makes the app answer in one frame
+   instead of one round trip, which is the part a person actually feels. */
+
+/* 1. touch-action. Without it, a browser that still supports double-tap-to-zoom
+      has to WAIT after your finger lifts to find out whether a second tap is
+      coming — historically 300 ms, and still non-zero on several Android
+      browsers. `manipulation` opts out of double-tap zoom on these elements
+      (pinch zoom is untouched, so this costs nothing in accessibility) and the
+      click fires immediately. */
+button,
+summary,
+a,
+label,
+select,
+textarea,
+[role="button"],
+input:not([type="text"]):not([type="email"]):not([type="password"]):not([type="number"]) {
+  touch-action: manipulation;
+}
+
+/* 2. The browser's own tap flash is not a substitute for a pressed state: it is
+      grey, it is rectangular over rounded controls, and on iOS it appears only
+      once the gesture has been disambiguated — i.e. after the delay we just
+      removed. Ours replaces it. */
+button,
+summary,
+a,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 3. The pressed state. transform only — no layout, no repaint, so the
+      compositor can land it on the next frame regardless of what the main
+      thread is doing. Fast in (40 ms) and softer out (140 ms): a press should
+      feel immediate and a release should feel like a release.
+
+      Scoped to coarse pointers so a mouse click is not made to feel spongy, and
+      excluded from disabled controls, which must look unresponsive. */
+@media (pointer: coarse) {
+  button,
+  summary,
+  [role="button"],
+  .hm-tap {
+    transition: transform 140ms cubic-bezier(0.22, 0.7, 0.2, 1);
+  }
+
+  button:not(:disabled):not([aria-disabled="true"]):active,
+  summary:active,
+  [role="button"]:active,
+  .hm-tap:active {
+    transform: scale(0.97);
+    transition-duration: 40ms;
+  }
+
+  /* Links get a fade rather than a squeeze. Scaling is right for a control with
+     a boundary — a button, a tab, a card — and wrong for a run of text inside a
+     sentence, which would jump its own line. This is not optional polish: the
+     rule above suppressed the browser's grey tap flash on every anchor, so
+     without a replacement an ordinary link would have LESS feedback than it had
+     before. Opacity is composited too, so it is the same one frame. */
+  a:active {
+    opacity: 0.6;
+    transition: opacity 40ms linear;
+  }
+}
+
+/* 4. Reduced motion still gets an acknowledgement, just not a moving one —
+      "no animation" must not degrade to "no feedback". */
+@media (pointer: coarse) and (prefers-reduced-motion: reduce) {
+  button,
+  summary,
+  [role="button"],
+  .hm-tap {
+    transition: none;
+  }
+  button:not(:disabled):active,
+  summary:active,
+  [role="button"]:active,
+  a:active,
+  .hm-tap:active {
+    transform: none;
+    opacity: 0.65;
+  }
+}
+
+/* 5. Long-press on a link raises iOS's copy/share callout, which on a tab bar is
+      never what was meant — you get a menu instead of a navigation. Opt out
+      only where we say so, so ordinary in-page links keep it. */
+.hm-tap {
+  -webkit-touch-callout: none;
+}
+
+/* 5b. Skeletons that never flash.
+       A loading.tsx fallback shows the instant a navigation starts, which is
+       right on a slow connection and wrong on a fast one: a warm route answers
+       in 30-100 ms, and a skeleton that appears and vanishes inside 100 ms
+       reads as a glitch, not as progress. Two blinks of grey on every tab tap
+       is worse than no skeleton at all.
+
+       So the skeleton holds at opacity 0 for 140 ms (animation-fill-mode:
+       both is what makes the delay a HOLD rather than a gap) and only then
+       fades in. A navigation that beats the delay swaps straight to the real
+       page and the skeleton is never seen; one that does not gets it, softly.
+       The tab bar has already acknowledged the tap either way. */
+@keyframes hm-skeleton-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.hm-skeleton {
+  animation: hm-skeleton-in 220ms ease-out 140ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Still delayed — the point is not to show it at all on a fast navigation —
+     but it arrives rather than fades. */
+  .hm-skeleton { animation: hm-skeleton-in 1ms linear 140ms both; }
+}
+
+/* 6. Long lists: let the browser skip layout and paint for groups that are off
+      screen. /records renders every group's rows into the DOM (a closed
+      <details> still has children), and on a low-end phone that work lands on
+      the main thread — which is the thread that has to answer the next tap.
+      contain-intrinsic-size keeps the scrollbar honest while a group is
+      skipped, so scroll position does not jump as they render. */
+.hm-list-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 4rem;
 }
 
 /* Privacy: one-tap "hide balances" for use in public. When the root carries

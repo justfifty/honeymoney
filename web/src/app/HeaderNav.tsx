@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 // Primary nav with the active tab highlighted in amber. Client component so it
@@ -26,19 +26,36 @@ export default function HeaderNav({ items }: { items: { href: string; label: str
             aria-current={active ? "page" : undefined}
             className={
               // 768px is iPad portrait — a touch device reading a "desktop"
-              // header — so these need the same 44px minimum as the tab bar.
-              "flex min-h-11 items-center rounded-md px-2 " +
-              "focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-amber-500 " +
-              // Weight as well as hue, so the active item survives greyscale.
-              (active
-                ? "font-semibold text-amber-600 dark:text-amber-400"
-                : "text-zinc-600 hover:text-amber-600 dark:text-zinc-300 dark:hover:text-amber-400")
+              // header — so these need the same 44px minimum as the tab bar,
+              // and the same pressed state.
+              "hm-tap flex min-h-11 items-center rounded-md px-2 " +
+              "focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-amber-500"
             }
           >
-            {n.label}
+            <NavLabel active={active}>{n.label}</NavLabel>
           </Link>
         );
       })}
     </nav>
+  );
+}
+
+// Separated from the Link only so it can read useLinkStatus(), which is
+// scoped to the Link it sits inside. Same reason as BottomNav's TabFace: the
+// highlight otherwise stays on the item you are leaving for the whole of the
+// wait, which is precisely the moment it should have moved.
+function NavLabel({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const { pending } = useLinkStatus();
+  const on = active || pending;
+  return (
+    <span
+      className={
+        on
+          ? "font-semibold text-amber-600 dark:text-amber-400"
+          : "text-zinc-600 hover:text-amber-600 dark:text-zinc-300 dark:hover:text-amber-400"
+      }
+    >
+      {children}
+    </span>
   );
 }

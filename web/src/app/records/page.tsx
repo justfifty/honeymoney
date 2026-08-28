@@ -239,7 +239,12 @@ async function RecordsBody({
                   <details
                     key={g.key}
                     open={i === 0}
-                    className="group overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+                    // hm-list-item lets the browser skip layout and paint for
+                    // groups that are off screen. A closed <details> still has
+                    // all its rows in the DOM, so this page pays for every
+                    // record in the month whether or not one is visible — and
+                    // that work lands on the thread that has to answer taps.
+                    className="hm-list-item group overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                   >
                     <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3">
                       <span className="text-xs text-zinc-400 transition-transform group-open:rotate-90">▶</span>

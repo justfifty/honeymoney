@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 // The app's five tabs, in the thumb zone: Record · Dashboard · Graph · H-Score · More.
@@ -99,27 +99,94 @@ function Tab({
       // The label is hidden below 360px, so the link carries it either way —
       // a screen reader must never be left with four unnamed icons.
       aria-label={label}
+      // aria-current tracks the REAL page, never the pending one. The visual
+      // move below is a promise about where you are going; this is a statement
+      // about where you are, and a screen reader must not be told the second
+      // thing when only the first is true yet.
       aria-current={on ? "page" : undefined}
+      // hm-tap: the pressed state and the suppressed long-press callout, both
+      // in globals.css. A tab bar is the most-tapped surface in the app and was
+      // the one with no press feedback at all.
       className={
         // min-h-14 is 56px: comfortably past the 44px minimum touch target, and
         // it survives the label being hidden at 320px without the row collapsing.
-        "relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] " +
-        "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amber-500 " +
-        (on
-          ? "font-semibold text-amber-600 dark:text-amber-400"
-          : "font-medium text-zinc-500 dark:text-zinc-400")
+        "hm-tap relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] " +
+        "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amber-500"
       }
     >
+      <TabFace on={on} label={label}>
+        {children}
+      </TabFace>
+    </Link>
+  );
+}
+
+/**
+ * The visible half of a tab, separated from the Link only so it can call
+ * useLinkStatus() — which reports whether THIS link's navigation is in flight,
+ * and is only readable from inside the Link.
+ *
+ * WHY. usePathname() is the truth about which tab is active, and it does not
+ * change until the new route has committed. So on a phone, between the tap and
+ * the server's answer, the highlight sat on the tab you were LEAVING. The
+ * skeleton underneath was already saying "the new page is coming" while the tab
+ * bar was still saying "you are on the old one" — the two disagreed for the
+ * whole of the wait, and the tab bar is the part in your thumb's line of sight.
+ *
+ * Treating pending as active closes that gap in one frame. If the navigation is
+ * abandoned, useLinkStatus flips back on its own and the highlight returns; we
+ * are not tracking any state that could be left stranded.
+ */
+function TabFace({
+  on,
+  label,
+  children,
+}: {
+  on: boolean;
+  label: string;
+  children: React.ReactNode;
+}) {
+  const { pending } = useLinkStatus();
+  const active = on || pending;
+  return (
+    <>
       {/* Active state is a bar plus weight, not hue alone — the tab has to be
           identifiable in greyscale and by anyone who can't separate amber from
           grey. Same reasoning as the +/- glyphs on records. */}
-      {on && <span className="absolute inset-x-2.5 top-0 h-0.5 rounded-b-full bg-amber-500" aria-hidden="true" />}
-      <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="currentColor" aria-hidden="true">
+      {active && (
+        <span
+          className={
+            "absolute inset-x-2.5 top-0 h-0.5 rounded-b-full bg-amber-500 " +
+            // Pending gets the same bar, breathing, so "arriving" and "here"
+            // are distinguishable without being two different designs.
+            (pending && !on ? "animate-pulse" : "")
+          }
+          aria-hidden="true"
+        />
+      )}
+      <svg
+        viewBox="0 0 24 24"
+        className={
+          "h-5 w-5 shrink-0 " +
+          (active ? "text-amber-600 dark:text-amber-400" : "text-zinc-500 dark:text-zinc-400")
+        }
+        fill="currentColor"
+        aria-hidden="true"
+      >
         {children}
       </svg>
       {/* Degrade rather than disappear: at 320px there is no room for four
           labels in a script like Tamil, so the icons stand alone. */}
-      <span className="max-w-full truncate max-[359px]:hidden">{label}</span>
-    </Link>
+      <span
+        className={
+          "max-w-full truncate max-[359px]:hidden " +
+          (active
+            ? "font-semibold text-amber-600 dark:text-amber-400"
+            : "font-medium text-zinc-500 dark:text-zinc-400")
+        }
+      >
+        {label}
+      </span>
+    </>
   );
 }
