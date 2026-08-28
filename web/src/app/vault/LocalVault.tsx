@@ -225,6 +225,52 @@ export default function LocalVault() {
         )}
       </section>
 
+      {/* How much to keep.
+
+          Sits under the Save button because this is where the question occurs to
+          people: they have just made a copy and are wondering what to do with the
+          original. The instinct at that moment is to delete old records, and the
+          numbers say the opposite. Measured at ~400 bytes a record against ~250 KB
+          a receipt photo, the years of history are the cheap part and the images
+          are the entire growth. Given in figures rather than adjectives, so the
+          reader can check it against the file size shown above. */}
+      <section className="rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+        <h2 className="text-base font-semibold">How much to keep</h2>
+        <dl className="mt-3 space-y-3 text-sm leading-relaxed">
+          <div>
+            <dt className="font-medium">Your records: keep all of them, forever.</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              About 400 bytes each. Three a day for a year is under half a megabyte, and your
+              H-Score, trends and goals all read years back &mdash; a year you delete is a year
+              they cannot see.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">Photos: the only part that really grows.</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              A receipt image is roughly 250 kB, so a photo on every fifth record adds around
+              55 MB a year &mdash; over a hundred times the records themselves. A record survives
+              perfectly well without its image.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium">When to prune: about year three, or 50 MB.</dt>
+            <dd className="text-zinc-600 dark:text-zinc-400">
+              Whichever comes first
+              {meta ? (
+                <>
+                  {" "}&mdash; this copy is currently{" "}
+                  <strong>{(meta.bytes / 1024 / 1024).toFixed(1)} MB</strong>
+                </>
+              ) : null}
+              . Save a copy first, then detach the photos you no longer need and keep every
+              record. If you claim tax relief or have business income, LHDN expects supporting
+              documents to be kept for seven years; two years covers most warranties and disputes
+              otherwise. General information, not tax advice.
+            </dd>
+          </div>
+        </dl>
+      </section>
       {/* ── Offline analysis ───────────────────────────────────────────── */}
       <section>
         <h2 className="text-base font-semibold">What your copy says</h2>

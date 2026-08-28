@@ -70,6 +70,23 @@ export default async function GuidePage() {
         </div>
       </Section>
 
+      {/* Keeping your records — what to save, what to prune, and when.
+          Measured rather than guessed: ~400 bytes a record against ~250 KB a
+          photo, so the honest advice is the opposite of the instinct. People
+          reach for "delete the old data", and the old data is the cheap part. */}
+      <Section title={`📦 ${tr("guide.keep.title")}`} tone="plain">
+        <p className="mb-3">{tr("guide.keep.intro")}</p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li><b>{tr("guide.keep.1.label")}</b> {tr("guide.keep.1.body")}</li>
+          <li><b>{tr("guide.keep.2.label")}</b> {tr("guide.keep.2.body")}</li>
+          <li>
+            <b>{tr("guide.keep.3.label")}</b> {tr("guide.keep.3.body")}{" "}
+            <Link href="/vault" className="text-amber-600 hover:underline">{tr("more.vault")} →</Link>
+          </li>
+          <li><b>{tr("guide.keep.4.label")}</b> {tr("guide.keep.4.body")}</li>
+        </ul>
+      </Section>
+
       {/* Privacy */}
       <Section title={`🔒 ${tr("guide.privacy.title")}`} tone="good">
         <ul className="list-disc space-y-2 pl-5">
