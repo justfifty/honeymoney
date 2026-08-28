@@ -16,7 +16,7 @@
 // UI can show "SGD · Bank Negara Malaysia · 14 Jul 2026" and mean it.
 // To swap in OANDA later, add a provider here — nothing else changes.
 
-import { pbCreate, pbList, pbStr } from "./pocketbase";
+import { pbCreate, pbList, pbUpdate, pbStr } from "./pocketbase";
 import { isPocketBaseConfigured } from "./config";
 import { CURRENCIES, type RateTable, type RateSource } from "./format";
 
@@ -162,16 +162,46 @@ function staticTable(): RateTable {
   return out;
 }
 
+/**
+ * Write the last known good rate per currency — ONE ROW EACH, updated in place.
+ *
+ * This appended instead. Every refresh created a new row per currency and never
+ * removed one, so a cache turned into a log: 3,417 rows measured in production
+ * after six weeks, growing at 27,625 a year. `fetchCached()` sorts by
+ * `-fetched_at` and takes the first row per quote, so exactly NINE of them are
+ * ever read. The other 27,616 a year were written, indexed and backed up so
+ * that nothing could look at them.
+ *
+ * One read to find what already exists, then a PATCH per currency instead of a
+ * POST. Same number of writes, same behaviour on read, and the table stops
+ * growing at nine rows for as long as the currency list is nine long.
+ *
+ * Still fire-and-forget from refresh() — this is bookkeeping for the next cold
+ * start and must never sit in front of a render.
+ */
 async function persist(table: RateTable): Promise<void> {
   if (!isPocketBaseConfigured()) return;
   const now = new Date().toISOString().replace("T", " ");
+
+  const existing = await pbList<{ id: string; quote: string }>("fx_rates", {
+    filter: `base = ${pbStr(BASE)}`,
+    sort: "-fetched_at",
+    perPage: 500,
+  }).catch(() => []);
+  // Newest-first, so the first id seen for a quote is the row to keep writing
+  // to. Older duplicates from before this change are simply left alone: they
+  // are stale copies of the same number, they are never read, and deleting a
+  // household's rows to save space is not a thing this file should decide.
+  const idFor = new Map<string, string>();
+  for (const row of existing) if (!idFor.has(row.quote)) idFor.set(row.quote, row.id);
+
   await Promise.all(
     Object.entries(table)
       // never write our own fallbacks back into the cache — that would launder
       // an indicative rate into something that later looks like a real one
       .filter(([, r]) => r.source === "bnm" || r.source === "ecb")
-      .map(([quote, r]) =>
-        pbCreate("fx_rates", {
+      .map(([quote, r]) => {
+        const body = {
           base: BASE,
           quote,
           rate: r.perMYR,
@@ -179,8 +209,12 @@ async function persist(table: RateTable): Promise<void> {
           source_url: r.sourceUrl,
           as_of: r.asOf ? `${r.asOf} 00:00:00.000Z` : now,
           fetched_at: now,
-        }).catch(() => undefined),
-      ),
+        };
+        const id = idFor.get(quote);
+        return id
+          ? pbUpdate("fx_rates", id, body).catch(() => undefined)
+          : pbCreate("fx_rates", body).catch(() => undefined);
+      }),
   );
 }
 

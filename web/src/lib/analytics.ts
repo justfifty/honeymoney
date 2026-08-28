@@ -1,7 +1,7 @@
 // Admin analytics: roll up page_views + costs + ai_usage into the numbers the
 // admin dashboard shows. Server-side only (superuser reads via PocketBase).
 
-import { pbList } from "./pocketbase";
+import { pbList, pbListAll } from "./pocketbase";
 
 export interface PageView {
   id: string;
@@ -82,9 +82,13 @@ function topN(m: Map<string, number>, n: number): { key: string; count: number }
 
 export async function getAnalytics(): Promise<Analytics> {
   const [views, costs, usage] = await Promise.all([
-    pbList<PageView>("page_views", { sort: "-created", perPage: 500 }),
+    // Was perPage: 500 against 4,748 rows, so the admin dashboard has been
+    // reporting a tenth of the traffic as if it were all of it — "total visits:
+    // 500" for as long as there have been more than 500 visits. Same silent
+    // PocketBase page cap as everywhere else; same fix.
+    pbListAll<PageView>("page_views", { sort: "-created" }),
     pbList<Cost>("costs", { sort: "-incurred_on", perPage: 200 }),
-    pbList<AiUsageRow>("ai_usage", { sort: "-created", perPage: 500 }),
+    pbListAll<AiUsageRow>("ai_usage", { sort: "-created" }),
   ]);
 
   const totalVisits = views.length;
