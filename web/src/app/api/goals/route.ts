@@ -10,7 +10,13 @@ export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ error: "Database not configured" }, { status: 503 });
   }
-  let body: { name?: string; target?: number; category?: string; targetDate?: string };
+  let body: {
+    name?: string;
+    target?: number;
+    category?: string;
+    targetDate?: string;
+    owner?: string | null;
+  };
   try {
     body = await request.json();
   } catch {
@@ -22,6 +28,7 @@ export async function POST(request: Request) {
       target: Number(body.target),
       category: body.category,
       targetDate: body.targetDate,
+      owner: body.owner ?? null,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -45,6 +52,7 @@ export async function PATCH(request: Request) {
     name?: string;
     target?: number;
     targetDate?: string | null;
+    owner?: string | null;
   };
   try {
     body = await request.json();
@@ -61,6 +69,7 @@ export async function PATCH(request: Request) {
       name: body.name,
       target: body.target,
       targetDate: body.targetDate,
+      owner: body.owner,
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -49,6 +49,21 @@ export interface Goal {
   category: string;
   emoji: string;
   targetDate: string | null;
+  /**
+   * Whose goal this is — a roster member id, or null for the household's.
+   *
+   * ATTRIBUTION, NOT PRIVACY, and the distinction is the whole design. A goal
+   * with an owner is still visible to everyone in the household, exactly like
+   * `paid_by` on a record: it says whose it is, it does not hide it from a
+   * partner. Making a goal invisible to the person you share money with would
+   * be a new secrecy surface in a product whose entire premise is funding
+   * transparency, and it is not what "my own goal" means. It means "this one is
+   * mine to hit" — which two people saving in the same house need to be able to
+   * say without it becoming a secret.
+   */
+  owner: string | null;
+  /** The owner's display name, resolved for the UI. Null for a shared goal. */
+  ownerName: string | null;
   /** Capped at 100 for the BAR only. Use `pctRaw` for the number shown. */
   pct: number;
   /** Uncapped. Past 100 is a success state, not an overflow bug. */
@@ -99,7 +114,11 @@ export function trackedByGoal(
   return out;
 }
 
-function mapGoal(n: GoalNode, trackedById: Map<string, number>): Goal {
+function mapGoal(
+  n: GoalNode,
+  trackedById: Map<string, number>,
+  memberNames: Map<string, string>,
+): Goal {
   const target = Number(n.props?.target) || 0;
   // Legacy `props.current` is READ as the manual figure when no explicit
   // manual_adjustment exists, rather than being rewritten into one by a data
@@ -116,6 +135,7 @@ function mapGoal(n: GoalNode, trackedById: Map<string, number>): Goal {
   const tracked = round(trackedById.get(n.id) ?? 0);
   const current = round(tracked + manual);
   const category = String(n.props?.category ?? "custom");
+  const owner = (n.props?.owner as string) || null;
   const pctRaw = target > 0 ? Math.round((current / target) * 100) : 0;
   return {
     id: n.id,
@@ -130,6 +150,11 @@ function mapGoal(n: GoalNode, trackedById: Map<string, number>): Goal {
     category,
     emoji: String(n.props?.emoji ?? EMOJI_BY_CAT[category] ?? "🎯"),
     targetDate: (n.props?.target_date as string) || null,
+    // Absent means the household's, which is what every goal that predates this
+    // was — so old goals keep meaning exactly what they meant, with no
+    // migration and nothing to get wrong.
+    owner: owner,
+    ownerName: owner ? (memberNames.get(owner) ?? null) : null,
     // The BAR clamps so it cannot draw past its container; the NUMBER does not,
     // because 120% of a goal is an achievement and rounding it down to 100%
     // quietly takes it away from whoever earned it.
@@ -143,7 +168,7 @@ function mapGoal(n: GoalNode, trackedById: Map<string, number>): Goal {
 }
 
 export async function listGoals(tenantId: string): Promise<Goal[]> {
-  const [nodes, linked] = await Promise.all([
+  const [nodes, linked, members] = await Promise.all([
     pbList<GoalNode>("nodes", {
       filter: `tenant = ${pbStr(tenantId)} && kind = 'goal'`,
       sort: "created",
@@ -155,13 +180,20 @@ export async function listGoals(tenantId: string): Promise<Goal[]> {
       filter: `tenant = ${pbStr(tenantId)} && goal != ''`,
       perPage: 1000,
     }),
+    // Names for the owner label. Third leg of the same Promise.all rather than a
+    // follow-up await — it depends on nothing above it.
+    pbList<{ id: string; display_name: string }>("members", {
+      filter: `tenant = ${pbStr(tenantId)}`,
+      sort: "created",
+    }),
   ]);
 
   const trackedById = trackedByGoal(linked);
+  const memberNames = new Map(members.map((m) => [m.id, m.display_name]));
 
   // Sorted by RAW percentage so a goal at 120% sorts above one at exactly 100,
   // rather than the two being tied by a cap that exists only for the bar.
-  return nodes.map((n) => mapGoal(n, trackedById)).sort((a, b) => b.pctRaw - a.pctRaw);
+  return nodes.map((n) => mapGoal(n, trackedById, memberNames)).sort((a, b) => b.pctRaw - a.pctRaw);
 }
 
 export async function createGoal(input: {
@@ -169,6 +201,8 @@ export async function createGoal(input: {
   target: number;
   category?: string;
   targetDate?: string;
+  /** A roster member id, or null/undefined for a household goal. */
+  owner?: string | null;
 }): Promise<void> {
   const ctx = await requirePermission("manage_graph");
   const name = (input.name ?? "").trim();
@@ -187,8 +221,25 @@ export async function createGoal(input: {
       emoji: EMOJI_BY_CAT[category] ?? "🎯",
       target_date: input.targetDate || "",
       target_history: [],
+      owner: await validOwner(ctx.tenant.id, input.owner),
     },
   });
+}
+
+/**
+ * Check an owner id really belongs to this household, or drop it.
+ *
+ * Not paranoia about the client: a member id from another tenant would render
+ * as a blank name on every screen that shows the goal, and a goal labelled with
+ * nobody is worse than one labelled with the household.
+ */
+async function validOwner(tenantId: string, owner?: string | null): Promise<string> {
+  if (!owner) return "";
+  const m = await pbFirst<{ id: string }>(
+    "members",
+    `id = ${pbStr(owner)} && tenant = ${pbStr(tenantId)}`,
+  );
+  return m ? m.id : "";
 }
 
 async function goalNode(goalId: string, tenantId: string): Promise<GoalNode> {
@@ -242,7 +293,7 @@ export async function adjustGoalManual(
  */
 export async function updateGoal(
   goalId: string,
-  patch: { name?: string; target?: number; targetDate?: string | null },
+  patch: { name?: string; target?: number; targetDate?: string | null; owner?: string | null },
 ): Promise<void> {
   const ctx = await requirePermission("manage_graph");
   const node = await goalNode(goalId, ctx.tenant.id);
@@ -270,6 +321,7 @@ export async function updateGoal(
   }
 
   if (patch.targetDate !== undefined) props.target_date = patch.targetDate || "";
+  if (patch.owner !== undefined) props.owner = await validOwner(ctx.tenant.id, patch.owner);
 
   body.props = props;
   await pbUpdate("nodes", goalId, body);

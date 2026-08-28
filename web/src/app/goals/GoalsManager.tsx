@@ -14,6 +14,11 @@ interface Category {
   emoji: string;
   label: string;
 }
+/** A roster entry, so a goal can say whose it is. */
+export interface GoalMember {
+  id: string;
+  name: string;
+}
 
 const rm = (n: number) => `RM${Math.round(n).toLocaleString()}`;
 
@@ -29,10 +34,13 @@ export default function GoalsManager({
   goals,
   canWrite,
   categories,
+  members = [],
 }: {
   goals: Goal[];
   canWrite: boolean;
   categories: Category[];
+  /** Empty for a household of one — the owner picker then has nothing to ask. */
+  members?: GoalMember[];
 }) {
   const [adding, setAdding] = useState(false);
 
@@ -44,7 +52,11 @@ export default function GoalsManager({
       {canWrite && (
         <div>
           {adding ? (
-            <NewGoalForm categories={categories} onClose={() => setAdding(false)} />
+            <NewGoalForm
+              categories={categories}
+              members={members}
+              onClose={() => setAdding(false)}
+            />
           ) : (
             <button
               type="button"
@@ -141,7 +153,18 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
         <div className="flex items-center gap-2">
           <span className="text-2xl" aria-hidden="true">{goal.emoji}</span>
           <div>
-            <p className="font-semibold">{goal.name}</p>
+            <p className="flex flex-wrap items-center gap-1.5 font-semibold">
+              {goal.name}
+              {/* Whose it is, said on the card rather than only in the form.
+                  A household goal carries no badge: the absence IS the label,
+                  and stamping "🏠 Household" on every goal in a house of one
+                  would be noise on every screen. */}
+              {goal.ownerName && (
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  {goal.ownerName}
+                </span>
+              )}
+            </p>
             <p className="text-xs text-zinc-500">
               {rm(goal.current)} of {rm(goal.target)}
               {dateLabel && <> · target {dateLabel}</>}
@@ -237,12 +260,23 @@ function GoalCard({ goal, canWrite }: { goal: Goal; canWrite: boolean }) {
   );
 }
 
-function NewGoalForm({ categories, onClose }: { categories: Category[]; onClose: () => void }) {
+function NewGoalForm({
+  categories,
+  members,
+  onClose,
+}: {
+  categories: Category[];
+  members: GoalMember[];
+  onClose: () => void;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [category, setCategory] = useState("custom");
   const [date, setDate] = useState("");
+  // Defaults to the household, which is what every goal was before this and the
+  // right default for two people saving toward the same thing.
+  const [owner, setOwner] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -254,7 +288,13 @@ function NewGoalForm({ categories, onClose }: { categories: Category[]; onClose:
       const res = await fetch("/api/goals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, target: parseFloat(target), category, targetDate: date || undefined }),
+        body: JSON.stringify({
+          name,
+          target: parseFloat(target),
+          category,
+          targetDate: date || undefined,
+          owner: owner || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Couldn’t create the goal.");
@@ -295,7 +335,28 @@ function NewGoalForm({ categories, onClose }: { categories: Category[]; onClose:
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
             className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
         </label>
+        {/* Only asked of a household that HAS more than one person. For someone
+            saving alone, "whose goal is this?" has one answer and asking it is
+            a field to skip on every goal they ever create. */}
+        {members.length > 1 && (
+          <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            Whose goal
+            <select value={owner} onChange={(e) => setOwner(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+              <option value="">🏠 The household</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
+      {members.length > 1 && (
+        <p className="mt-2 text-xs text-zinc-500">
+          A personal goal still shows on the household&rsquo;s dashboard — it says whose it is, it
+          does not hide it.
+        </p>
+      )}
       {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
       <div className="mt-4 flex gap-2">
         <button type="submit" disabled={busy} className="rounded-full bg-amber-500 px-5 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-50">

@@ -5,6 +5,7 @@ import { getBucketProjection, getHoneyInsight } from "@/lib/projection";
 import { getSpendRecords } from "@/lib/records";
 import { detectRecurring } from "@/lib/radar";
 import { can, resolveViewTenant } from "@/lib/household";
+import { listGoals } from "@/lib/goals";
 import { pbList, pbStr } from "@/lib/pocketbase";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
@@ -122,7 +123,7 @@ export default async function Dashboard() {
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
-    const [projection, editable, radar, bucketNodes] = await Promise.all([
+    const [projection, editable, radar, bucketNodes, goals] = await Promise.all([
       getBucketProjection(tenantId),
       getSpendRecords(tenantId, monthStart, new Date(), {
         viewerMemberId: ctx?.memberId,
@@ -133,6 +134,9 @@ export default async function Dashboard() {
         filter: `tenant = ${pbStr(tenantId)} && kind = 'bucket'`,
         sort: "created",
       }),
+      // Added to the existing batch rather than awaited after it, so goals cost
+      // the dashboard no extra wall-clock at all.
+      listGoals(tenantId),
     ]);
     const bucketOptions = bucketNodes.map((b) => ({ id: b.id, label: dataLabel(locale, b.label) }));
 
@@ -250,6 +254,66 @@ export default async function Dashboard() {
             })}
           </div>
         </section>
+
+        {/* ── Goals ────────────────────────────────────────────────────────
+            The dashboard showed three buckets and nothing else, and three
+            buckets is a budget, not a picture of how a household is doing.
+            Goals were already there — household-scoped, shared with every
+            member, and feeding the H-Score's emergency buffer — but the only
+            screen that showed them was /goals, two taps down inside More. So a
+            couple who had set targets together saw no trace of them on the one
+            screen they open to ask "how are we doing", and reasonably concluded
+            the goals were not shared.
+
+            Placed directly after the buckets, because that is the order the
+            question comes in: what am I spending, then what am I building. */}
+        {goals.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 flex items-center justify-between gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              {tr("dash.goals")}
+              <Link href="/goals" className="text-xs font-medium normal-case text-amber-600 hover:underline">
+                {tr("rec.seeAll")}
+              </Link>
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {goals.slice(0, 4).map((g) => (
+                <div
+                  key={g.id}
+                  className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 font-medium">
+                      <span aria-hidden>{g.emoji}</span>
+                      <span className="truncate">{g.name}</span>
+                    </span>
+                    {/* Whose goal, when it is somebody's. A household goal
+                        carries no badge — the absence is the label. */}
+                    {g.ownerName && (
+                      <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                        {g.ownerName}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    {/* Green, because a goal is money you still have and chose
+                        to keep — the one thing green means in this app. `pct`
+                        clamps so the bar cannot draw past its container. */}
+                    <div className="h-full bg-emerald-500" style={{ width: `${g.pct}%` }} />
+                  </div>
+                  <div className="mt-2 flex justify-between text-xs text-zinc-500">
+                    {/* pctRaw, not pct: 120% of a goal is an achievement, and
+                        rounding it to 100 quietly takes it from whoever earned it. */}
+                    <span>
+                      <span className="hm-money">{rm(g.current)}</span> {tr("dash.of")}{" "}
+                      <span className="hm-money">{rm(g.target)}</span>
+                    </span>
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400">{g.pctRaw}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Subscription & bill radar */}
         {radar.items.length > 0 && (

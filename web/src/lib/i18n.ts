@@ -382,6 +382,7 @@ const en: Dict = {
   "dash.stat.projectedSpend": "Projected spend",
   "dash.stat.projectedBalance": "Projected balance",
   "dash.buckets": "Buckets",
+  "dash.goals": "Goals",
   "dash.proj": "proj",
   "dash.of": "of",
   "dash.privacy.hide": "Hide balances",
@@ -747,7 +748,12 @@ const en: Dict = {
   "hscore.c.savingsRate.hint": "Savings ÷ net income",
   "hscore.c.essentialBurden.hint": "Must-paid ÷ net income",
   "hscore.c.debtService.hint": "Loan repayments ÷ gross income",
-  "hscore.c.emergencyBuffer.hint": "Liquid savings ÷ monthly must-paid",
+  // Names its own source on purpose. Goal progress IS the liquid-savings
+  // figure this divides — every goal, tracked plus manual, plus any liquid
+  // asset. The score has always worked that way and never said so, so a
+  // household could fund a goal, watch this component move, and have no way
+  // to know the two were connected.
+  "hscore.c.emergencyBuffer.hint": "Your goals + liquid assets ÷ monthly must-paid",
   "hscore.c.months": "{n} months",
   "hscore.c.monthsOf3": "{n} of 3 months",
 
@@ -1392,6 +1398,7 @@ const ms: Dict = {
   "dash.stat.projectedSpend": "Perbelanjaan unjuran",
   "dash.stat.projectedBalance": "Baki unjuran",
   "dash.buckets": "Baldi",
+  "dash.goals": "Matlamat",
   "dash.proj": "unjuran",
   "dash.of": "drpd",
   "dash.privacy.hide": "Sembunyi baki",
@@ -1963,6 +1970,7 @@ const zh: Dict = {
   "dash.stat.projectedSpend": "预计支出",
   "dash.stat.projectedBalance": "预计结余",
   "dash.buckets": "预算篮",
+  "dash.goals": "目标",
   "dash.proj": "预计",
   "dash.of": "共",
   "dash.addSpend": "添加支出",
@@ -2480,6 +2488,7 @@ const ta: Dict = {
   "dash.stat.projectedSpend": "எதிர்பார்க்கப்படும் செலவு",
   "dash.stat.projectedBalance": "எதிர்பார்க்கப்படும் இருப்பு",
   "dash.buckets": "பக்கெட்கள்",
+  "dash.goals": "இலக்குகள்",
   "dash.proj": "எதிர்பார்ப்பு",
   "dash.of": "இல்",
   "dash.addSpend": "ஒரு செலவைச் சேர்",
@@ -2997,6 +3006,7 @@ const hi: Dict = {
   "dash.stat.projectedSpend": "अनुमानित खर्च",
   "dash.stat.projectedBalance": "अनुमानित शेष",
   "dash.buckets": "बकेट",
+  "dash.goals": "लक्ष्य",
   "dash.proj": "अनुमान",
   "dash.of": "में से",
   "dash.addSpend": "खर्च जोड़ें",
@@ -3517,6 +3527,7 @@ const zhHant: Dict = {
   "dash.stat.projectedSpend": "預估支出",
   "dash.stat.projectedBalance": "預估結餘",
   "dash.buckets": "帳戶籃",
+  "dash.goals": "目標",
   "dash.proj": "預估",
   "dash.of": "／",
   "dash.addSpend": "新增一筆支出",

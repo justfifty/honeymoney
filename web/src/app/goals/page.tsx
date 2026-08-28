@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
-import { resolveViewTenant, can } from "@/lib/household";
+import { resolveViewTenant, can, listMembers } from "@/lib/household";
 import { listGoals, GOAL_CATEGORIES } from "@/lib/goals";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
@@ -26,7 +26,9 @@ export default async function GoalsPage() {
   }
 
   const { tenantId, ctx } = await resolveViewTenant();
-  const goals = tenantId ? await listGoals(tenantId) : [];
+  const [goals, members] = tenantId
+    ? await Promise.all([listGoals(tenantId), listMembers(tenantId)])
+    : [[], []];
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
 
   return (
@@ -46,6 +48,7 @@ export default async function GoalsPage() {
         goals={goals}
         canWrite={canWrite}
         categories={GOAL_CATEGORIES.map((c) => ({ key: c.key, emoji: c.emoji, label: c.label }))}
+        members={members.map((m) => ({ id: m.id, name: m.display_name }))}
       />
     </main>
   );
