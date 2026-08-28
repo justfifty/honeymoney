@@ -1,7 +1,7 @@
 // Read model for the knowledge-graph visualization (/graph page):
 // nodes grouped by role + edges with their monthly RM flow.
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbListAll, pbStr } from "./pocketbase";
 import { countsAsSpend } from "./recordKind";
 
 export interface GNode {
@@ -39,9 +39,9 @@ export async function getGraphView(tenantId: string): Promise<GraphView> {
   const startStr = monthStart.toISOString().replace("T", " ");
 
   const [nodes, edges, txns] = await Promise.all([
-    pbList<GNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<GEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<{
+    pbListAll<GNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<GEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<{
       wallet_node: string;
       vendor_node: string;
       amount: number;

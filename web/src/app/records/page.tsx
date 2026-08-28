@@ -111,6 +111,21 @@ async function RecordsBody({
     return `/records?${sp.toString()}`;
   };
 
+  // Fetch inside the try, render outside it. The whole of <main> used to sit in
+  // here, which reads as "if anything goes wrong, show the notice" and is not
+  // what it does: React constructs the JSX now and renders it after this
+  // function has returned, so a failure while DRAWING the list — the one thing
+  // this block looked like it covered — happened long after the catch was out
+  // of scope. Render-time errors go to ./error.tsx, which can catch them.
+  let view: {
+    records: Awaited<ReturnType<typeof getSpendRecords>>;
+    buckets: { id: string; label: string }[];
+    groups: ReturnType<typeof groupByPeriod>;
+    s: ReturnType<typeof summarize>;
+    maxTotal: number;
+    activePeriod: (typeof PERIODS)[number];
+    activeRange: (typeof RANGES)[number];
+  };
   try {
     const { from, to } = rangeBounds(range);
     const [records, bucketNodes] = await Promise.all([
@@ -131,6 +146,15 @@ async function RecordsBody({
     const activePeriod = PERIODS.find((p) => p.key === period)!;
     const activeRange = RANGES.find((r) => r.key === range)!;
 
+    view = { records, buckets, groups, s, maxTotal, activePeriod, activeRange };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return <Notice tr={tr} reason={tr("rec.notice.loadError", { message })} />;
+  }
+
+  const { records, buckets, groups, s, maxTotal, activePeriod, activeRange } = view;
+
+  {
     return (
       <main className="mx-auto min-h-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -290,9 +314,6 @@ async function RecordsBody({
         </p>
       </main>
     );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return <Notice tr={tr} reason={tr("rec.notice.loadError", { message })} />;
   }
 }
 

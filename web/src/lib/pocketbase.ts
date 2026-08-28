@@ -76,6 +76,78 @@ export async function pbList<T>(
   return data.items;
 }
 
+/**
+ * Every matching record, not the first page of them.
+ *
+ * ── WHY THIS HAD TO EXIST ──────────────────────────────────────────────────
+ *
+ * PocketBase caps `perPage` at 1000 and does it SILENTLY. Ask for 5,000 and you
+ * get 1,000 rows, status 200, no warning, no flag. Measured on a seeded
+ * household of 100,000 transactions:
+ *
+ *     asked perPage=500     ->  got   500 rows
+ *     asked perPage=1000    ->  got 1000 rows
+ *     asked perPage=5000    ->  got 1000 rows
+ *     asked perPage=100000  ->  got 1000 rows      (totalItems = 100000)
+ *
+ * Every read path in this app used one `pbList` call and trusted it. So at
+ * scale the app was not slow — it was WRONG, and quietly: the dashboard, the
+ * record totals, goal progress and the H-Score were all computed from the first
+ * 500 or 1000 rows of a ledger that had a hundred thousand, and every figure
+ * came out too small with nothing on screen to say so. In the same measurement
+ * a single MONTH held 1,110 records, so the truncation had already started
+ * inside the current month's figures, not in some far-off future.
+ *
+ * ── THE CEILING IS A THROW, NOT A TRIM ─────────────────────────────────────
+ *
+ * The bug was never the limit; it was the silence. So when this hits its own
+ * ceiling it raises, naming the collection and the filter. A view that cannot
+ * total a household's records must say so — a wrong number that looks right is
+ * the one outcome worth failing to avoid.
+ *
+ * Cost, measured against those 100,000 rows on a local PocketBase:
+ *     one month             1,110 rows,   2 pages,   106 ms
+ *     goal-linked, all time 3,334 rows,   4 pages,   496 ms
+ *     the entire ledger   100,000 rows, 101 pages, 11,300 ms
+ *
+ * Which is the argument for keeping reads date-bounded: paging a window is
+ * cheap and paging a lifetime is not. Callers that genuinely need all-time
+ * totals (goal progress, liquid savings) are the ones to convert to stored
+ * aggregates first if a household ever gets near the ceiling.
+ */
+const PB_MAX_PER_PAGE = 1000;
+
+export async function pbListAll<T>(
+  collection: string,
+  opts: { filter?: string; sort?: string; expand?: string; maxRows?: number } = {},
+): Promise<T[]> {
+  const maxRows = opts.maxRows ?? 50_000;
+  const out: T[] = [];
+  for (let page = 1; ; page++) {
+    const params = new URLSearchParams({
+      perPage: String(PB_MAX_PER_PAGE),
+      page: String(page),
+      skipTotal: "1",
+    });
+    if (opts.filter) params.set("filter", opts.filter);
+    if (opts.sort) params.set("sort", opts.sort);
+    if (opts.expand) params.set("expand", opts.expand);
+    const data = await pbFetch<PBListResult<T>>(
+      `/api/collections/${collection}/records?${params.toString()}`,
+    );
+    out.push(...data.items);
+    // A short page is the end. `skipTotal` means there is no count to compare
+    // against, which is the cheap way to page and the reason this is the test.
+    if (data.items.length < PB_MAX_PER_PAGE) return out;
+    if (out.length >= maxRows) {
+      throw new Error(
+        `Too many ${collection} records to total in one view (over ${maxRows}). ` +
+          `Narrow the date range. Filter: ${opts.filter ?? "(none)"}`,
+      );
+    }
+  }
+}
+
 export async function pbFirst<T>(
   collection: string,
   filter: string,

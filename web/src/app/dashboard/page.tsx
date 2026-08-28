@@ -115,6 +115,36 @@ export default async function Dashboard() {
     );
   }
 
+  /**
+   * FETCH inside the try, RENDER outside it — and that is a correctness fix,
+   * not a lint appeasement.
+   *
+   * The whole of <main> used to sit inside this try/catch, which reads as "if
+   * anything goes wrong, show the friendly notice" and is not what it does.
+   * React does not run a component when its JSX is constructed; it returns a
+   * description and renders it later, after this function has returned and the
+   * catch is long gone. So the one class of failure the block appeared to
+   * protect against — something throwing while the dashboard draws — was the
+   * one class it could never catch, and the reassurance was false.
+   *
+   * The data fetch is what can genuinely fail here (PocketBase unreachable, a
+   * malformed row), and it is what the catch now wraps. Render-time errors go
+   * where they can actually be caught: ./error.tsx, an error boundary React
+   * will use.
+   *
+   * The JSX below is unchanged and deliberately still indented as it was, so
+   * this reads as the one-line move it is rather than a 300-line reformat.
+   */
+  let view: {
+    projection: Awaited<ReturnType<typeof getBucketProjection>>;
+    editable: Awaited<ReturnType<typeof getSpendRecords>>;
+    radar: Awaited<ReturnType<typeof detectRecurring>>;
+    goals: Awaited<ReturnType<typeof listGoals>>;
+    bucketOptions: { id: string; label: string }[];
+    rank: (owner: string | null) => number;
+    totalAllocated: number;
+    totalProjected: number;
+  };
   try {
     // The editable rows need the full SpendRecord shape (bucket, member, voided
     // state), not the trimmed recent-spend projection — RecordRow edits real
@@ -148,6 +178,20 @@ export default async function Dashboard() {
     const totalAllocated = projection.reduce((s, b) => s + b.allocated, 0);
     const totalProjected = projection.reduce((s, b) => s + b.projected_spend, 0);
 
+    view = { projection, editable, radar, goals, bucketOptions, rank, totalAllocated, totalProjected };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : tr("dash.setup.unknownError");
+    return (
+      <main className="min-h-full px-6 py-16">
+        <SetupNotice reason={tr("dash.setup.reasonError", { message })} lang={locale} />
+      </main>
+    );
+  }
+
+  const { projection, editable, radar, goals, bucketOptions, rank, totalAllocated, totalProjected } =
+    view;
+
+  {
     return (
       <main className="mx-auto min-h-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
         {/* Stacks on a phone. As one row it was wider than a 390px viewport —
@@ -456,13 +500,6 @@ export default async function Dashboard() {
           }}
         />
 
-      </main>
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : tr("dash.setup.unknownError");
-    return (
-      <main className="min-h-full px-6 py-16">
-        <SetupNotice reason={tr("dash.setup.reasonError", { message })} lang={locale} />
       </main>
     );
   }

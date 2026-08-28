@@ -2,7 +2,7 @@
 // range and roll them up by day / week / month for spending audit + review.
 // Server-side only (uses the PocketBase superuser client).
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbList, pbStr, pbListAll } from "./pocketbase";
 import { redactPrivate, privateBucketIds, PRIVATE_TIER } from "./privacy";
 import { deriveKind, type RecordKind } from "./recordKind";
 import { visibleFilter, type Visibility } from "./attribution";
@@ -142,11 +142,10 @@ export async function getSpendRecords(
     // `!= 'private'`, so nothing that was visible yesterday disappears today.
     (opts.redact ? ` && ${visibleFilter(opts.viewerMemberId)}` : "");
 
-  const txns = await pbList<PBTxn>("transactions", {
+  const txns = await pbListAll<PBTxn>("transactions", {
     filter,
     sort: "-occurred_at",
     expand: "vendor_node,wallet_node",
-    perPage: 500,
   });
 
   // Bucket totals stay intact; only the identifying detail of another member's

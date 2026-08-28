@@ -3,7 +3,7 @@
 // bucket_projection() (see supabase/migrations/) is implemented here in TS.
 // Falls back to a deterministic rule-based insight when Gemini is unconfigured.
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbList, pbStr, pbListAll } from "./pocketbase";
 import { inHouseholdTotals } from "./attribution";
 import { isGeminiConfigured } from "./config";
 import { honeyInsight } from "./gemini";
@@ -102,9 +102,9 @@ export async function getBucketProjection(
   const startStr = start.toISOString().replace("T", " ");
 
   const [nodes, edges, txns] = await Promise.all([
-    pbList<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<PBEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<PBTransaction>("transactions", {
+    pbListAll<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<PBEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<PBTransaction>("transactions", {
       filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)} && ${inHouseholdTotals}`,
     }),
   ]);

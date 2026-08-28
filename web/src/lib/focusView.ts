@@ -6,7 +6,7 @@
 // One read, one focus applied, both the graph-view and money-view shapes derived,
 // so the six visualizations consume filtered data unchanged.
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbList, pbStr, pbListAll } from "./pocketbase";
 import { inHouseholdTotals } from "./attribution";
 import { computeAllocations, projectBuckets } from "./projection";
 import { CATEGORY_META, ROLE_OPTIONS, type MoneyView, type CategoryMeta } from "./moneyView";
@@ -198,9 +198,9 @@ export async function getFocusedView(
   const startStr = monthStart.toISOString().replace("T", " ");
 
   const [nodes, edges, txns, members, tenants] = await Promise.all([
-    pbList<RawNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<RawEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<RawTxn>("transactions", { filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)} && ${inHouseholdTotals}` }),
+    pbListAll<RawNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<RawEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<RawTxn>("transactions", { filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)} && ${inHouseholdTotals}` }),
     pbList<Member>("members", { filter: `tenant = ${pbStr(tenantId)}`, sort: "created" }),
     pbList<{ id: string; name: string; kind: string }>("tenants", { sort: "created" }),
   ]);

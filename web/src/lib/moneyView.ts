@@ -3,7 +3,7 @@
 // income sources, per-bucket allocation vs spend, vendor-level spend, and goals.
 // Reuses getBucketProjection() so the allocation walk stays in one place.
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbStr, pbListAll } from "./pocketbase";
 import { inHouseholdTotals } from "./attribution";
 import { getBucketProjection } from "./projection";
 import { collapsePrivateVendors, privateBucketIds } from "./privacy";
@@ -107,8 +107,8 @@ export async function getMoneyView(tenantId: string, opts: MoneyViewOpts = {}): 
 
   const [projection, nodes, txns] = await Promise.all([
     getBucketProjection(tenantId),
-    pbList<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<PBTxn>("transactions", {
+    pbListAll<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<PBTxn>("transactions", {
       filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(startStr)} && ${inHouseholdTotals}`,
     }),
   ]);

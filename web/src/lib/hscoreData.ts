@@ -8,7 +8,7 @@
 // client-side, and a pure engine with no database import is what makes that a
 // configuration choice rather than a rewrite.
 
-import { pbList, pbFirst, pbCreate, pbUpdate, pbStr } from "./pocketbase";
+import { pbList, pbFirst, pbCreate, pbUpdate, pbStr, pbListAll } from "./pocketbase";
 import { inHouseholdTotals } from "./attribution";
 import { computeAllocations } from "./projection";
 import { privateBucketIds, PRIVATE_TIER } from "./privacy";
@@ -100,11 +100,10 @@ export async function getHScore(
   const from = new Date(asOf.getTime() - WINDOW_DAYS * DAY_MS);
 
   const [nodes, edges, txns] = await Promise.all([
-    pbList<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<PBEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
-    pbList<PBTxn>("transactions", {
+    pbListAll<PBNode>("nodes", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<PBEdge>("edges", { filter: `tenant = ${pbStr(tenantId)}` }),
+    pbListAll<PBTxn>("transactions", {
       filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(pbTime(from))} && ${inHouseholdTotals}`,
-      perPage: 1000,
     }),
   ]);
 

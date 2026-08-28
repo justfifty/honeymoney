@@ -17,7 +17,7 @@
 // or in an account it never sees, are real. It just has to be labelled, because
 // it is the half no record backs.
 
-import { pbList, pbFirst, pbCreate, pbUpdate, pbStr } from "./pocketbase";
+import { pbList, pbFirst, pbCreate, pbUpdate, pbStr, pbListAll } from "./pocketbase";
 import { requirePermission, AuthError } from "./household";
 
 export const GOAL_CATEGORIES = [
@@ -256,9 +256,8 @@ export async function listGoals(
     // Every record pointing at a goal, in one query rather than one per goal.
     // Voided records are excluded: a voided transfer is money that did not move,
     // and leaving it in progress would be the ledger disagreeing with itself.
-    pbList<{ goal?: string; amount: number; voided?: boolean }>("transactions", {
+    pbListAll<{ goal?: string; amount: number; voided?: boolean }>("transactions", {
       filter: `tenant = ${pbStr(tenantId)} && goal != ''`,
-      perPage: 1000,
     }),
     // Names for the owner label. Third leg of the same Promise.all rather than a
     // follow-up await — it depends on nothing above it.
@@ -438,9 +437,8 @@ export async function updateGoal(
 export async function deleteGoal(goalId: string): Promise<{ unlinked: number }> {
   const ctx = await requirePermission("manage_graph");
   await goalNode(goalId, ctx.tenant.id);
-  const linked = await pbList<{ id: string }>("transactions", {
+  const linked = await pbListAll<{ id: string }>("transactions", {
     filter: `tenant = ${pbStr(ctx.tenant.id)} && goal = ${pbStr(goalId)}`,
-    perPage: 1000,
   });
   for (const t of linked) await pbUpdate("transactions", t.id, { goal: "" });
   await pbUpdate("nodes", goalId, { props: { deleted: true } });
@@ -449,9 +447,8 @@ export async function deleteGoal(goalId: string): Promise<{ unlinked: number }> 
 
 /** How many records a goal would unlink if deleted. For the confirm dialog. */
 export async function countLinkedRecords(tenantId: string, goalId: string): Promise<number> {
-  const rows = await pbList<{ id: string }>("transactions", {
+  const rows = await pbListAll<{ id: string }>("transactions", {
     filter: `tenant = ${pbStr(tenantId)} && goal = ${pbStr(goalId)}`,
-    perPage: 1000,
   });
   return rows.length;
 }

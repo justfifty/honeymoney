@@ -3,7 +3,7 @@
 // subscriptions and upcoming bills in one place ("money found"). Read-only
 // heuristics over the graph; no AI needed, so it always works.
 
-import { pbList, pbStr } from "./pocketbase";
+import { pbStr, pbListAll } from "./pocketbase";
 import { inHouseholdTotals } from "./attribution";
 
 const round = (v: number) => Math.round(v * 100) / 100;
@@ -29,11 +29,10 @@ export async function detectRecurring(
   asOf: Date = new Date(),
 ): Promise<{ items: Recurring[]; monthlyTotal: number }> {
   const since = new Date(asOf.getTime() - 150 * 86_400_000).toISOString().replace("T", " ");
-  const txns = await pbList<Txn>("transactions", {
+  const txns = await pbListAll<Txn>("transactions", {
     filter: `tenant = ${pbStr(tenantId)} && occurred_at >= ${pbStr(since)} && vendor_node != '' && ${inHouseholdTotals}`,
     sort: "occurred_at",
     expand: "vendor_node",
-    perPage: 500,
   });
 
   const byVendor = new Map<string, { amount: number; date: Date }[]>();
