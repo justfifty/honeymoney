@@ -31,11 +31,15 @@ export default async function HScorePage() {
   const { tenantId, ctx } = await resolveViewTenant();
   if (!tenantId) return <Notice tr={tr} body={tr("hscore.noHousehold")} />;
 
-  const result = await getHScore(tenantId, { persist: Boolean(ctx) });
-
-  // Months in a row with at least one entry — the streak the Building tier
-  // shows instead of applause.
-  const streakMonths = await loggingStreak(tenantId);
+  // The streak reads the same tenant's transactions but needs nothing the score
+  // produces, so the two go out together. In series it was one round trip
+  // waiting on another for no reason.
+  const [result, streakMonths] = await Promise.all([
+    getHScore(tenantId, { persist: Boolean(ctx) }),
+    // Months in a row with at least one entry — the streak the Building tier
+    // shows instead of applause.
+    loggingStreak(tenantId),
+  ]);
 
   return (
     <main className="mx-auto min-h-full w-full max-w-lg px-4 py-5 sm:px-6">

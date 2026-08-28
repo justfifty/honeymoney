@@ -2,6 +2,7 @@
 // The Next.js server holds an httpOnly cookie with the user's PB token; the
 // browser never talks to PocketBase directly. Roles: "user" | "admin".
 
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { config } from "./config";
 import { pbCreate } from "./pocketbase";
@@ -66,7 +67,15 @@ export async function signupUser(email: string, password: string, name: string):
 }
 
 // Resolve the current session from the auth cookie (null if signed out/expired).
-export async function getSessionUser(): Promise<SessionUser | null> {
+//
+// WRAPPED IN React `cache()`, and that is a performance fix, not a tidy-up. One
+// page render asks this question four times over — SiteHeader, the deletion
+// bar, the legal bar, and the page itself through getContext() — and each ask
+// was a separate auth-refresh round trip to PocketBase. Measured against the
+// live origin that is ~4 × 15-90 ms of pure duplication before a pixel renders.
+// `cache()` scopes the memo to ONE request, so a second caller in the same
+// render is free and a different visitor still gets their own lookup.
+export const getSessionUser = cache(async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies();
   const token = jar.get(AUTH_COOKIE)?.value;
   if (!token) return null;
@@ -82,4 +91,4 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   } catch {
     return null;
   }
-}
+});

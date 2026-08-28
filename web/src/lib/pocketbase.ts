@@ -79,9 +79,14 @@ export async function pbList<T>(
 export async function pbFirst<T>(
   collection: string,
   filter: string,
-  opts: { sort?: string } = {},
+  opts: { sort?: string; expand?: string } = {},
 ): Promise<T | null> {
-  const items = await pbList<T>(collection, { filter, sort: opts.sort, perPage: 1 });
+  const items = await pbList<T>(collection, {
+    filter,
+    sort: opts.sort,
+    expand: opts.expand,
+    perPage: 1,
+  });
   return items[0] ?? null;
 }
 

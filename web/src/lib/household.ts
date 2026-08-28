@@ -14,6 +14,7 @@
 // Server-only. Never import from a "use client" module.
 
 import { randomBytes } from "node:crypto";
+import { cache } from "react";
 import { config } from "./config";
 import { pbCreate, pbDelete, pbFirst, pbList, pbUpdate, pbStr } from "./pocketbase";
 import { getSessionUser, type SessionUser } from "./auth";
@@ -27,6 +28,15 @@ export interface Household {
   deletedAt?: string; // set while soft-deleted (pending purge); see lib/account.ts
 }
 
+/** The raw `tenants` row, as PocketBase returns it (snake_case, unmapped). */
+interface TenantRecord {
+  id: string;
+  name: string;
+  kind?: string;
+  base_currency?: string;
+  deleted_at?: string;
+}
+
 export interface MemberRow {
   id: string;
   tenant: string;
@@ -35,7 +45,7 @@ export interface MemberRow {
   role: string; // free-text display label ("Wife", "Barista")
   access_role: AccessRole;
   created: string;
-  expand?: { user?: { email: string; name: string } };
+  expand?: { user?: { email: string; name: string }; tenant?: TenantRecord };
 }
 
 export interface Ctx {
@@ -91,6 +101,19 @@ export class AuthError extends Error {
 
 // ── Session → household ─────────────────────────────────────────────────────
 
+// Read a household straight out of an `expand: "tenant"` payload, so the caller
+// does not pay a second round trip for a row PocketBase already sent.
+function expandedTenant(member: MemberRow): Household | null {
+  const t = member.expand?.tenant;
+  if (!t?.id) return null;
+  return {
+    id: t.id,
+    name: t.name,
+    baseCurrency: t.base_currency || "MYR",
+    deletedAt: t.deleted_at || undefined,
+  };
+}
+
 async function loadTenant(id: string): Promise<Household | null> {
   const t = await pbFirst<{ id: string; name: string; kind: string; base_currency: string; deleted_at?: string }>(
     "tenants",
@@ -108,17 +131,23 @@ async function loadTenant(id: string): Promise<Household | null> {
 // The household this account belongs to. If the account has no membership yet
 // (i.e. it signed up before this existed), one is created on the spot so nobody
 // lands on a broken dashboard.
-export async function getContext(): Promise<Ctx | null> {
+export const getContext = cache(async function getContext(): Promise<Ctx | null> {
   const user = await getSessionUser();
   if (!user) return null;
 
-  let member = await pbFirst<MemberRow>("members", `user = ${pbStr(user.id)}`, { sort: "created" });
+  // `expand: "tenant"` collapses what used to be two serial round trips —
+  // "which membership?" then "which household is that?" — into one. Only fall
+  // back to a second read if PocketBase declined to expand (a dangling relation).
+  let member = await pbFirst<MemberRow>("members", `user = ${pbStr(user.id)}`, {
+    sort: "created",
+    expand: "tenant",
+  });
   if (!member) {
     const created = await createHouseholdFor(user);
     member = created.member;
   }
 
-  const tenant = await loadTenant(member.tenant);
+  const tenant = expandedTenant(member) ?? (await loadTenant(member.tenant));
   if (!tenant) return null;
 
   return {
@@ -128,7 +157,7 @@ export async function getContext(): Promise<Ctx | null> {
     accessRole: (member.access_role as AccessRole) || "adult",
     pendingDeletion: Boolean(tenant.deletedAt),
   };
-}
+});
 
 export async function requireContext(): Promise<Ctx> {
   const ctx = await getContext();
@@ -147,11 +176,15 @@ export async function requirePermission(action: Action): Promise<Ctx> {
 // The tenant a *page* should render. Signed in → your own household. Signed out
 // → the public demo household, read-only. Browsing is never gated behind an
 // account (NEXT.md: "don't gate browsing behind an account"), but writing is.
-export async function resolveViewTenant(): Promise<{ tenantId: string; ctx: Ctx | null; isDemo: boolean }> {
+export const resolveViewTenant = cache(async function resolveViewTenant(): Promise<{
+  tenantId: string;
+  ctx: Ctx | null;
+  isDemo: boolean;
+}> {
   const ctx = await getContext();
   if (ctx) return { tenantId: ctx.tenant.id, ctx, isDemo: false };
   return { tenantId: config.demoTenantId, ctx: null, isDemo: true };
-}
+});
 
 // ── Creating a household ────────────────────────────────────────────────────
 
@@ -427,10 +460,16 @@ export async function listHouseholdsFor(userId: string): Promise<(Household & { 
     sort: "created",
     expand: "tenant",
   });
-  const out: (Household & { accessRole: AccessRole })[] = [];
-  for (const m of memberships) {
-    const t = await loadTenant(m.tenant);
-    if (t) out.push({ ...t, accessRole: (m.access_role as AccessRole) || "adult" });
-  }
+  // The `expand` above already carries every household in the one response. The
+  // loop that used to sit here re-fetched each one AGAIN, one at a time and in
+  // series — N sequential round trips for rows that had already arrived. Only a
+  // membership PocketBase failed to expand still costs a read, and those are
+  // fetched together rather than one after another.
+  const out: (Household & { accessRole: AccessRole })[] = await Promise.all(
+    memberships.map(async (m) => {
+      const t = expandedTenant(m) ?? (await loadTenant(m.tenant));
+      return t ? { ...t, accessRole: (m.access_role as AccessRole) || "adult" } : null;
+    }),
+  ).then((rows) => rows.filter((r): r is Household & { accessRole: AccessRole } => r !== null));
   return out;
 }
