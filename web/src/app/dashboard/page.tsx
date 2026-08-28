@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
 import { getBucketProjection, getHoneyInsight } from "@/lib/projection";
@@ -8,6 +9,7 @@ import { pbList, pbStr } from "@/lib/pocketbase";
 import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
+import type { BucketProjection } from "@/lib/types";
 import { dataLabel } from "@/lib/dataLabels";
 import RecordRow from "../records/RecordRow";
 import PrivacyToggle from "./PrivacyToggle";
@@ -35,6 +37,56 @@ function SetupNotice({ reason, lang }: { reason: string; lang: Locale }) {
       </ol>
       <p className="mt-4 text-xs opacity-80">{tr("dash.setup.footer")}</p>
     </div>
+  );
+}
+
+// The Honey sentence is the ONE thing on this page that can call out to a
+// language model, and an LLM answers in seconds while every other number here
+// comes back in milliseconds. Awaiting it inline meant the whole dashboard — the
+// buckets, the balances, the recent rows, all of it already computed — sat
+// invisible behind one sentence of commentary.
+//
+// It is its own async component now, rendered inside <Suspense>, so React
+// streams the page the moment the figures are ready and drops the sentence in
+// when it arrives. Nothing is lost: the fallback occupies the same box, so the
+// layout does not jump when the text lands.
+async function HoneyInsight({
+  projection,
+  locale,
+}: {
+  projection: BucketProjection[];
+  locale: Locale;
+}) {
+  const tr = (k: string) => t(locale, k);
+  const insight = await getHoneyInsight(projection, locale);
+  return (
+    <>
+      <div className="flex items-center gap-2 text-sm font-medium opacity-90">
+        <span>{tr("dash.honeySays")}</span>
+        <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
+          {insight.source === "gemini" ? tr("dash.badge.ai") : tr("dash.badge.insight")}
+        </span>
+      </div>
+      <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
+    </>
+  );
+}
+
+function HoneyInsightSkeleton({ locale }: { locale: Locale }) {
+  return (
+    <>
+      <div className="flex items-center gap-2 text-sm font-medium opacity-90">
+        <span>{t(locale, "dash.honeySays")}</span>
+      </div>
+      {/* Two bars at the height of the two lines the sentence usually runs to,
+          so the card is the same size before and after — a skeleton that
+          resizes is a layout shift wearing a costume. */}
+      <div className="mt-3 space-y-2" aria-hidden>
+        <div className="h-4 w-11/12 animate-pulse rounded bg-white/30" />
+        <div className="h-4 w-2/3 animate-pulse rounded bg-white/30" />
+      </div>
+      <span className="sr-only">{t(locale, "dash.honeySays")}…</span>
+    </>
   );
 }
 
@@ -83,7 +135,6 @@ export default async function Dashboard() {
       }),
     ]);
     const bucketOptions = bucketNodes.map((b) => ({ id: b.id, label: dataLabel(locale, b.label) }));
-    const insight = await getHoneyInsight(projection, locale);
 
     const totalAllocated = projection.reduce((s, b) => s + b.allocated, 0);
     const totalProjected = projection.reduce((s, b) => s + b.projected_spend, 0);
@@ -283,13 +334,9 @@ export default async function Dashboard() {
             buckets -> subscriptions -> recent, THEN what Honey makes of it. */}
         {/* Honey insight */}
         <section className="mt-8 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg">
-          <div className="flex items-center gap-2 text-sm font-medium opacity-90">
-            <span>{tr("dash.honeySays")}</span>
-            <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">
-              {insight.source === "gemini" ? tr("dash.badge.ai") : tr("dash.badge.insight")}
-            </span>
-          </div>
-          <p className="mt-2 text-lg leading-relaxed">{insight.text}</p>
+          <Suspense fallback={<HoneyInsightSkeleton locale={locale} />}>
+            <HoneyInsight projection={projection} locale={locale} />
+          </Suspense>
         </section>
 
         {/* What-if co-pilot */}
