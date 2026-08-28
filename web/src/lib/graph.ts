@@ -245,7 +245,7 @@ async function ensureSpentAtEdge(
 export async function ingestReceipt(
   tenantId: string,
   parsed: ParsedReceipt,
-  source = "telegram",
+  source = "scan",
 ): Promise<IngestResult> {
   const vendorNodeId = await ensureVendorNode(tenantId, parsed.vendor);
   const wallet = await resolveWalletNode(tenantId);
@@ -274,7 +274,7 @@ export async function ingestReceipt(
     collection: "transactions",
     recordId: tx.id,
     after: body,
-    actorLabel: source, // e.g. "telegram" — no logged-in actor on that path
+    actorLabel: source, // e.g. "scan" — no logged-in actor on that path
   });
 
   return {
@@ -355,8 +355,8 @@ export async function addManualTransaction(
   // ── The storage mode, enforced at the FLOOR ────────────────────────────
   //
   // /api/transactions checked this and four other write paths did not:
-  // /api/graph, /api/import, /api/statement/commit and the Telegram webhook
-  // would all have written happily for a household that had been told the
+  // /api/graph, /api/import and /api/statement/commit would all have written
+  // happily for a household that had been told the
   // server refuses to store their records. A local-only household importing a
   // CSV would have silently repopulated the database they had just had purged.
   //
@@ -726,29 +726,3 @@ export async function createAllocationEdge(
   });
 }
 
-// Resolve a Telegram chat id to a tenant via channel_links.
-export async function resolveTenantByChannel(
-  channel: string,
-  externalId: string,
-): Promise<string | null> {
-  const link = await pbFirst<{ tenant: string }>(
-    "channel_links",
-    `channel = ${pbStr(channel)} && external_id = ${pbStr(externalId)}`,
-  );
-  return link?.tenant ?? null;
-}
-
-// Link a channel to a tenant (idempotent — unique index on channel+external_id).
-export async function linkChannel(
-  tenantId: string,
-  channel: string,
-  externalId: string,
-): Promise<void> {
-  const existing = await resolveTenantByChannel(channel, externalId);
-  if (existing) return;
-  await pbCreate("channel_links", {
-    tenant: tenantId,
-    channel,
-    external_id: externalId,
-  });
-}

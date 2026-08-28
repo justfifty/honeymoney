@@ -7,15 +7,19 @@
 #
 #   -Task purge   POST /api/account/purge-expired   (hard-delete accounts whose
 #                 30-day grace window has elapsed)
-#   -Task nudge   POST /api/insight/nudge           (proactive Honey nudges to
-#                 households heading over/at-risk this month, via Telegram)
 #   -Task demo    node scripts/refresh-demo-data.mjs (roll the seeded demo
 #                 personas into the current month; real households untouched)
 #
-# If the secret is unset, or Telegram is unconfigured for nudges, the endpoint
-# simply no-ops — this script is always safe to schedule.
+# If the secret is unset the endpoint simply no-ops — this script is always safe
+# to schedule.
+#
+# 2026-08-28: the `nudge` task is gone with the Telegram bot. Proactive nudges
+# had exactly one delivery channel and it has been removed, so the task would
+# have POSTed to a route that no longer exists — a scheduled job failing nightly
+# for a feature nobody had linked. Bringing nudges back means giving them a
+# channel first (email, push, a bar in the app), not re-adding this line.
 param(
-  [ValidateSet('purge', 'nudge', 'demo')]
+  [ValidateSet('purge', 'demo')]
   [string]$Task = 'purge'
 )
 $ErrorActionPreference = 'Stop'
@@ -56,7 +60,7 @@ if ([string]::IsNullOrWhiteSpace($secret)) {
   exit 0
 }
 
-$path = if ($Task -eq 'nudge') { '/api/insight/nudge' } else { '/api/account/purge-expired' }
+$path = '/api/account/purge-expired'
 try {
   $r = Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:3000$path" `
     -Headers @{ 'x-purge-secret' = $secret } -TimeoutSec 180

@@ -4,7 +4,7 @@
      Source: web/src/app/privacy/notice.ts
      Regenerate: npm run privacy:doc -->
 
-**Version 2026-08-27** · Issued under the Personal Data Protection Act 2010 (Malaysia)
+**Version 2026-08-28** · Issued under the Personal Data Protection Act 2010 (Malaysia)
 
 Live at https://honeymoney.app/privacy
 
@@ -80,7 +80,6 @@ Live at https://honeymoney.app/privacy
 - Other members of your household see what YOU have chosen to share with them, per kind of data. Two things are shared by default because the app cannot work without them — the bills that must be paid, and the total each person contributed. Your individual transactions, spending categories, receipts and statements, goals, H-Score, and insights and forecasts are all PRIVATE by default and stay private until you switch them on in Sharing. Switching one off again hides your history as well as anything new.
 - Our hosting provider stores the database on our behalf and does not use it for anything else. Cloudflare carries the traffic between your device and us, and holds the encrypted daily backups.
 - An AI provider receives the text or image you capture, and only if you switched AI features on. Today that is one of: a local model running on hardware we operate, which sends nothing to anyone; Google (Gemini); or Groq. Receipt scanning runs in your own browser by default and reaches no provider at all.
-- Telegram, if — and only if — you choose to use the Telegram capture bot. A receipt you forward to the bot passes through Telegram's servers before it reaches us, under Telegram's own privacy policy, which we do not control. Do not use the bot for anything you would not put in a chat message.
 - The OpenTimestamps public calendars receive a one-way fingerprint (a SHA-256 hash) of your household's audit-ledger head, so the ledger can be proved un-tampered without us being trusted. The fingerprint contains none of your records, cannot be reversed into them, and is not linked to your name or account. This runs only when someone in your household presses Anchor.
 - No financial partner or employer receives anything today, because matched products are not offered and sponsored seats are not built.
 - We disclose data to authorities only where the law requires it, and only what it requires.
@@ -93,7 +92,6 @@ Live at https://honeymoney.app/privacy
 - Ahli lain dalam isi rumah anda melihat apa yang ANDA pilih untuk dikongsi dengan mereka, mengikut jenis data. Dua perkara dikongsi secara lalai kerana aplikasi tidak dapat berfungsi tanpanya — bil yang mesti dibayar, dan jumlah yang disumbangkan oleh setiap orang. Transaksi individu, kategori perbelanjaan, resit dan penyata, matlamat, H-Score, serta wawasan dan ramalan anda semuanya PERIBADI secara lalai dan kekal peribadi sehingga anda menghidupkannya dalam Perkongsian. Mematikannya semula menyembunyikan sejarah anda serta apa-apa yang baharu.
 - Penyedia pengehosan kami menyimpan pangkalan data bagi pihak kami dan tidak menggunakannya untuk tujuan lain. Cloudflare membawa trafik antara peranti anda dan kami, serta menyimpan sandaran harian yang disulitkan.
 - Penyedia AI menerima teks atau imej yang anda tangkap, dan hanya jika anda menghidupkan ciri AI. Hari ini ia adalah salah satu daripada: model tempatan yang berjalan pada perkakasan yang kami kendalikan, yang tidak menghantar apa-apa kepada sesiapa; Google (Gemini); atau Groq. Pengimbasan resit berjalan dalam pelayar anda sendiri secara lalai dan tidak sampai kepada mana-mana penyedia.
-- Telegram, jika — dan hanya jika — anda memilih untuk menggunakan bot tangkapan Telegram. Resit yang anda kirim kepada bot melalui pelayan Telegram sebelum sampai kepada kami, di bawah dasar privasi Telegram sendiri, yang tidak kami kawal. Jangan gunakan bot itu untuk apa-apa yang anda tidak sanggup letakkan dalam mesej sembang.
 - Kalendar awam OpenTimestamps menerima cap jari sehala (cincangan SHA-256) bagi kepala lejar audit isi rumah anda, supaya lejar itu boleh dibuktikan tidak diusik tanpa perlu mempercayai kami. Cap jari itu tidak mengandungi rekod anda, tidak boleh diterbalikkan menjadi rekod anda, dan tidak dikaitkan dengan nama atau akaun anda. Ia berjalan hanya apabila seseorang dalam isi rumah anda menekan Anchor.
 - Tiada rakan kongsi kewangan atau majikan menerima apa-apa hari ini, kerana produk yang dipadankan tidak ditawarkan dan kerusi tajaan belum dibina.
 - Kami mendedahkan data kepada pihak berkuasa hanya apabila dikehendaki oleh undang-undang, dan hanya apa yang dikehendakinya.
@@ -103,7 +101,6 @@ Live at https://honeymoney.app/privacy
 - The app itself runs on hardware we operate directly in Malaysia. Your session goes to it through Cloudflare, which carries the traffic but is not where your records live.
 - The database that holds your records is run for us by our hosting provider, DOM Cloud, on Oracle Cloud infrastructure in SINGAPORE. That is a cross-border transfer and we say so plainly rather than leaving you to find out. Singapore has its own comparable data protection law; we rely on that, on our contract with the provider, and on your consent to this notice.
 - If you use AI features, the provider may process what you send outside Malaysia — Google and Groq both do. If the local model is the one in use, nothing leaves the machine in Malaysia at all. Which provider is active is shown to you in Settings.
-- If you use the Telegram bot, what you send it passes through Telegram's infrastructure outside Malaysia before it reaches us.
 - Daily backups are kept off-site with Cloudflare R2 in the Asia-Pacific region, so your records survive a server failure. We keep the last 14 and delete older ones automatically.
 
 ### Di mana ia disimpan
@@ -111,7 +108,6 @@ Live at https://honeymoney.app/privacy
 - Aplikasi ini berjalan pada perkakasan yang kami kendalikan sendiri di Malaysia. Sesi anda sampai kepadanya melalui Cloudflare, yang membawa trafik tetapi bukan tempat rekod anda disimpan.
 - Pangkalan data yang menyimpan rekod anda dijalankan untuk kami oleh penyedia pengehosan kami, DOM Cloud, di atas infrastruktur Oracle Cloud di SINGAPURA. Itu ialah pemindahan rentas sempadan dan kami menyatakannya dengan jelas dan bukan membiarkan anda mengetahuinya sendiri. Singapura mempunyai undang-undang perlindungan data yang setanding; kami bergantung padanya, pada kontrak kami dengan penyedia, dan pada persetujuan anda terhadap notis ini.
 - Jika anda menggunakan ciri AI, penyedia mungkin memproses apa yang anda hantar di luar Malaysia — Google dan Groq kedua-duanya berbuat demikian. Jika model tempatan yang digunakan, tiada apa-apa keluar daripada mesin di Malaysia. Penyedia yang aktif ditunjukkan kepada anda dalam Tetapan.
-- Jika anda menggunakan bot Telegram, apa yang anda hantar kepadanya melalui infrastruktur Telegram di luar Malaysia sebelum sampai kepada kami.
 - Sandaran harian disimpan di luar tapak dengan Cloudflare R2 di rantau Asia-Pasifik, supaya rekod anda kekal jika pelayan gagal. Kami menyimpan 14 yang terakhir dan memadam yang lebih lama secara automatik.
 
 ## How long we keep it

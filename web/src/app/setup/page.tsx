@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
-import { config, isTelegramConfigured, activeAiProvider } from "@/lib/config";
+import { activeAiProvider } from "@/lib/config";
 import { getContext, listMembers } from "@/lib/household";
 import { DELETE_GRACE_DAYS } from "@/lib/account";
 import Logo from "../Logo";
@@ -33,9 +33,7 @@ export default async function SetupPage() {
   const tr = (k: string) => t(locale, k);
 
   const ctx = await getContext().catch(() => null);
-  const telegramReady = isTelegramConfigured();
   const provider = activeAiProvider();
-  const botUser = config.telegramBotUsername;
 
   // Account-deletion context (only needed when signed in).
   let members: Awaited<ReturnType<typeof listMembers>> = [];
@@ -151,45 +149,16 @@ export default async function SetupPage() {
         </Section>
       )}
 
-      {/* ── AI capture ───────────────────────────────────────────────────── */}
+      {/* The AI engine section used to be three static bullets plus whichever
+          provider an env var named. That told a user what the app *intends*,
+          never whether it works — so someone whose key was rejected saw the
+          same screen as someone whose key was fine. AiStatus probes instead. */}
       <div className="mt-8 flex flex-wrap gap-2 text-xs">
-        <span
-          className={
-            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium " +
-            (telegramReady
-              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
-              : "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400")
-          }
-        >
-          <span className={"h-1.5 w-1.5 rounded-full " + (telegramReady ? "bg-emerald-500" : "bg-zinc-400")} />
-          {telegramReady ? tr("setup.status.active") : tr("setup.status.inactive")}
-        </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
           🤖 {tr("setup.status.provider").replace("{provider}", PROVIDER_LABEL[provider] ?? provider)}
         </span>
       </div>
 
-      {/* Bot-capture walkthrough, shown only when a bot is actually configured.
-          These sections used to render unconditionally, so /setup spent three
-          panels teaching a feature that answered nothing — a user could follow
-          every step and reach a bot that does not exist. The deck no longer
-          claims Telegram; the setup screen should not either, until the day
-          TELEGRAM_BOT_TOKEN is set and it quietly returns. */}
-      {telegramReady && (
-      <Section title={`✨ ${tr("setup.what.title")}`} tone="plain">
-        <ul className="list-disc space-y-2 pl-5">
-          <li>{tr("setup.what.1")}</li>
-          <li>{tr("setup.what.2")}</li>
-          <li>{tr("setup.what.3")}</li>
-          <li>{tr("setup.what.4")}</li>
-        </ul>
-      </Section>
-      )}
-
-      {/* The AI engine section used to be three static bullets plus whichever
-          provider an env var named. That told a user what the app *intends*,
-          never whether it works — so someone whose key was rejected saw the
-          same screen as someone whose key was fine. AiStatus probes instead. */}
       <Section title={`🧠 ${tr("setup.ai.title")}`} tone="plain">
         <p className="mb-4">{tr("setup.ai.body")}</p>
         <AiStatus
@@ -230,31 +199,9 @@ export default async function SetupPage() {
         />
       </Section>
 
-      {telegramReady && (
-      <Section title={`💬 ${tr("setup.connect.title")}`} tone="good">
-        <ol className="list-decimal space-y-2 pl-5">
-          <li>{tr("setup.connect.1")}</li>
-          <li>{tr("setup.connect.2")}</li>
-          <li>{tr("setup.connect.3")}</li>
-        </ol>
-        {botUser ? (
-          <a
-            href={`https://t.me/${botUser}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600"
-          >
-            💬 {tr("setup.connect.openBot")} · @{botUser}
-          </a>
-        ) : (
-          <p className="mt-3 text-xs text-zinc-500">{tr("setup.connect.noBot")}</p>
-        )}
-      </Section>
-      )}
-
       <Section title={`🛠️ ${tr("setup.admin.title")}`} tone="plain">
         <p>
-          {tr("setup.admin.body")} <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800">docs/TELEGRAM_SETUP.md</code>.
+          {tr("setup.admin.body")} <code className="rounded bg-zinc-100 px-1 py-0.5 text-xs dark:bg-zinc-800">DEPLOY.md</code>.
         </p>
       </Section>
 

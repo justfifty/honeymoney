@@ -110,30 +110,17 @@ const en: Dict = {
   // AI Setup page (/setup)
   "setup.title": "Setup",
   "setup.subtitle": "Your account, AI capture, and installing the app — all in one place.",
-  "setup.status.active": "Capture channel active",
-  "setup.status.inactive": "Capture channel not configured",
   "setup.status.provider": "AI engine: {provider}",
-  "setup.what.title": "What you get",
-  "setup.what.1": "Forward a receipt or e-wallet screenshot to the bot — it reads the amount and merchant for you.",
   // The three buckets have ONE set of names, and this string had a third set:
   // "Needs · Savings shield · Personal" appears nowhere else in the app, the
   // deck, or the guide. A user who meets the buckets here and again on /records
   // has to work out for themselves that they are the same three.
-  "setup.what.2": "It auto-buckets the spend (Must-paid · Savings · Spendings) and replies with Undo / Change bucket buttons.",
-  "setup.what.3": "It catches duplicates — the “same receipt forwarded by both partners” double-count — before it reaches the books.",
-  "setup.what.4": "PDF statements are redirected to the web importer.",
   "setup.stack.title": "The AI engine",
   "setup.stack.body": "HoneyMoney runs on a free, multi-provider AI stack — switch engines with one setting, no lock-in:",
   "setup.stack.groq": "Groq — fast hosted Llama models, generous free tier.",
   "setup.stack.gemini": "Gemini — Google’s multimodal Flash, reads receipt images out of the box.",
   "setup.stack.ollama": "Ollama — fully local, private, offline models on your own machine.",
   "setup.stack.active": "Active",
-  "setup.connect.title": "Connect Telegram",
-  "setup.connect.1": "Open the HoneyMoney bot in Telegram.",
-  "setup.connect.2": "Send /start — you’ll get “🍯 Welcome to HoneyMoney! You’re linked.”",
-  "setup.connect.3": "Forward a receipt photo — within seconds: “✅ Logged …” with Undo / Change bucket.",
-  "setup.connect.openBot": "Open the bot",
-  "setup.connect.noBot": "Ask your household admin for the bot link (set TELEGRAM_BOT_USERNAME to show it here).",
   "setup.admin.title": "Self-hosting / admin",
   "setup.admin.body": "Running your own instance? Create the bot with BotFather, set the token and webhook secret, and register the webhook. Full step-by-step in",
   "setup.remove.title": "Install & remove the app",

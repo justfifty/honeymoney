@@ -32,10 +32,27 @@ interface Change {
 const CHANGES: Change[] = [
   {
     version: NOTICE_VERSION,
+    date: "28 August 2026",
+    doc: "Privacy notice",
+    points: [
+      "The Telegram capture bot has been removed from HoneyMoney, so the notice no longer names Telegram as a recipient of anything, and no longer describes what you forward to it leaving Malaysia through Telegram's infrastructure. Nobody had ever linked a chat to it.",
+      "This revision only takes things away. Nothing new is collected, nothing new is shared, and no new third party appears. You are being shown it because the document changed, not because the answer we are asking of you did.",
+    ],
+  },
+  {
+    version: TERMS_VERSION,
+    date: "28 August 2026",
+    doc: "Terms of service",
+    points: [
+      "The clause about the Telegram bot is gone with the bot. There is one fewer third party in the middle of anything you send us.",
+    ],
+  },
+  {
+    version: "2026-08-27",
     date: "27 August 2026",
     doc: "Privacy notice",
     points: [
-      "We now name every third party that can receive anything, instead of describing them in the abstract: the AI providers individually (a local model on our own hardware, Google, Groq), Cloudflare, and — newly disclosed — Telegram, if you use the Telegram capture bot, and the public OpenTimestamps calendars, which receive a one-way fingerprint of your audit ledger and none of your records.",
+      "We now name every third party that can receive anything, instead of describing them in the abstract: the AI providers individually (a local model on our own hardware, Google, Groq), Cloudflare, and — newly disclosed — the public OpenTimestamps calendars, which receive a one-way fingerprint of your audit ledger and none of your records.",
       "We corrected where your data actually is. The notice said Singapore. The app runs on hardware we operate in Malaysia, and the database is run for us by our hosting provider on Oracle Cloud infrastructure elsewhere in the Asia-Pacific region. It is still a cross-border transfer, and it is now described accurately.",
       "A new section on the other people who appear in your records — your partner, a child you add as a member, anyone you name in a note — and what you are responsible for when you enter their details.",
       "A new section on employers and sponsors. Nothing of the kind is built or offered. The guarantees are written down now, before it exists: never a record, never a name, never an H-Score; group figures only, and only for groups of ten or more; opt-in, under a notice we would issue again.",
@@ -44,7 +61,7 @@ const CHANGES: Change[] = [
     ],
   },
   {
-    version: TERMS_VERSION,
+    version: "2026-08-27",
     date: "27 August 2026",
     doc: "Terms of service",
     points: [
@@ -52,7 +69,6 @@ const CHANGES: Change[] = [
       "The Money Health Score is not a credit score. It is not shared with any lender, insurer, landlord or employer, it has no bearing on your creditworthiness, and nobody may require you to show it.",
       "Forecasts and projections are stated as estimates and planning aids, to be checked against your own statements.",
       "What you are responsible for when you enter another person's details, and the confirmation that a child added to a household is one you are the parent or guardian of.",
-      "The Telegram bot named as a separate choice, with a third party in the middle of it.",
     ],
   },
 ];

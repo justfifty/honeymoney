@@ -28,7 +28,16 @@ import { pbList, pbCreate, pbStr } from "./pocketbase";
 // exists, and a section on the other people who appear in a household's
 // records. Every one of those is a new class of recipient or a changed fact, so
 // existing consent is now shown as stale and re-asked rather than assumed.
-export const NOTICE_VERSION = "2026-08-27";
+// 2026-08-28: NARROWED, not widened. The Telegram capture bot is gone, so the
+// notice no longer names Telegram as a recipient or as a transfer out of
+// Malaysia. Nothing new is collected and nothing new is shared — this version
+// describes strictly less processing than the one before it, which is why the
+// re-ask it triggers is conservative rather than required. The version still
+// moves, because the version identifies the DOCUMENT: leaving two different
+// texts sharing one version would make the consent ledger unable to say which
+// of them a person actually agreed to, and being able to say that is the whole
+// point of storing the version instead of a boolean.
+export const NOTICE_VERSION = "2026-08-28";
 
 export type Purpose =
   | "core_processing"

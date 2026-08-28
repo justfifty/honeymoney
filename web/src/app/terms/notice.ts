@@ -168,7 +168,6 @@ export const TERMS_SECTIONS: TermsSection[] = [
         "AI is off unless you turn it on. When it is off, the app still works and still calculates everything — a language model only ever chooses the wording.",
         "Every figure you see is calculated by the app, not written by a model. But AI can still misread a receipt, mis-file a purchase, or phrase something poorly. Check anything before you act on it.",
         "When AI is on, the app sends the least it can: for questions, placeholder names rather than your figures. Where a local model is available, your documents are processed on hardware you or we control and do not leave it at all. Which provider is active is shown to you in Settings, and the Privacy Notice names them.",
-        "The Telegram bot, if you use it, is a separate choice again. Anything you forward to it passes through Telegram before it reaches us, under Telegram’s terms and not ours. Use the app itself for anything you would rather not put in a chat message.",
       ],
     },
     ms: {
@@ -177,7 +176,6 @@ export const TERMS_SECTIONS: TermsSection[] = [
         "AI dimatikan melainkan anda menghidupkannya. Apabila ia dimatikan, aplikasi tetap berfungsi dan tetap mengira segalanya — model bahasa hanya memilih perkataan.",
         "Setiap angka yang anda lihat dikira oleh aplikasi, bukan ditulis oleh model. Namun AI masih boleh tersalah baca resit, tersalah fail pembelian, atau menyusun ayat dengan kurang tepat. Semak apa-apa sebelum anda bertindak atasnya.",
         "Apabila AI dihidupkan, aplikasi menghantar sekurang-kurang yang mampu: bagi soalan, nama ruang letak dan bukan angka anda. Jika model tempatan tersedia, dokumen anda diproses pada perkakasan yang anda atau kami kawal dan tidak keluar daripadanya langsung. Penyedia yang aktif ditunjukkan kepada anda dalam Tetapan, dan Notis Privasi menamakannya.",
-        "Bot Telegram, jika anda menggunakannya, ialah pilihan berasingan sekali lagi. Apa-apa yang anda kirim kepadanya melalui Telegram sebelum sampai kepada kami, di bawah terma Telegram dan bukan terma kami. Gunakan aplikasi itu sendiri untuk apa-apa yang anda tidak mahu letakkan dalam mesej sembang.",
       ],
     },
   },

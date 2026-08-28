@@ -276,7 +276,6 @@ const ai: LegalDoc = {
         body: [
           "One of three, and the active one is named on your Settings screen. A local model running on hardware we operate in Malaysia — nothing leaves that machine. Google (Gemini) — processing outside Malaysia. Groq — processing outside Malaysia.",
           "Receipt scanning runs in your own browser by default, using an OCR engine served from our origin. In that mode the image never reaches us or any provider, and it works with no internet connection at all.",
-          "If you use the Telegram bot, anything you forward passes through Telegram's infrastructure outside Malaysia before it reaches us, under Telegram's terms rather than ours.",
         ],
       },
       ms: {
@@ -284,7 +283,6 @@ const ai: LegalDoc = {
         body: [
           "Salah satu daripada tiga, dan yang aktif dinamakan pada skrin Tetapan anda. Model tempatan yang berjalan pada perkakasan yang kami kendalikan di Malaysia — tiada apa-apa keluar dari mesin itu. Google (Gemini) — pemprosesan di luar Malaysia. Groq — pemprosesan di luar Malaysia.",
           "Pengimbasan resit berjalan dalam pelayar anda sendiri secara lalai, menggunakan enjin OCR yang disajikan dari domain kami. Dalam mod itu imej tidak pernah sampai kepada kami atau mana-mana penyedia, dan ia berfungsi tanpa sambungan internet langsung.",
-          "Jika anda menggunakan bot Telegram, apa-apa yang anda kirim melalui infrastruktur Telegram di luar Malaysia sebelum sampai kepada kami, di bawah terma Telegram dan bukan terma kami.",
         ],
       },
     },

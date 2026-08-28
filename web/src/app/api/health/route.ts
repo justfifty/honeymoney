@@ -3,7 +3,6 @@ import {
   isPocketBaseConfigured,
   isSupabaseConfigured,
   isGeminiConfigured,
-  isTelegramConfigured,
   config,
 } from "@/lib/config";
 
@@ -18,7 +17,6 @@ export async function GET() {
       pocketbase: isPocketBaseConfigured(),
       supabase: isSupabaseConfigured(),
       gemini: isGeminiConfigured(),
-      telegram: isTelegramConfigured(),
       demoTenant: Boolean(config.demoTenantId),
     },
   });

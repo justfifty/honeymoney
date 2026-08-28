@@ -33,7 +33,7 @@ Check 'task exists'            ($null -ne $t) $null
 Check 'starts at boot (no logon needed)' ($kinds -contains 'MSFT_TaskBootTrigger') 'without this the site stays dark after a 3am update reboot'
 Check '5-minute watchdog'      ([bool]($t.Triggers | Where-Object { $_.Repetition.Interval -eq 'PT5M' })) 'restarts any component that dies'
 Check 'runs without a session (S4U)' ($t.Principal.LogonType -eq 'S4U') $null
-foreach ($n in 'HoneyMoney-Purge','HoneyMoney-Nudge','HoneyMoney-Demo') {
+foreach ($n in 'HoneyMoney-Purge','HoneyMoney-Demo') {
   Check "$n registered" ([bool](Get-ScheduledTask -TaskName $n)) $null
 }
 

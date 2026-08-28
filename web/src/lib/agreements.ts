@@ -32,7 +32,9 @@ import { pbCreate, pbList, pbStr } from "./pocketbase";
 // credit score and nobody may require you to show it; forecasts are estimates;
 // your duties towards the other people (and children) whose details you enter;
 // and the Telegram channel named as a separate choice with a third party in it.
-export const TERMS_VERSION = "2026-08-27";
+// 2026-08-28: the Telegram bot is gone, so the clause about what passes through
+// Telegram under Telegram's terms went with it. A removal, not a new condition.
+export const TERMS_VERSION = "2026-08-28";
 
 /** The operating entity named in the terms. */
 export const OPERATOR = "JUST50";

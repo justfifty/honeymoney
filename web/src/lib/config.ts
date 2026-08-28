@@ -39,11 +39,8 @@ export const config = {
   groqVisionModel: process.env.GROQ_VISION_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct",
   ollamaVisionModel: process.env.OLLAMA_VISION_MODEL ?? "llama3.2-vision",
 
-  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
-  telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
   // Public @handle (no leading @) so the /setup page can render a t.me deep
   // link straight to the bot. Optional — the page degrades to generic steps.
-  telegramBotUsername: (process.env.TELEGRAM_BOT_USERNAME ?? "").replace(/^@/, ""),
 
   demoTenantId: process.env.DEMO_TENANT_ID ?? "",
   // The ONLY tenants an anonymous visitor may view/switch between — the seed
@@ -91,5 +88,3 @@ export function isProviderConfigured(p: AiProvider): boolean {
   return isGeminiConfigured();
 }
 
-export const isTelegramConfigured = (): boolean =>
-  Boolean(config.telegramBotToken && config.telegramWebhookSecret);
