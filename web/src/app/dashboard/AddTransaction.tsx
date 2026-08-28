@@ -116,6 +116,11 @@ export default function AddTransaction({
   // Income does not come FROM a bucket, so it is not asked for. `savings` is on
   // the `+` side but is a TRANSFER into a tier-2 bucket, so it still needs one.
   const isIncome = direction === "in" && category !== "savings";
+  // The record's actual kind, which is NOT the same question as `isIncome`.
+  // `isIncome` means "no bucket needed"; a savings deposit needs one, so it
+  // reads false — and anything that styled itself from it treated putting money
+  // away as spending it.
+  const recordKind = kindOf(category);
   // Task 6. Both are remembered defaults in spirit — the common case is one
   // person logging their own routine spending, and that costs zero extra taps
   // because the control does not render for a household of one.
@@ -617,8 +622,12 @@ export default function AddTransaction({
                 real: money you put away sits on the `+` side but is a TRANSFER,
                 not income. A user who sees it counted differently deserves the
                 reason rather than assuming the app got it wrong. */}
-            {kindOf(category) === "transfer" && (
-              <p className={`mt-2 text-xs ${SIGN_STYLE.in.text}`}>{tr("rec.cat.savingsNote")}</p>
+            {recordKind === "transfer" && (
+              // Green, not amber. Amber is money in, and the whole content of
+              // this sentence is that a savings transfer is NOT money in.
+              <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">
+                {tr("rec.cat.savingsNote")}
+              </p>
             )}
 
             {/* The claim, measured rather than asserted — and only for the typed
@@ -848,26 +857,41 @@ export default function AddTransaction({
         </p>
       )}
 
-      {/* The button wears the direction's colour: amber for money in, matching
-          the `+ Money in` toggle and the money-in figures on /records; dark grey
-          for spends, matching the bucket chips. It is the last thing pressed, so
-          its colour is the final confirmation of WHICH record this was. */}
+      {/* The button wears the record's own colour and says what it will do. It
+          is the last thing pressed, so it is the final confirmation of WHICH
+          record this was — and it has to be right about all THREE kinds.
+
+          It was keyed on `isIncome`, which is not a kind: it is the answer to
+          "does this need a bucket?", and savings answers that the same way a
+          spend does. So a savings deposit — with `+ Money in` lit above it and
+          a green Savings chip beside it — arrived at a dark grey button reading
+          "Add spend". Three controls describing one record, and the one under
+          your thumb was the one that was wrong.
+
+          Keyed on the kind now, so the three cases are three cases: green for a
+          transfer (money you still have — the only thing green means in this
+          app, see CATEGORY_STYLE), amber for money in, dark grey for a spend. */}
       <button
         type="submit"
         disabled={busy || (!bucket && !isIncome)}
         className={
           "mt-4 min-h-12 w-full rounded-full px-5 text-sm font-semibold text-white transition-colors disabled:opacity-50 " +
-          // Dark grey for a spend, matching SIGN_STYLE.out.fill and the "− Money
-          // out" tab above it. This said bg-amber-600 while the comment above
-          // claimed dark grey — two shades of orange a step apart, so the last
-          // thing you press before saving looked the same whichever way the
-          // money went. The tab, the chips and this button now agree.
-          (isIncome
-            ? "bg-amber-500 hover:bg-amber-600"
-            : "bg-zinc-700 hover:bg-zinc-800 dark:bg-zinc-600 dark:hover:bg-zinc-500")
+          (recordKind === "transfer"
+            ? "bg-emerald-600 hover:bg-emerald-700"
+            : recordKind === "inflow"
+              ? "bg-amber-500 hover:bg-amber-600"
+              : "bg-zinc-700 hover:bg-zinc-800 dark:bg-zinc-600 dark:hover:bg-zinc-500")
         }
       >
-        {busy ? tr("dash.add.saving") : `${tr(isIncome ? "dash.add.submitIn" : "dash.add.submit")} →`}
+        {busy
+          ? tr("dash.add.saving")
+          : `${tr(
+              recordKind === "transfer"
+                ? "dash.add.submitSavings"
+                : recordKind === "inflow"
+                  ? "dash.add.submitIn"
+                  : "dash.add.submit",
+            )} →`}
       </button>
 
       {msg && (

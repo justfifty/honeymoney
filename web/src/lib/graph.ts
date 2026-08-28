@@ -9,7 +9,7 @@ import { pbList, pbFirst, pbCreate, pbUpdate, pbStr, pbUploadFiles } from "./poc
 import { append } from "./ledger";
 import type { ParsedReceipt } from "./types";
 import type { DecodedAttachment } from "./attachments";
-import { deriveKind, kindOf, type Category, type RecordKind } from "./recordKind";
+import { deriveKind, kindOf, SAVINGS_TIER, type Category, type RecordKind } from "./recordKind";
 import type { Visibility } from "./attribution";
 
 export interface Actor {
@@ -553,6 +553,10 @@ export interface TxnRecord {
   wallet_node: string;
   vendor_node: string;
   parse_confidence: number;
+  /** inflow · outflow · transfer. Absent on rows written before Task 1. */
+  kind?: string | null;
+  /** "in" | "out". Absent (meaning "out") on the oldest rows. */
+  direction?: string | null;
   expand?: { vendor_node?: { label: string }; wallet_node?: { label: string } };
 }
 
@@ -594,6 +598,29 @@ export async function updateTransaction(
     );
     if (!wallet) throw new Error("Unknown bucket for this household.");
     body.wallet_node = wallet.id;
+
+    // THE BUCKET DECIDES THE KIND, and moving a record has to move that too.
+    //
+    // This wrote the new bucket and left `kind` exactly as it was, which made
+    // the app's own correction path unable to correct the thing people most
+    // need to. A spend mis-filed into Spendings that is really a savings
+    // deposit could be dragged into the Savings bucket and would go on
+    // rendering as "− RM500" in grey for ever, because every read path resolves
+    // a row's kind from its stored value first and only falls back to the tier.
+    // The user does the right thing, the screen does not change, and there is
+    // nothing else in the UI for them to try.
+    //
+    // Both directions, so the correction is reversible: into a tier-2 bucket
+    // makes it a transfer (a deposit and a withdrawal are both transfers — the
+    // household is no richer or poorer for either), and out of one hands it
+    // back to whichever side `direction` says.
+    const tier = Number((wallet.props as { bucket?: number } | null)?.bucket) || null;
+    const wasTier2 = before.kind === "transfer";
+    if (tier === SAVINGS_TIER) {
+      body.kind = "transfer";
+    } else if (wasTier2) {
+      body.kind = before.direction === "in" ? "inflow" : "outflow";
+    }
   }
   // Moving a spend to a different bucket or vendor changes which SPENT_AT edge
   // it realizes, so re-point it rather than leaving it attached to the old one.

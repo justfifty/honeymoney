@@ -23,6 +23,7 @@
 
 import { pbList, pbCreate, pbDelete, pbStr } from "../src/lib/pocketbase.ts";
 import { classifyText } from "../src/lib/classify.ts";
+import { kindOf } from "../src/lib/recordKind.ts";
 import { parseVoiceLocal } from "../src/lib/voiceParse.ts";
 import { addManualTransaction } from "../src/lib/graph.ts";
 import { getBucketProjection } from "../src/lib/projection.ts";
@@ -92,6 +93,30 @@ try {
   ok("+ Money in still tells savings from earnings", classifyText("simpan 500", { sign: "in" }).category === "savings");
   ok("+ Money in still tells money back from earnings", classifyText("refund 80", { sign: "in" }).category === "income_other");
   ok("- Money out still tells a bill from a spend", classifyText("TNB bill 142", { sign: "out" }).category === "must_paid");
+
+  // ── 0a-ii. …but it has no claim over the THIRD kind ──────────────────────
+  //
+  // Savings is a transfer: not money entering the household, not money leaving
+  // it. Which button that feels like depends on which pocket you are picturing,
+  // and "out of my account" is at least as natural as "into my savings" — it is
+  // also the side the form opens on.
+  //
+  // The sign filter dropped savings from the out-side tables entirely, so the
+  // keyword never ran, nothing matched, and the cold-start default turned
+  // "Saving 500" into an ordinary spend in the Spendings bucket. Found in a live
+  // household: three rows reading "Saving −RM500" beside one reading
+  // "Saving →RM500", same words, same amount, same day — and the wrong ones
+  // counted against that household's spending.
+  console.log("
+0a-ii. savings is a transfer, so neither button may veto it:");
+  ok("- Money out + a savings word is savings, not a spend", classifyText("Saving 500", { sign: "out" }).category === "savings");
+  ok("- Money out + Malay savings word too", classifyText("simpan 500", { sign: "out" }).category === "savings");
+  ok("- Money out + ASB is savings", classifyText("ASB 300", { sign: "out" }).category === "savings");
+  ok("+ Money in + a savings word is still savings", classifyText("Saving 500", { sign: "in" }).category === "savings");
+  ok("and it lands as a transfer either way", kindOf(classifyText("Saving 500", { sign: "out" }).category) === "transfer");
+  // The guard on the guard: opening savings up must not swallow ordinary spends.
+  ok("- Money out with no savings word is still a spend", classifyText("Dinner 600", { sign: "out" }).category === "spendings");
+  ok("- Money out on a bill is still must-paid", classifyText("Rent 1200", { sign: "out" }).category === "must_paid");
 
   // ── 0b. the amount, which is the one thing a record cannot be wrong about ──
   //

@@ -114,7 +114,29 @@ const TABLES: [Category, RegExp][] = [
  */
 export function classifyText(text: string, opts: { sign?: Sign } = {}): Classified {
   const value = text.trim();
-  const tables = opts.sign ? TABLES.filter(([c]) => signOf(c) === opts.sign) : TABLES;
+  // SAVINGS SURVIVES THE SIGN FILTER, and that is the point of having three
+  // kinds rather than two.
+  //
+  // Putting RM500 away is a TRANSFER: it is not money entering the household
+  // and it is not money leaving it. Which button that feels like depends
+  // entirely on which pocket you are thinking about — "out of my account" is at
+  // least as natural a reading as "into my savings" — and the form opens on
+  // "− Money out", so it is the reading people reach first.
+  //
+  // Filtering savings out of the OUT side meant the keyword table never ran for
+  // them. Nothing matched, the cold-start default is `spendings`, and typing
+  // "Saving 500" under "Money out" produced an ordinary spend filed to the
+  // Spendings bucket. Found in live data: three rows labelled "Saving", direction
+  // out, kind outflow, wallet tier 3, sitting in a list beside a correctly
+  // recorded one — the same words, the same amount, the same day, two different
+  // answers, and the wrong ones counted against the household's spending.
+  //
+  // The sign still outranks the table for the thing the sign is ABOUT: whether
+  // this is inflow or outflow. It has no claim over the third kind, because the
+  // third kind is on neither side.
+  const tables = opts.sign
+    ? TABLES.filter(([c]) => signOf(c) === opts.sign || c === "savings")
+    : TABLES;
   // The default when nothing matches: the first category on the stated side, or
   // spending when nothing was stated.
   const fallback: Classified =
