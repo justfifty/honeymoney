@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { deviceOnlyRecords, pendingCaptures, signOutAndForget } from "@/lib/localTeardown";
+import { signOutRisk, signOutAndForget } from "@/lib/localTeardown";
 
 // Log out, and actually leave.
 //
@@ -13,10 +13,23 @@ import { deviceOnlyRecords, pendingCaptures, signOutAndForget } from "@/lib/loca
 // the device this product is for, and a log-out that leaves a readable copy of
 // someone's finances behind is worse than no log-out at all.
 //
-// The one thing worth interrupting for is unsent captures. Everything else is
-// recoverable by signing back in; a spend typed in a car park and not yet
-// synced is not. So the confirm fires only when there is something to lose, and
-// it says the number.
+// ── WHY THIS FILE CHANGED ──────────────────────────────────────────────────
+//
+// The guard was both wrong and inescapable. It counted every row in the local
+// ledger, which since local-first capture means every spend ever typed on the
+// device — nearly all of them already on the server. So one spend was enough to
+// refuse sign-out permanently.
+//
+// And the refusal was a window.alert. An alert has one button, and it says OK.
+// It told the reader to "open Your copy and press Save", named no route, linked
+// to nothing, and — because saving does not empty the ledger — would have gone
+// on refusing even if they had found it. Someone on a shared browser could not
+// hand the device back to the person they share it with.
+//
+// Two rules came out of that, and they are why the code below looks like it
+// does. A refusal must be ESCAPABLE: if the app will not do the thing, it has
+// to carry you to whatever makes it possible, not name it and close. And it
+// must be TRUE: refuse only for records that genuinely exist in one place.
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -25,37 +38,41 @@ export default function LogoutButton() {
   async function logout() {
     setBusy(true);
     try {
-      // Checked FIRST, and refused rather than confirmed. An unsent capture is
-      // one record; device-only records can be a household's entire history,
-      // and no dialog wording makes destroying that an acceptable thing to do
-      // on a mis-tap. Save the file, then sign out.
-      const deviceOnly = await deviceOnlyRecords();
-      if (deviceOnly > 0) {
-        window.alert(
+      const risk = await signOutRisk();
+
+      // Refused, not confirmed. These records exist in exactly one place on
+      // earth and no dialog wording makes destroying them acceptable on a
+      // mis-tap. But the refusal now ENDS somewhere: OK goes to the page that
+      // can fix it, with the Save button on it.
+      if (risk.blocked > 0) {
+        const n = risk.blocked;
+        const go = window.confirm(
           [
-            `${deviceOnly} record${deviceOnly === 1 ? "" : "s"} exist only in this browser.`,
+            `${n} record${n === 1 ? "" : "s"} exist${n === 1 ? "s" : ""} only in this browser.`,
             "Your household keeps records on its own devices, so these are not on our server and we have no copy. Signing out would delete them.",
-            'Open "Your copy" and press Save first — then sign out.',
+            "Press OK to open Your copy and save them — you can sign out straight after. Press Cancel to stay here.",
           ].join("\n\n"),
         );
         setBusy(false);
+        if (go) router.push("/vault");
         return;
       }
 
-      const pending = await pendingCaptures();
-      if (
-        pending > 0 &&
-        !window.confirm(
-          `${pending} record${pending === 1 ? "" : "s"} you added while offline ${
-            pending === 1 ? "has" : "have"
-          } not reached the server yet.\n\n` +
-            `Logging out now discards ${pending === 1 ? "it" : "them"}. Go back online first if you want ${
-              pending === 1 ? "it" : "them"
-            } saved.`,
-        )
-      ) {
-        setBusy(false);
-        return;
+      // Not yet on the server, but going there. Real loss if discarded, and
+      // recoverable by going back online first — so it is the user's call.
+      // signOutAndForget tries once more to send them before clearing anything.
+      if (risk.unsent > 0) {
+        const n = risk.unsent;
+        const ok = window.confirm(
+          `${n} record${n === 1 ? "" : "s"} you added ${n === 1 ? "has" : "have"} not reached the server yet.\n\n` +
+            `Signing out now tries to send ${n === 1 ? "it" : "them"} first, and discards ${
+              n === 1 ? "it" : "them"
+            } if that fails. Go back online first if you want to be sure.`,
+        );
+        if (!ok) {
+          setBusy(false);
+          return;
+        }
       }
 
       const r = await signOutAndForget();

@@ -124,6 +124,7 @@ export async function countLocalRecords(): Promise<number> {
   return (await read()).length;
 }
 
+
 /**
  * Append a record to the device's own ledger.
  *

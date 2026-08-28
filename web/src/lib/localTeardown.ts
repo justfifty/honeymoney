@@ -26,37 +26,120 @@
 // to do. Signing out forgets where it is; it does not reach through and erase
 // it.
 //
-// Unsent captures are also never destroyed silently. `pendingCaptures()` exists
-// so the UI can say "3 records have not been sent yet" and let the person
-// decide, rather than a log-out quietly throwing away a spend they typed in a
-// car park this morning.
+// Unsent captures are also never destroyed silently. `signOutRisk()` exists so
+// the UI can say "3 records have not been sent yet" and let the person decide,
+// rather than a log-out quietly throwing away a spend they typed in a car park
+// this morning.
+//
+// There is deliberately ONE such counter. There used to be two — a queue count
+// and a ledger count — and the sign-out path checked the wrong one against the
+// wrong records. A second nearly-right way to ask "what would I lose?" is how
+// that happened, so it is not left lying around for the next caller.
 
 import { flush, list } from "./offlineQueue";
-import { countLocalRecords } from "./localLedger";
+import { listLocalRecords, syncLedger, type LocalRecord } from "./localLedger";
+import { getMeta } from "./localVault";
 
 /**
- * Records that exist ONLY in this browser and nowhere else.
+ * What signing out on this device would actually destroy.
  *
- * In local-only mode these are the household's real records, not a cache, and
- * `signOutAndForget` deletes the database they live in. Clearing them without
- * asking would destroy data the user believed was saved — the single worst
- * thing this application could do — so the caller must check this first and
- * offer to write them to the chosen file.
+ * ── THE BUG THIS REPLACES ──────────────────────────────────────────────────
+ *
+ * This used to be `deviceOnlyRecords()`, and it returned the LENGTH OF THE
+ * WHOLE LOCAL LEDGER. That was true when only local-only households wrote
+ * there. It stopped being true when the ordinary capture path started writing
+ * every spend locally first (origin "local_first") — from then on the ledger
+ * held a row for every record ever typed on the device, and the overwhelming
+ * majority of them were sitting safely on the server with `syncedAt` set.
+ *
+ * The effect: add one spend, and sign-out refused for ever. It told you to save
+ * a copy first, and saving did not help, because writing the vault file does
+ * not remove rows from the ledger — so the count it was checking could never
+ * reach zero. There was no sequence of actions that unblocked it. Reported from
+ * a shared household browser where two people take turns signing in, which is
+ * precisely the device this product is for and the one place sign-out has to
+ * work.
+ *
+ * ── WHAT IS ACTUALLY AT RISK ───────────────────────────────────────────────
+ *
+ *   blocked  — local-only records that are not in the user's own file yet.
+ *              These exist in one place on earth and sign-out deletes it.
+ *   unsent   — records that have not reached the server. Real loss, but a
+ *              capture rather than an archive, and recoverable by going back
+ *              online first. The user decides.
+ *
+ * A local-only record that IS in the file is not at risk and does not appear in
+ * either number: the file is the copy, and the whole point of keeping one is
+ * that the browser is then disposable.
  */
-export async function deviceOnlyRecords(): Promise<number> {
-  try {
-    return await countLocalRecords();
-  } catch {
-    return 0;
-  }
+export interface SignOutRisk {
+  /** Local-only records not yet written to the user's file. Refuse on these. */
+  blocked: number;
+  /** Records not yet acknowledged by the server. Confirm on these. */
+  unsent: number;
+  /** True when a saved copy exists and is current enough to cover `blocked`. */
+  copyCoversAll: boolean;
 }
 
-/** How many offline captures are still waiting to reach the server. */
-export async function pendingCaptures(): Promise<number> {
+/**
+ * The decision itself, as a pure function of what the device holds.
+ *
+ * Split out from the storage reads on purpose. The bug this file exists to fix
+ * was not a broken IndexedDB call — every read worked perfectly and returned
+ * exactly what it was asked for. It was a WRONG PREDICATE, which is the kind of
+ * defect that looks correct in review, cannot be reproduced without a populated
+ * browser, and is only caught by asking the rule directly. So the rule is
+ * asked directly, by scripts/check-signout.mts.
+ *
+ * @param rows    every row in the local ledger
+ * @param savedAt when the user's own file was last written, or 0 for never
+ * @param queued  entries still sitting in the legacy offline queue
+ */
+export function assessSignOutRisk(
+  rows: Pick<LocalRecord, "origin" | "syncedAt" | "createdAt">[],
+  savedAt: number,
+  queued: number,
+): SignOutRisk {
+  // syncedAt is the whole test. A row the server has acknowledged is a cache of
+  // something safe, and counting it as a risk is what made sign-out impossible.
+  const unacknowledged = rows.filter((r) => !r.syncedAt);
+  const localOnly = unacknowledged.filter((r) => r.origin === "local_only");
+  const unsent = unacknowledged.filter((r) => r.origin !== "local_only");
+
+  // A local-only record is covered once the file was written AFTER it was
+  // recorded — sync() folds the whole ledger into the snapshot, so one write
+  // covers everything that existed at that moment. Compared per record rather
+  // than by count, because "the file has 12 records and so do I" is also true
+  // when they are twelve different records.
+  const uncovered = savedAt
+    ? localOnly.filter((r) => new Date(r.createdAt).getTime() > savedAt)
+    : localOnly;
+
+  return {
+    blocked: uncovered.length,
+    // The old offline queue and the ledger's own unsent rows are the same risk
+    // wearing two hats. Counting only the queue is how an unsent ledger record
+    // would have been swept out silently once the refusal above stopped
+    // catching it.
+    unsent: unsent.length + queued,
+    copyCoversAll: localOnly.length > 0 && uncovered.length === 0,
+  };
+}
+
+export async function signOutRisk(): Promise<SignOutRisk> {
   try {
-    return (await list()).filter((q) => !q.stuck).length;
+    const [rows, meta, queued] = await Promise.all([
+      listLocalRecords().catch(() => []),
+      getMeta().catch(() => null),
+      list()
+        .then((q) => q.filter((e) => !e.stuck).length)
+        .catch(() => 0),
+    ]);
+    const savedAt = meta ? new Date(meta.lastSyncAt).getTime() : 0;
+    return assessSignOutRisk(rows, Number.isFinite(savedAt) ? savedAt : 0, queued);
   } catch {
-    return 0;
+    // Storage unreadable means there is nothing local to lose.
+    return { blocked: 0, unsent: 0, copyCoversAll: false };
   }
 }
 
@@ -110,14 +193,18 @@ export async function signOutAndForget(): Promise<TeardownResult> {
   let sent = 0;
   try {
     if (navigator.onLine) {
-      const r = await flush();
-      sent = r.sent;
+      // BOTH stores. The queue is the old path; the ledger is where every
+      // ordinary capture now waits. Flushing only the first left a record that
+      // had never reached the server to be deleted three lines later by the
+      // very function whose contract is that it tries to save things first.
+      const [q, l] = await Promise.all([flush(), syncLedger().catch(() => ({ sent: 0 }))]);
+      sent = q.sent + l.sent;
     }
   } catch {
     /* best effort — never block a sign-out on a sync */
   }
 
-  const discarded = await pendingCaptures();
+  const discarded = (await signOutRisk()).unsent;
 
   // The cookie first. If anything below throws, the session is already dead,
   // which is the half that matters most.
