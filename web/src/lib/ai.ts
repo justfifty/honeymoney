@@ -47,6 +47,38 @@ export interface CallMeta {
 const egressBytes = (prompt: string, system?: string, image?: string): number =>
   prompt.length + (system?.length ?? 0) + (image?.length ?? 0);
 
+// Ceilings on how long a provider may keep a user waiting. There were none:
+// a hung Gemini or Groq connection held the request open until the platform
+// killed it, and the caller — a dashboard render, an "Ask Honey" box, a receipt
+// being parsed — waited the whole time with nothing on screen. A provider that
+// has not answered by now is not going to; the callers all have a rule-based
+// fallback and reaching it in seconds beats reaching it in minutes.
+//
+// Vision gets longer because an image genuinely takes longer to process.
+const GEN_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS ?? 12_000);
+const VISION_TIMEOUT_MS = Number(process.env.AI_VISION_TIMEOUT_MS ?? 30_000);
+
+async function aiFetch(url: string, init: RequestInit, ms: number): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } catch (e) {
+    if ((e as Error)?.name === "AbortError") {
+      throw new Error(`AI provider did not respond within ${Math.round(ms / 1000)}s.`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// NOT awaited by its callers. This is telemetry: writing a usage row to
+// PocketBase is bookkeeping, and it was sitting between the model's answer and
+// the user seeing it — one whole round trip of latency added to every AI reply
+// so a ledger row could land first. It still lands; it just no longer holds the
+// answer hostage. Failures were already swallowed, so nothing is lost by not
+// waiting for one.
 async function logUsage(
   fn: string,
   provider: string,
@@ -170,7 +202,7 @@ async function geminiGen(prompt: string, opts: GenOpts, fn: string): Promise<str
   const parts: { text: string }[] = [];
   if (opts.system) parts.push({ text: opts.system });
   parts.push({ text: prompt });
-  const res = await fetch(url, {
+  const res = await aiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -179,7 +211,7 @@ async function geminiGen(prompt: string, opts: GenOpts, fn: string): Promise<str
         ? { temperature: 0.1, responseMimeType: "application/json" }
         : { temperature: 0.7 },
     }),
-  });
+  }, GEN_TIMEOUT_MS);
   if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text: string = (data?.candidates?.[0]?.content?.parts ?? [])
@@ -188,7 +220,7 @@ async function geminiGen(prompt: string, opts: GenOpts, fn: string): Promise<str
     .trim();
   if (!text) throw new Error("Gemini returned an empty response.");
   const um = data?.usageMetadata ?? {};
-  await logUsage(
+  void logUsage(
     fn,
     "gemini",
     model,
@@ -204,7 +236,7 @@ async function groqGen(prompt: string, opts: GenOpts, fn: string): Promise<strin
   const messages: { role: string; content: string }[] = [];
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: prompt });
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const res = await aiFetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
@@ -213,13 +245,13 @@ async function groqGen(prompt: string, opts: GenOpts, fn: string): Promise<strin
       temperature: opts.json ? 0.1 : 0.7,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
     }),
-  });
+  }, GEN_TIMEOUT_MS);
   if (!res.ok) throw new Error(`Groq ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Groq returned an empty response.");
   const u = data?.usage ?? {};
-  await logUsage(
+  void logUsage(
     fn,
     "groq",
     model,
@@ -235,7 +267,7 @@ async function ollamaGen(prompt: string, opts: GenOpts, fn: string): Promise<str
   const messages: { role: string; content: string }[] = [];
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: prompt });
-  const res = await fetch(`${base}/api/chat`, {
+  const res = await aiFetch(`${base}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -244,14 +276,14 @@ async function ollamaGen(prompt: string, opts: GenOpts, fn: string): Promise<str
       stream: false,
       ...(opts.json ? { format: "json" } : {}),
     }),
-  });
+  }, GEN_TIMEOUT_MS);
   if (!res.ok) throw new Error(`Ollama ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text: string = (data?.message?.content ?? "").trim();
   if (!text) throw new Error("Ollama returned an empty response.");
   const pin = data.prompt_eval_count || 0;
   const pout = data.eval_count || 0;
-  await logUsage(fn, "ollama", model, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
+  void logUsage(fn, "ollama", model, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
   return text;
 }
 
@@ -308,7 +340,7 @@ async function geminiVision(prompt: string, image: string, opts: VisionOptsResol
   parts.push({ text: prompt });
   parts.push({ inlineData: { mimeType: opts.mimeType, data: image } });
 
-  const res = await fetch(url, {
+  const res = await aiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -317,7 +349,7 @@ async function geminiVision(prompt: string, image: string, opts: VisionOptsResol
         ? { temperature: 0.1, responseMimeType: "application/json" }
         : { temperature: 0.4 },
     }),
-  });
+  }, VISION_TIMEOUT_MS);
   if (!res.ok) throw new Error(`Gemini vision ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text: string = (data?.candidates?.[0]?.content?.parts ?? [])
@@ -329,7 +361,7 @@ async function geminiVision(prompt: string, image: string, opts: VisionOptsResol
   // `model`, not config.geminiModel: this call may have run on a household's own
   // key and model, and logging the server's id filed those tokens under a model
   // that never saw them. The ledger is what /admin costs the month from.
-  await logUsage(
+  void logUsage(
     fn,
     "gemini",
     model,
@@ -347,7 +379,7 @@ async function groqVision(prompt: string, image: string, opts: VisionOptsResolve
     { type: "text", text: opts.system ? `${opts.system}\n\n${prompt}` : prompt },
     { type: "image_url", image_url: { url: `data:${opts.mimeType};base64,${image}` } },
   ];
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const res = await aiFetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
@@ -356,13 +388,13 @@ async function groqVision(prompt: string, image: string, opts: VisionOptsResolve
       temperature: opts.json ? 0.1 : 0.4,
       ...(opts.json ? { response_format: { type: "json_object" } } : {}),
     }),
-  });
+  }, VISION_TIMEOUT_MS);
   if (!res.ok) throw new Error(`Groq vision ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text: string = (data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Groq returned an empty response.");
   const u = data?.usage ?? {};
-  await logUsage(
+  void logUsage(
     fn,
     "groq",
     model,
@@ -379,7 +411,7 @@ async function ollamaVision(prompt: string, image: string, opts: VisionOptsResol
   if (opts.system) messages.push({ role: "system", content: opts.system });
   messages.push({ role: "user", content: prompt, images: [image] });
 
-  const res = await fetch(`${base}/api/chat`, {
+  const res = await aiFetch(`${base}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -388,14 +420,14 @@ async function ollamaVision(prompt: string, image: string, opts: VisionOptsResol
       stream: false,
       ...(opts.json ? { format: "json" } : {}),
     }),
-  });
+  }, VISION_TIMEOUT_MS);
   if (!res.ok) throw new Error(`Ollama vision ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const data = await res.json();
   const text: string = (data?.message?.content ?? "").trim();
   if (!text) throw new Error("Ollama returned an empty response.");
   const pin = data.prompt_eval_count || 0;
   const pout = data.eval_count || 0;
-  await logUsage(fn, "ollama", model, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
+  void logUsage(fn, "ollama", model, { prompt: pin, output: pout, total: pin + pout }, opts.meta);
   return text;
 }
 
