@@ -42,7 +42,7 @@
  *   node scripts/build-demo-video.mjs --no-vo     silent, captions only
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, writeFileSync, rmSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -461,7 +461,15 @@ if (narrate) {
 
 args.push("-filter_complex", filters.join(";"), "-map", "[vout]");
 if (narrate) args.push("-map", "[aout]", "-c:a", "aac", "-b:a", "160k");
-args.push("-c:v", "libx264", "-preset", "medium", "-crf", "21", "-pix_fmt", "yuv420p",
+// CRF 23, not 21, and that is a DELIVERY constraint rather than a taste one.
+// This file is published to Cloudflare Pages by scripts/build-static-site.mjs,
+// and Pages rejects any single file over 25 MiB — not with a warning, with a
+// failed deploy that takes the whole snapshot down with it. At CRF 21 the
+// 2:48 cut came out 28.1 MiB and did exactly that, blocking an unrelated
+// bugfix from reaching the edge. 23 is visually indistinguishable on
+// screen-recording content, which is flat colour and text rather than film
+// grain, and it lands with room to spare.
+args.push("-c:v", "libx264", "-preset", "medium", "-crf", "23", "-pix_fmt", "yuv420p",
   "-movflags", "+faststart", "-r", String(FPS), "-shortest", "-y", OUT);
 
 // Round FIRST, then split: Math.round(acc % 60) can yield 60 and print "1:60".
@@ -470,4 +478,25 @@ console.log(`\n  encoding ${SHOTS.length} beats → ${path.relative(ROOT, OUT)} 
 if (acc > 175) console.warn(`  ⚠️ ${mins}:${String(secs).padStart(2, "0")} — the skill's hard cap is 3:00 and target 2:50. Trim beats.`);
 execFileSync("ffmpeg", args, { stdio: ["ignore", "ignore", "ignore"] });
 writeFileSync(path.join(WORK, "beats.json"), JSON.stringify({ site: SITE, voice: narrate ? VOICE : null, runtime: acc, shots: SHOTS }, null, 2));
-console.log("  done.");
+
+// ⚠️ CLOUDFLARE PAGES REFUSES A FILE OVER 25 MiB. build-static-site.mjs copies
+// web/public and docs/deck into the snapshot, so this video ships to the edge,
+// and an oversized one does not degrade — `wrangler pages deploy` aborts the
+// ENTIRE deploy. That is how a 28.1 MiB encode came to block a receipt-scanning
+// fix that had nothing to do with the video.
+//
+// So the ceiling is asserted here, next to the encoder that can breach it,
+// rather than discovered at the edge by a deploy that was about something else.
+// The deck script carries its own 5 MB ceiling for the same reason.
+const PAGES_LIMIT_MIB = 25;
+const sizeMiB = statSync(OUT).size / 1024 / 1024;
+console.log(`  done — ${sizeMiB.toFixed(1)} MiB.`);
+if (sizeMiB >= PAGES_LIMIT_MIB) {
+  console.error(
+    `\n  ✗ ${sizeMiB.toFixed(1)} MiB exceeds Cloudflare Pages' ${PAGES_LIMIT_MIB} MiB per-file limit.\n` +
+    `    Publishing this would fail the whole snapshot deploy, not just the video.\n` +
+    `    Raise -crf (23 → 25 costs little on screen content) or trim beats, then rebuild\n` +
+    `    with --no-shoot to re-encode without re-capturing or re-narrating.`,
+  );
+  process.exit(1);
+}
