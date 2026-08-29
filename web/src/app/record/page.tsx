@@ -9,7 +9,7 @@ import { t, type Locale } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
 import { fmtMoney, shortDate } from "@/lib/format";
 import AddTransaction from "../dashboard/AddTransaction";
-import Logo from "../Logo";
+import PetCat from "./PetCat";
 
 export const dynamic = "force-dynamic";
 
@@ -67,25 +67,17 @@ export default async function RecordPage() {
     // scanner — would otherwise widen the whole page past the viewport and take
     // the header and tab bar sideways with it.
     <main className="mx-auto min-h-full w-full min-w-0 max-w-lg px-4 py-5 sm:px-6">
-      <header className="flex items-baseline justify-between gap-2">
-        <h1 className="flex items-center gap-1.5 font-display text-xl font-semibold tracking-tight">
-          <Logo size={22} /> {tr("cap.title")}
-        </h1>
-        <Link href="/import" className="text-xs text-amber-600 hover:underline">
-          {tr("nav.import")} →
-        </Link>
-      </header>
-      <p className="mt-1 text-sm text-zinc-500">{tr("cap.subtitle")}</p>
-
-      {/* Composition as CONTEXT — a statement of who this household is, not a
-          switcher. The old persona control read as something to change per
-          record, which is exactly the confusion Task 6 splits apart. Nothing is
-          shown for a household of one: there is no context to establish. */}
-      {composition !== "individual" && (
-        <p className="mt-1 text-xs text-zinc-400">
-          {tr("rec.comp.label")}: {tr(`rec.comp.${composition}`)}
-        </p>
-      )}
+      {/* Honey, the cat, stands where the title, the subtitle and the "Import →"
+          link used to. She carries the page's <h1> (visually hidden, so the
+          outline and every screen reader are unchanged) and the household
+          composition, which is still CONTEXT rather than a switcher — a
+          statement of who this household is, and nothing at all for a household
+          of one, because there is no context to establish. Import is one tap
+          away on /more, alongside every other secondary destination. */}
+      <PetCat
+        lang={locale}
+        household={composition === "individual" ? null : tr(`rec.comp.${composition}`)}
+      />
 
       {canWrite ? (
         <div className="mt-4">

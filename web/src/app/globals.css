@@ -248,3 +248,62 @@ a,
   filter: blur(7px);
   user-select: none;
 }
+
+/* ── Honey, the cat on /record ──────────────────────────────────────────────
+   Everything here is a COMPOSITED property (transform / opacity) on a small,
+   fixed set of nodes. record/PetCat.tsx explains why that is a hard rule on
+   this route: check-tap.mjs fails /record below ~40fps under a 4x CPU throttle,
+   and a screen whose frames stall is a screen whose taps get dropped.
+
+   Idle motion lives here rather than in JS on purpose. Breathing and the
+   drifting sparks run on the compositor and never wake the main thread, so an
+   untouched /record costs nothing; PetCat only starts a requestAnimationFrame
+   once a pointer or a key actually touches the panel. */
+@keyframes hm-cat-breathe {
+  0%, 100% { transform: scale(1, 1) translateY(0); }
+  50%      { transform: scale(1.018, 0.985) translateY(1.5px); }
+}
+.hm-cat-breathe {
+  animation: hm-cat-breathe 3.8s ease-in-out infinite;
+  /* Bottom-anchored: a cat breathing from its centre looks like it is being
+     inflated, one breathing from where it sits looks alive. */
+  transform-origin: 50% 92%;
+}
+
+@keyframes hm-cat-drift {
+  0%   { transform: translate3d(0, 6px, 0) scale(0.85); }
+  50%  { transform: translate3d(4px, -8px, 0) scale(1.15); }
+  100% { transform: translate3d(0, 6px, 0) scale(0.85); }
+}
+.hm-cat-spark {
+  animation-name: hm-cat-drift;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+/* The cursor glow. Sized and centred here so PetCat only ever writes a
+   translate — a per-frame background-position or width would be a paint. */
+.hm-cat-glow {
+  width: 240px;
+  height: 240px;
+  margin-left: -120px;
+  margin-top: -120px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 117, 24, 0.28) 0%, rgba(255, 117, 24, 0) 68%);
+  transition: opacity 320ms ease;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The cat sits still and the field stops drifting. The petting game keeps
+     working — the meter still fills and the cat still answers in words. See
+     rule 4 above: no animation must not degrade to no feedback. */
+  .hm-cat-breathe,
+  .hm-cat-spark {
+    animation: none;
+  }
+  .hm-cat-glow {
+    display: none;
+  }
+}

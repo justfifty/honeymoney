@@ -950,6 +950,22 @@ const en: Dict = {
 
 
   // ── Record (capture) ───────────────────────────────────────────────────────
+  // Honey, the cat at the top of /record — see record/PetCat.tsx. Warm, never
+  // cute at the expense of the money: the celebration line is the one that
+  // points back at the input, because delight that does not end in a logged
+  // spend is decoration.
+  "pet.aria": "Honey the cat — tap, or drag her about, to pet her",
+  "pet.caption": "Honey · your money cat",
+  "pet.caption.household": "Honey · {who}",
+  "pet.say.greet": "Hi. What did we spend today?",
+  "pet.say.hello": "Oh good, you're back.",
+  "pet.say.boop": "Boop!",
+  "pet.say.drag": "Wheee —",
+  "pet.say.pet1": "Purrrr…",
+  "pet.say.pet2": "Yes. Exactly there.",
+  "pet.say.pet3": "More. I am a very expensive cat.",
+  "pet.say.happy": "Purrfect. Now tell me what you spent 👇",
+  "pet.say.again": "…again? Go on then.",
   "cap.title": "Record a spend",
   "cap.subtitle": "Type it, or point a camera at it.",
   "cap.placeholder": "kopi 6.50",
@@ -1812,6 +1828,18 @@ const ms: Dict = {
   "rec.comp.individual": "Anda sahaja",
   "rec.comp.couple": "Anda dan pasangan",
   "rec.comp.family": "Keluarga anda",
+  "pet.aria": "Honey si kucing — ketik, atau seret dia, untuk membelainya",
+  "pet.caption": "Honey · kucing duit anda",
+  "pet.caption.household": "Honey · {who}",
+  "pet.say.greet": "Hai. Apa yang kita belanja hari ini?",
+  "pet.say.hello": "Baguslah, anda kembali.",
+  "pet.say.boop": "Bup!",
+  "pet.say.drag": "Wiii —",
+  "pet.say.pet1": "Purrrr…",
+  "pet.say.pet2": "Ya. Di situ betul.",
+  "pet.say.pet3": "Lagi. Saya kucing yang sangat mahal.",
+  "pet.say.happy": "Sempurna. Sekarang beritahu saya perbelanjaan anda 👇",
+  "pet.say.again": "…sekali lagi? Baiklah.",
   "g.sankey.transferNote": "Wang yang anda pindahkan ke simpanan atau matlamat berakhir pada matlamat itu di sini — ia tidak meninggalkan isi rumah, jadi ia tidak dilukis sebagai perbelanjaan.",
 };
 
