@@ -20,7 +20,16 @@
 // do not belong in the history of a source repository. Re-run it after a fresh
 // clone, and on any machine that builds the static snapshot.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, copyFileSync } from "node:fs";
+import {
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  statSync,
+  copyFileSync,
+  unlinkSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -31,16 +40,62 @@ const APPLY = process.argv.includes("--apply");
 // Copied from node_modules rather than downloaded: they are already pinned by
 // package-lock, so taking them from disk means the served worker is exactly the
 // version the app was built against. A downloaded copy could drift.
+//
+// ── WHY THE CORE LIST IS READ OUT OF THE WORKER INSTEAD OF WRITTEN HERE ─────
+//
+// It used to be nine hand-written filenames, and eight of them were the wrong
+// ones. tesseract.js-core ships each core THREE ways — `x.js` + `x.wasm` (a
+// loader that fetches its binary at runtime) and `x.wasm.js` (the same core with
+// the binary inlined) — and the worker only ever reaches for the third. It
+// builds the name itself, from the browser's SIMD support:
+//
+//   corePath + (relaxedSimd ? "/tesseract-core-relaxedsimd-lstm.wasm.js"
+//             : simd        ? "/tesseract-core-simd-lstm.wasm.js"
+//                           : "/tesseract-core-lstm.wasm.js")
+//
+// then importScripts() it. So staging `tesseract-core-simd.js` and
+// `tesseract-core-simd.wasm` put 12 MB on the origin that nothing can ask for,
+// while every name the worker DOES ask for 404'd — and because corePath points
+// at our origin for every language, there was no CDN left to fall back to. The
+// whole on-device tier failed at "loading tesseract core", one caught exception
+// before any pixel of the receipt was read, and the user saw "Scan failed".
+// Nothing about it looked like a missing file: public/ocr was full.
+//
+// The fix is to stop restating the library's own naming scheme. worker.min.js
+// contains those literals; take them from there, so a tesseract upgrade that
+// renames or adds a core is followed automatically instead of silently leaving
+// the app pointing at a directory of files from the previous major.
+const CORE_RE = /tesseract-core[a-z0-9-]*\.wasm\.js/g;
+
+function coresTheWorkerAsksFor(workerSrc) {
+  const all = [...new Set(workerSrc.match(CORE_RE) ?? [])];
+  // The `-lstm` builds are the LSTM-only engine. The others are the legacy
+  // Tesseract engine, reachable only via `legacyCore: true`, which SpendCapture
+  // never passes — 14 MB for a code path the app does not have.
+  const lstm = all.filter((f) => f.includes("-lstm."));
+  if (!lstm.length) {
+    // Better to stop than to stage nothing and write a manifest that says the
+    // engine is complete. An empty core list IS the bug this comment describes.
+    throw new Error(
+      "Found no tesseract-core-*.wasm.js names in worker.min.js — tesseract.js " +
+        "has changed how it loads its core. Read dist/worker.min.js and update CORE_RE.",
+    );
+  }
+  return lstm;
+}
+
+const workerRel = "tesseract.js/dist/worker.min.js";
+const workerSrc = existsSync(join(web, "node_modules", workerRel))
+  ? readFileSync(join(web, "node_modules", workerRel), "utf8")
+  : "";
+if (!workerSrc) {
+  console.log("  ✗ tesseract.js is not installed (run npm install)");
+  process.exit(1);
+}
+
 const LOCAL = [
-  ["tesseract.js/dist/worker.min.js", "worker.min.js"],
-  ["tesseract.js-core/tesseract-core-simd.wasm", "tesseract-core-simd.wasm"],
-  ["tesseract.js-core/tesseract-core-simd.js", "tesseract-core-simd.js"],
-  ["tesseract.js-core/tesseract-core.wasm", "tesseract-core.wasm"],
-  ["tesseract.js-core/tesseract-core.js", "tesseract-core.js"],
-  ["tesseract.js-core/tesseract-core-simd-lstm.wasm", "tesseract-core-simd-lstm.wasm"],
-  ["tesseract.js-core/tesseract-core-simd-lstm.js", "tesseract-core-simd-lstm.js"],
-  ["tesseract.js-core/tesseract-core-lstm.wasm", "tesseract-core-lstm.wasm"],
-  ["tesseract.js-core/tesseract-core-lstm.js", "tesseract-core-lstm.js"],
+  [workerRel, "worker.min.js"],
+  ...coresTheWorkerAsksFor(workerSrc).map((f) => [`tesseract.js-core/${f}`, f]),
 ];
 
 // The "fast" models, not "best". Measured: fast eng is 10.9 MB, best is 12.8 MB,
@@ -115,6 +170,19 @@ for (const lang of LANGS) {
   writeFileSync(dst, buf);
   staged++;
   console.log(`  ✓ ${name} (${human(buf.length)})`);
+}
+
+// Cores left behind by an earlier tesseract version are not merely wasted disk:
+// they are what made the wrong-filenames bug invisible. public/ocr looked full,
+// so nobody thought to ask whether it held the files the worker actually loads.
+// The directory should contain exactly the current engine and nothing else.
+if (APPLY) {
+  const keep = new Set(LOCAL.map(([, to]) => to));
+  for (const f of readdirSync(OUT)) {
+    if (!f.startsWith("tesseract-core") || keep.has(f)) continue;
+    unlinkSync(join(OUT, f));
+    console.log(`  − ${f} — removed, no tesseract.js version here asks for it`);
+  }
 }
 
 // A manifest the service worker reads, so the precache list cannot drift from

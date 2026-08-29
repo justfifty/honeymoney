@@ -107,8 +107,7 @@ try {
   // household: three rows reading "Saving −RM500" beside one reading
   // "Saving →RM500", same words, same amount, same day — and the wrong ones
   // counted against that household's spending.
-  console.log("
-0a-ii. savings is a transfer, so neither button may veto it:");
+  console.log("\n0a-ii. savings is a transfer, so neither button may veto it:");
   ok("- Money out + a savings word is savings, not a spend", classifyText("Saving 500", { sign: "out" }).category === "savings");
   ok("- Money out + Malay savings word too", classifyText("simpan 500", { sign: "out" }).category === "savings");
   ok("- Money out + ASB is savings", classifyText("ASB 300", { sign: "out" }).category === "savings");
