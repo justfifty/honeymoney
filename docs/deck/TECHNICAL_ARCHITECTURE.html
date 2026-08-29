@@ -72,7 +72,7 @@
   <div class="head">
     <span class="badge">MAIC Nexus 2026 &middot; Track T3</span>
     <h1>Technical Architecture &mdash; HoneyMoney</h1>
-    <p class="sub"><strong>Team JUST50</strong> &middot; 27 August 2026 &middot; Live at
+    <p class="sub"><strong>Team JUST50</strong> &middot; 30 August 2026 &middot; Live at
     honeymoney.app &middot; Companion document: <em>AI Disclosure</em></p>
   </div>
 
@@ -102,8 +102,7 @@
       the browser</td><td><strong>Zero tokens, zero transmission, by default.</strong> Works offline. No bank connection, ever.</td></tr>
     <tr><td><strong>4. AI</strong></td><td>Gemini Flash, Groq, or local Ollama &mdash; switchable
       per deployment</td><td>Optional and replaceable. Per-call cost ledger. No lock-in, and no model in the critical path.</td></tr>
-    <tr><td><strong>5. Delivery</strong></td><td>Cloudflare Tunnel, Pages, R2</td><td>A public
-      surface that stays up when the origin does not; backups leave as ciphertext.</td></tr>
+    <tr><td><strong>5. Delivery</strong></td><td>Cloudflare Pages, DOM Cloud (SG), R2</td><td>A public surface that stays up when the origin does not; backups leave as ciphertext.</td></tr>
   </table>
 
   <h2>3. The knowledge graph</h2>
@@ -191,11 +190,20 @@
   end-to-end encrypted ledger; the backup is the artefact that is sealed.</p>
 
   <h2>8. Deployment</h2>
-  <p>The Next.js server runs on hardware the team controls, published through a named Cloudflare
-  Tunnel, with a Pages snapshot serving the public surface when the origin is not up. PocketBase
-  runs on a Singapore host with settings encryption. The whole stack is <strong>one binary plus one
-  Node app</strong> &mdash; which is what makes self-hosting a real option rather than a slide, at
-  near-zero infrastructure cost.</p>
+  <!-- 2026-08-30. This said "hardware the team controls, published through a named
+       Cloudflare Tunnel", which described a laptop and stopped being true when the app
+       moved to DOM Cloud: deploy/pages/_worker.js proxies to honeymoney-app.domcloud.dev
+       and web/.env.local points PocketBase at honeymoney-pb.domcloud.dev. An architecture
+       document that misplaces the server also misplaces every user record on it, and it
+       is the claim a judge is most entitled to test. The self-hosting point survives the
+       correction intact -- arguably better, because a rented host proves the portability
+       the sentence was asserting. -->
+  <p>The Next.js server and PocketBase both run on <strong>DOM Cloud, a rented Singapore
+  host</strong>, with a Cloudflare Pages snapshot serving the public surface and proxying every
+  dynamic route to that origin &mdash; so the public pages stay up when the origin does not. The
+  whole stack is <strong>one binary plus one Node app</strong>, which is what lets it move: it runs
+  the same way on a rented host, an employer's server or a laptop, at near-zero infrastructure
+  cost. Settings and household AI keys are encrypted at rest.</p>
 
   <h2>9. How each claim is verified</h2>
   <table>
