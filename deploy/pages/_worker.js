@@ -56,18 +56,43 @@ export default {
       // A MISSING content-hashed asset must 404, not fall back to index.html.
       // Pages answers an unknown path with the site's HTML at status 200, and
       // for /_next/static that is actively poisonous: those URLs are served
-      // `immutable, max-age=14400`, so a browser stores HTML under a .js URL
-      // and then tries to execute it for four hours. React never hydrates and
-      // the page looks fine while nothing responds to a click — which is
-      // exactly how a snapshot/origin build mismatch presented on 2026-08-24,
-      // long after the files themselves had been fixed at the edge.
+      // immutable, so a browser stores HTML under a .js URL and then tries to
+      // execute it until the entry expires. React never hydrates and the page
+      // looks fine while nothing responds to a click — which is exactly how a
+      // snapshot/origin build mismatch presented on 2026-08-24, long after the
+      // files themselves had been fixed at the edge.
       //
       // 404 makes the same mistake loud and, crucially, not cached as valid.
       if (pathname.startsWith("/_next/static/") && res.status === 200) {
         const type = res.headers.get("content-type") || "";
         if (!/javascript|css|font|image|json|octet-stream|wasm|video|audio/i.test(type)) {
-          return new Response(null, { status: 404 });
+          return missingAsset();
         }
+      }
+
+      // ⚠️ A 404 HERE MUST NEVER BE CACHEABLE. _headers matches on PATH, not on
+      // status, so the `/_next/static/*` immutable rule is attached to a miss
+      // just as happily as to a hit. (What actually reaches the browser is
+      // `public, max-age=14400, immutable` — the zone's Browser Cache TTL caps
+      // the year this repo's _headers asks for. Measured, not assumed; four
+      // hours is still far longer than any deploy.) Combine that with a
+      // content-hashed filename — where the hash IS the content, so the next
+      // build emits the same name — and one request during a bad deploy window
+      // pins a 404 in that browser until it expires. No redeploy can dislodge
+      // it; the visitor has to hard-reload or clear site data, and visitors do
+      // not do that — they conclude the site is broken.
+      //
+      // This is not hypothetical. On 2026-08-30 the app was shipped to the
+      // origin without republishing the Pages snapshot, and for the few minutes
+      // that gap was open every new asset URL 404'd at the edge while serving
+      // 200 at the origin. Anyone who loaded the site in that window kept an
+      // unstyled, never-hydrating page afterwards.
+      //
+      // no-store costs nothing on the happy path (a present asset is a 200 and
+      // keeps its immutable header) and removes the only way this failure
+      // outlives the deploy that caused it.
+      if (pathname.startsWith("/_next/static/") && res.status !== 200) {
+        return missingAsset(res.status);
       }
       return res;
     }
@@ -97,6 +122,20 @@ export default {
 };
 
 // ── routing helpers ──────────────────────────────────────────────────────────
+
+/**
+ * The one response in this worker that must outlive nothing. See the long note
+ * at the call site: a cacheable 404 on a content-hashed URL is permanent.
+ */
+function missingAsset(status = 404) {
+  return new Response(null, {
+    status,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      Pragma: "no-cache",
+    },
+  });
+}
 
 function normalize(pathname) {
   const p = pathname.replace(/\/{2,}/g, "/").replace(/(.)\/+$/, "$1");
