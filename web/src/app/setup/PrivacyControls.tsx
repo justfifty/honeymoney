@@ -56,8 +56,44 @@ const COPY: Record<string, { label: string; help: string }> = {
   },
 };
 
+interface AiPosture {
+  provider: string;
+  local: boolean;
+}
+
+/**
+ * What the two AI switches ACTUALLY mean, right now, in one sentence.
+ *
+ * Two checkboxes are a setting; a consequence is a decision. A household can
+ * read "Let an AI service see your figures and receipts" and still not know
+ * whether declining costs them receipt scanning (it does not) or whether
+ * accepting sends Honey their bank balance (it does not). So the panel states
+ * the outcome of the combination they have actually chosen.
+ *
+ * `local` wins over everything. On a self-hosted deployment running Ollama no
+ * household data can leave whatever these consents say, and telling that
+ * household their receipts go to Google would be false about their own machine.
+ */
+function postureSentence(cloudData: boolean, phrasing: boolean, ai: AiPosture | null): string {
+  if (ai?.local) {
+    return "The AI runs on the same computer as HoneyMoney, so nothing about your money leaves it — whatever these switches say.";
+  }
+  const engine = ai?.provider === "groq" ? "Groq" : "Google";
+  if (!cloudData && !phrasing) {
+    return "No AI is involved at all. Receipts are read on your own phone, and Honey answers from a fixed template — the same numbers, plainer wording.";
+  }
+  if (!cloudData) {
+    return `Nothing about your money leaves. Receipts are read on your own phone, and ${engine} is sent only placeholder names like {saving} — never your amounts, merchants or question.`;
+  }
+  if (!phrasing) {
+    return `Receipts and statements you choose to scan are sent to ${engine}. Your figures are not, and Honey answers from a fixed template.`;
+  }
+  return `Receipts and statements you choose to scan are sent to ${engine}. Your figures are not — Honey is only ever sent placeholder names like {saving}.`;
+}
+
 export default function PrivacyControls() {
   const [purposes, setPurposes] = useState<PurposeState[] | null>(null);
+  const [ai, setAi] = useState<AiPosture | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -67,7 +103,10 @@ export default function PrivacyControls() {
     fetch("/api/account/consent")
       .then((r) => r.json())
       .then((d) => {
-        if (alive && d.ok) setPurposes(d.purposes);
+        if (alive && d.ok) {
+          setPurposes(d.purposes);
+          setAi(d.aiPosture ?? null);
+        }
       })
       .catch(() => {
         if (alive) setErr("Could not load your privacy settings.");
@@ -117,6 +156,18 @@ export default function PrivacyControls() {
         <Link href="/legal/ai" className="text-amber-600 hover:underline">
           What the AI features send
         </Link>
+      </p>
+
+      {/* The consequence, above the controls that cause it. Below them it reads
+          as a footnote to settings already made; above, it is the thing the
+          settings are for. */}
+      <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+        <strong>Right now:</strong>{" "}
+        {postureSentence(
+          purposes.some((p) => p.key === "ai_cloud_data" && p.granted),
+          purposes.some((p) => (p.key === "ai_phrasing" || p.key === "ai_processing") && p.granted),
+          ai,
+        )}
       </p>
 
       <div className="space-y-3">

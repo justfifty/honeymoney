@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { isDatabaseConfigured } from "@/lib/config";
+import { isDatabaseConfigured, activeAiProvider } from "@/lib/config";
+import { isLocalProvider } from "@/lib/aiGuard";
 import { requireContext } from "@/lib/household";
 import { apiError } from "@/lib/apiError";
 import {
@@ -46,6 +47,16 @@ export async function GET() {
         answeredAt: consents[p.key]?.at ?? null,
         isStale: consents[p.key]?.isStale ?? false,
       })),
+      // WHAT THE SWITCHES ACTUALLY MEAN, which depends on the server as well as
+      // on the household. On a self-hosted deployment running Ollama, no
+      // household data can leave whatever these consents say — so a settings
+      // screen that told that household "your receipts are sent to Google"
+      // would be stating a falsehood about their own machine. The panel needs
+      // this to describe the posture rather than guess at it.
+      aiPosture: {
+        provider: activeAiProvider(),
+        local: isLocalProvider(activeAiProvider()),
+      },
     });
   } catch (err) {
     return apiError(err);
