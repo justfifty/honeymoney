@@ -122,3 +122,9 @@ restored/
 # Staged by web/scripts/stage-ocr-assets.mjs — 28 MB of OCR engine + language
 # models. Regenerate with `npm run ocr:assets`, never commit.
 web/public/ocr/
+
+# Superseded deck and submission material. Kept on disk, out of the repo.
+# 79 MB of PDFs, .docx and an mp4 whose only difference from the live ones is a
+# date in the filename -- history already records every version that shipped, so
+# carrying them in the tree costs every clone and proves nothing.
+docs/deck/Archived/
