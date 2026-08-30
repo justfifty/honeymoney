@@ -254,6 +254,7 @@ export async function askHoney(
         fn: "askHoney",
         creds,
         dataClass: 2,
+        subjectId: opts.userId ?? null,
         meta: { tenantId, source: "web" },
       });
       // The enforcement. A model that introduced any figure stage 2 did not
@@ -275,6 +276,7 @@ export async function askHoney(
       fn: "askHoney",
       creds,
       dataClass: 1,
+      subjectId: opts.userId ?? null,
       meta: { tenantId, source: "web" },
     });
 

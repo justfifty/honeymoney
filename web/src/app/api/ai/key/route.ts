@@ -135,6 +135,7 @@ export async function POST(request: Request) {
     try {
       const reply = await aiGenerate("Reply with exactly: OK", {
         dataClass: 0,
+        subjectId: null, // a liveness probe carries nothing of anyone's
         provider,
         creds: { provider, apiKey, url, model: model || undefined },
         fn: "key_validate",

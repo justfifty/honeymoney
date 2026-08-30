@@ -172,6 +172,33 @@ export async function aiConsentGiven(userId: string | null | undefined): Promise
  * with egress rather than with the word "AI" — which is why a family running
  * this on one laptop is asked for less, not more.
  */
+/**
+ * The single consent gate every provider call passes through.
+ *
+ * Called from lib/ai.ts rather than from each feature, so "did anyone check
+ * consent for this one?" stops being a question that has to be asked per call
+ * site — which is how getHoneyInsight sent bucket labels and RM figures to
+ * Gemini on every dashboard render while the receipt and statement routes were
+ * correctly gated.
+ *
+ * The rule follows egress, not vocabulary:
+ *   local provider → nothing leaves the machine; nothing to consent to.
+ *   class 0        → no household data in the payload at all.
+ *   class 1        → placeholder names only; ai_phrasing.
+ *   class 2        → the household's own figures, labels or documents;
+ *                    ai_cloud_data.
+ */
+export async function assertAiConsent(
+  cls: DataClass,
+  provider: AiProvider,
+  subjectId: string | null,
+): Promise<void> {
+  if (isLocalProvider(provider)) return;
+  if (cls === 0) return;
+  const ok = cls >= 2 ? await aiCloudDataAllowed(subjectId) : await aiConsentGiven(subjectId);
+  if (!ok) throw new AiConsentMissing();
+}
+
 export async function aiCloudDataAllowed(
   userId: string | null | undefined,
   opts: { local?: boolean } = {},

@@ -144,9 +144,10 @@ function coerceExtraction(raw: Partial<ReceiptExtraction>): ReceiptExtraction {
 export async function extractReceipt(
   imageBase64: string,
   mimeType: string,
-  meta?: { tenantId?: string; provider?: AiProvider },
+  meta?: { tenantId?: string; provider?: AiProvider; userId?: string | null },
 ): Promise<ReceiptExtraction> {
   const raw = await aiVision(EXTRACT_PROMPT, imageBase64, {
+    subjectId: meta?.userId ?? null,
     mimeType,
     system: EXTRACT_SYSTEM,
     json: true,
@@ -357,6 +358,7 @@ export async function analyzeReceipt(
   extraction: ReceiptExtraction,
   provider?: AiProvider,
   grounding?: Grounding,
+  userId?: string | null,
 ): Promise<ReceiptAnalysis> {
   const g = grounding ?? (await ground(tenantId));
 
@@ -365,6 +367,7 @@ export async function analyzeReceipt(
   const duplicateOf = duplicateFor(extraction, g);
 
   const raw = await aiGenerate(analyzePrompt(extraction, g), {
+    subjectId: userId ?? null,
     system: ANALYZE_SYSTEM,
     json: true,
     fn: "analyzeReceipt",
@@ -423,6 +426,7 @@ export async function readReceipt(
   tenantId: string,
   imageBase64: string,
   mimeType: string,
+  userId?: string | null,
 ): Promise<ReceiptResult> {
   const provider = activeAiProvider();
   if (!isProviderConfigured(provider)) {
@@ -431,11 +435,11 @@ export async function readReceipt(
     );
   }
 
-  const extraction = await extractReceipt(imageBase64, mimeType, { tenantId, provider });
+  const extraction = await extractReceipt(imageBase64, mimeType, { tenantId, provider, userId });
   const g = await ground(tenantId);
 
   try {
-    const analysis = await analyzeReceipt(tenantId, extraction, provider, g);
+    const analysis = await analyzeReceipt(tenantId, extraction, provider, g, userId);
     return { extraction, analysis, provider };
   } catch (err) {
     // The reasoning step is the part that can fail; the two things that actually

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       ? body.mimeType!
       : "application/pdf";
 
-    const result = await readStatement(ctx.tenant.id, file, body.password, mimeType);
+    const result = await readStatement(ctx.tenant.id, file, body.password, mimeType, ctx.user.id);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     // A locked PDF isn't a failure — it's the app asking for the password. Most

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Unsupported image type: ${mimeType}` }, { status: 415 });
     }
 
-    const result = await readReceipt(ctx.tenant.id, image, mimeType);
+    const result = await readReceipt(ctx.tenant.id, image, mimeType, ctx.user.id);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     return apiError(err);

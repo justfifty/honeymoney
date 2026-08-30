@@ -30,7 +30,12 @@ Voice: warm, encouraging, forward-looking, and MARITAL-SAFE — never blame a sp
 never interrogate past purchases ("what was this RM50 for?"). Focus on proactive
 alignment toward shared goals. Keep it to 2-3 short sentences. Use RM for amounts.`;
 
-export async function honeyInsight(contextText: string, locale: Locale = "en", meta?: AiMeta): Promise<string> {
+export async function honeyInsight(
+  contextText: string,
+  locale: Locale = "en",
+  meta?: AiMeta,
+  subjectId: string | null = null,
+): Promise<string> {
   const langLine = locale === "en" ? "" : `\n\nReply in ${LANG_NAME[locale]}.`;
   return aiGenerate(`Household snapshot:\n${contextText}\n\nGive one insight now:${langLine}`, {
     system: HONEY_SYSTEM,
@@ -39,6 +44,7 @@ export async function honeyInsight(contextText: string, locale: Locale = "en", m
     // ("Ma's dialysis") alongside exact RM figures. This path ran on every
     // dashboard load and nothing was watching it.
     dataClass: 2,
+    subjectId,
     meta,
   });
 }

@@ -12,6 +12,7 @@ import {
   type AiProvider,
 } from "./config";
 import {
+  assertAiConsent,
   assertClassAllowed,
   isLocalProvider,
   providerForClass,
@@ -131,6 +132,27 @@ export interface GenOpts {
    * convention that call sites "should" set it is not.
    */
   dataClass: DataClass;
+  /**
+   * WHOSE data this is — the user whose consent governs the call.
+   *
+   * Required for exactly the reason `dataClass` is, and added because the
+   * argument had already been proven right the hard way. Consent was checked at
+   * individual call sites: the receipt route had it, the statement route had it,
+   * and getHoneyInsight did not — so every dashboard render described a
+   * household's money to Google while the disclosure said AI was off until
+   * asked. Nothing was wrong with the check. The wrongness was that adding a
+   * new AI call site required *remembering* to write one.
+   *
+   * So consent is enforced HERE, at the chokepoint every provider call already
+   * funnels through, next to assertClassAllowed which has always worked this
+   * way. A new call site cannot omit it, because the type does not compile
+   * without it.
+   *
+   * `null` means "no data subject" — a health probe, or the public demo where
+   * the personas are fictional. It is a value you have to type, not a field you
+   * can forget, which is the whole point.
+   */
+  subjectId: string | null;
 }
 
 // The household's credentials override the server's environment, field by
@@ -189,6 +211,10 @@ function route(opts: GenOpts, bytes: number): { provider: AiProvider; opts: GenO
 // Generate text with the provider this payload's data class permits.
 export async function aiGenerate(prompt: string, o: GenOpts): Promise<string> {
   const { provider, opts } = route(o, egressBytes(prompt, o.system));
+  // After routing, because the answer depends on WHICH provider ends up
+  // carrying it: providerForClass may divert a class-2 payload to a local
+  // engine, and a payload that never leaves needs no third-party consent.
+  await assertAiConsent(o.dataClass, provider, o.subjectId);
   const fn = opts.fn ?? "aiGenerate";
   if (provider === "groq") return groqGen(prompt, opts, fn);
   if (provider === "ollama") return ollamaGen(prompt, opts, fn);
@@ -324,6 +350,7 @@ export async function aiVision(
   // health data about an identified person, which is a stricter regime than the
   // financial data everyone assumes is the sensitive part here.
   const routed = route({ ...o, dataClass: 2 }, egressBytes(prompt, o.system, imageBase64));
+  await assertAiConsent(2, routed.provider, o.subjectId);
   const opts = routed.opts as VisionOptsResolved;
   const fn = opts.fn ?? "aiVision";
   if (routed.provider === "groq") return groqVision(prompt, imageBase64, opts, fn);
@@ -470,6 +497,7 @@ export async function aiHealth(creds?: AiCreds): Promise<ProviderHealth[]> {
         creds,
         fn: "agentic_check",
         dataClass: 0,
+        subjectId: null, // a liveness probe carries nobody's data
         system: "You are a health probe. Reply with exactly the requested token, nothing else.",
       });
       out.push({

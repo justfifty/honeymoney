@@ -331,7 +331,7 @@ export async function getHoneyInsight(
     return { text: ruleBasedInsight(projection, locale), source: "rule-based" };
   }
   try {
-    const text = await honeyInsight(buildContext(projection), locale);
+    const text = await honeyInsight(buildContext(projection), locale, undefined, userId ?? null);
     return { text, source: "gemini" };
   } catch {
     return { text: ruleBasedInsight(projection, locale), source: "rule-based" };

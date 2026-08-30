@@ -249,6 +249,7 @@ export async function readStatement(
   fileBase64: string,
   password?: string,
   mimeType = "application/pdf",
+  userId?: string | null,
 ): Promise<StatementResult> {
   const provider = activeAiProvider();
   if (!isProviderConfigured(provider)) {
@@ -276,6 +277,7 @@ export async function readStatement(
       rowsPrompt("(the attached image)", knownVendors, "") + "\n\nAlso return the statement header fields.",
       fileBase64,
       {
+        subjectId: userId ?? null,
         mimeType,
         system: EXTRACT_SYSTEM,
         json: true,
@@ -287,7 +289,7 @@ export async function readStatement(
     const parsed = parseJson<{ rows?: Record<string, unknown>[] } & Partial<StatementMeta>>(raw);
     rows = (parsed.rows ?? []).map(coerceRow).filter((r): r is StatementRow => r !== null);
     meta = coerceMeta(parsed);
-    return finalizeStatement(rows, meta, { g, existing, provider, pageCount, scanned, degraded, tenantId });
+    return finalizeStatement(rows, meta, { g, existing, provider, pageCount, scanned, degraded, tenantId, userId: userId ?? null });
   }
 
   const bytes = Buffer.from(fileBase64, "base64");
@@ -310,6 +312,7 @@ export async function readStatement(
       rowsPrompt("(the attached PDF)", knownVendors, "") + "\n\nAlso return the statement header fields.",
       fileBase64,
       {
+        subjectId: userId ?? null,
         mimeType: "application/pdf",
         system: EXTRACT_SYSTEM,
         json: true,
@@ -322,12 +325,13 @@ export async function readStatement(
     rows = (parsed.rows ?? []).map(coerceRow).filter((r): r is StatementRow => r !== null);
     meta = coerceMeta(parsed);
   } else {
-    meta = await readMeta(pdf.pages[0] ?? "", tenantId, provider);
+    meta = await readMeta(pdf.pages[0] ?? "", tenantId, provider, userId ?? null);
 
     const chunks = chunkPages(pdf.pages);
     const perChunk = await Promise.all(
       chunks.map(async (chunk) => {
         const raw = await aiGenerate(rowsPrompt(chunk, knownVendors, meta.statementDate), {
+          subjectId: userId ?? null,
           system: EXTRACT_SYSTEM,
           json: true,
           fn: "readStatement.rows",
@@ -343,7 +347,7 @@ export async function readStatement(
     rows = perChunk.flat();
   }
 
-  return finalizeStatement(rows, meta, { g, existing, provider, pageCount, scanned, degraded, tenantId });
+  return finalizeStatement(rows, meta, { g, existing, provider, pageCount, scanned, degraded, tenantId, userId: userId ?? null });
 }
 
 // Shared tail for both the PDF and image paths: sort, dedupe against the books,
@@ -356,6 +360,8 @@ async function finalizeStatement(
     g: Awaited<ReturnType<typeof ground>>;
     existing: Awaited<ReturnType<typeof loadExisting>>;
     provider: AiProvider;
+    /** Whose statement this is — carried so the AI chokepoint can check consent. */
+    userId: string | null;
     pageCount: number;
     scanned: boolean;
     degraded?: string;
@@ -386,7 +392,7 @@ async function finalizeStatement(
   let guessed: Record<string, { nodeId: string; label: string }> = {};
   if (unknownVendors.length && g.buckets.length) {
     try {
-      guessed = await classifyVendors(unknownVendors, g.buckets, tenantId, provider);
+      guessed = await classifyVendors(unknownVendors, g.buckets, tenantId, provider, ctx.userId);
     } catch {
       // A failed classification just means those rows arrive with no bucket
       // pre-selected. The import still works; the user picks.
@@ -448,9 +454,15 @@ function coerceMeta(raw: Partial<StatementMeta>): StatementMeta {
   };
 }
 
-async function readMeta(head: string, tenantId: string, provider: AiProvider): Promise<StatementMeta> {
+async function readMeta(
+  head: string,
+  tenantId: string,
+  provider: AiProvider,
+  userId: string | null,
+): Promise<StatementMeta> {
   try {
     const raw = await aiGenerate(metaPrompt(head.slice(0, 6000)), {
+      subjectId: userId,
       system: EXTRACT_SYSTEM,
       json: true,
       fn: "readStatement.meta",
@@ -473,6 +485,7 @@ async function classifyVendors(
   buckets: { id: string; label: string; tier: number }[],
   tenantId: string,
   provider: AiProvider,
+  userId: string | null,
 ): Promise<Record<string, { nodeId: string; label: string }>> {
   const raw = await aiGenerate(
     `Assign each merchant to the single best bucket for this household.
@@ -486,6 +499,7 @@ ${JSON.stringify(vendors)}
 Return ONLY strict JSON: { "assignments": [ { "vendor": string, "nodeId": string } ] }
 Every vendor must appear exactly once. Never invent a nodeId.`,
     {
+      subjectId: userId,
       system:
         "You file merchants into a Malaysian household's spending buckets. Rent, utilities, telco, insurance, loan and school fees are commitments the household has already promised — tier 1. Transfers into savings or investment are tier 2. Groceries, food, fuel, retail and everything discretionary is tier 3. Choose only from the ids given.",
       json: true,
