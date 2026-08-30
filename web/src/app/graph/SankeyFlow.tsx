@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
@@ -385,6 +385,76 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
   const tr = (k: string) => translate(lang, k);
 
+  // Endpoint colours, and one gradient def per distinct pair. Derived rather
+  // than stored on the ribbon so `build()` stays a pure layout function with no
+  // opinion about how the result is painted.
+  // ── the flow answers the pointer ────────────────────────────────────────
+  //
+  // Moving across the chart speeds the dots up; leaving it lets them settle
+  // back. It is the one interaction that makes a diagram feel like a live thing
+  // rather than a picture, and it costs almost nothing: ONE CSS variable on the
+  // <svg>, written straight through a ref. No state, no re-render, no work per
+  // ribbon — the browser recomputes 49 animation-durations from one number.
+  //
+  // Scale rather than absolute duration, so each ribbon keeps the individual
+  // speed that makes the field look organic; the pointer stretches the whole
+  // spread at once.
+  //
+  // Capped at a modest 2.2x. This is a chart about somebody's money, and a
+  // diagram that visibly races when you wave at it stops reading as
+  // instrumentation and starts reading as a toy.
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const decay = useRef(0);
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    let raf = 0;
+    let target = 1;
+    const tick = () => {
+      // Eased toward the target rather than snapped to it: a value that jumps
+      // makes the dots visibly teleport, because changing animation-duration
+      // mid-cycle re-times the whole loop.
+      decay.current += (target - decay.current) * 0.08;
+      el.style.setProperty("--hm-flow-scale", decay.current.toFixed(3));
+      target = Math.max(1, target - 0.02); // settles back on its own
+      raf = Math.abs(decay.current - 1) > 0.005 || target > 1 ? requestAnimationFrame(tick) : 0;
+    };
+    const onMove = () => {
+      target = 2.2;
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    el.addEventListener("pointermove", onMove, { passive: true });
+    return () => {
+      el.removeEventListener("pointermove", onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  const { gradients, gradientFor } = useMemo(() => {
+    const colorOf = new Map(placed.map((n) => [n.id, n.color]));
+    const seen = new Map<string, string>();
+    const defs: { id: string; from: string; to: string }[] = [];
+    for (const r of ribbons) {
+      const from = colorOf.get(r.src) ?? r.color;
+      const to = colorOf.get(r.dst) ?? r.color;
+      const key = `${from}>${to}`;
+      if (!seen.has(key)) {
+        // Index, not a hash of the key: the id has to be identical on the
+        // server and in the browser, and it ends up in markup either way.
+        const id = `hm-sank-g${defs.length}`;
+        seen.set(key, id);
+        defs.push({ id, from, to });
+      }
+    }
+    return {
+      gradients: defs,
+      gradientFor: (r: Ribbon) =>
+        seen.get(`${colorOf.get(r.src) ?? r.color}>${colorOf.get(r.dst) ?? r.color}`),
+    };
+  }, [placed, ribbons]);
+
   const dim = (id: string) => focus !== null && id !== focus;
 
   // The brief requires the treatment of transfers to be STATED on the chart, not
@@ -401,6 +471,7 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
   return (
     <div>
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${W} ${H}`}
       /* The 680px floor is applied in CSS at the `sm` breakpoint, NOT from JS.
          Two reasons, both learned the hard way here:
@@ -419,6 +490,29 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
       role="img"
       aria-label="Sankey money flow: income to buckets to spending and savings"
     >
+      {/* GRADIENTS, one per colour PAIR rather than per ribbon.
+          A ribbon carries money from one kind of thing to another — a salary
+          into a bucket, a bucket out to a merchant — and until now it was drawn
+          in a single colour, which meant picking one end and ignoring the
+          other. Fading from the source's colour to the destination's says what
+          the ribbon is FOR, so the gradient is meaning rather than decoration:
+          the eye follows orange turning blue and reads "income became a
+          bucket".
+
+          Keyed by the pair, so 49 ribbons need a handful of defs and not 49.
+          The key is built from CSS variable references, which is fine — they
+          are just strings here, and the browser resolves them per scheme, so
+          gradients follow the colour-blind and high-contrast palettes for
+          free. */}
+      <defs>
+        {gradients.map((g) => (
+          <linearGradient key={g.id} id={g.id} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={g.from} />
+            <stop offset="100%" stopColor={g.to} />
+          </linearGradient>
+        ))}
+      </defs>
+
       {/* column captions */}
       <text x={64} y={26} fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.income")}</text>
       <text x={W / 2} y={26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.buckets")}</text>
@@ -431,7 +525,7 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
             <path
               d={r.d}
               fill="none"
-              stroke={r.color}
+              stroke={active ? `url(#${gradientFor(r)})` : r.color}
               strokeWidth={r.width}
               opacity={active ? 0.5 : 0.08}
             >
@@ -467,7 +561,12 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
                 // as beads on a string, not as flow. A floor keeps the thinnest
                 // ribbons from losing their dash entirely; the ceiling is what
                 // keeps the widest ones looking like movement.
-                strokeWidth={Math.min(6, Math.max(2, r.width * 0.34))}
+                // A WIDER spread than before (was 2-6). Dot size follows ribbon
+                // width, which follows the ringgit amount, so a bigger dot is a
+                // bigger flow — the same encoding the ribbon already uses, said
+                // twice. Too narrow a range and every dot looked alike, which
+                // wasted an encoding that was already there for free.
+                strokeWidth={Math.min(9, Math.max(1.5, r.width * 0.42))}
                 strokeLinecap="round"
                 className="hm-sankey-flow"
                 // Speed AND phase vary per ribbon. Identical timing on every
