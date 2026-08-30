@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
 import ChartEmpty from "./ChartEmpty";
+import { CHART_VARS } from "@/lib/chartPalette";
 
 // Budget vs Actual — one shared RM scale across every bucket, so bar lengths are
 // directly comparable (unlike the dashboard's per-bucket % bars). Each row shows
@@ -19,10 +20,10 @@ export interface BarRow {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  on_track: "#248A54",
-  at_risk: "#E8A012",
-  over_budget: "#C94F4F",
-  unfunded: "#9AA0A6",
+  on_track: CHART_VARS.saved,
+  at_risk: CHART_VARS.atRisk,
+  over_budget: CHART_VARS.spend,
+  unfunded: CHART_VARS.neutral,
 };
 
 const W = 900;

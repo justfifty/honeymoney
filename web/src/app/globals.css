@@ -332,3 +332,55 @@ a,
      rather than as motion, so the chart loses nothing it needed. */
   .hm-sankey-flow { animation: none; opacity: 0.45; }
 }
+
+/* ── Chart palette ──────────────────────────────────────────────────────────
+   Semantic roles, defined once. See lib/chartPalette.ts for what each name
+   means and why more than one scheme exists — the short version is that the
+   default encodes "spent" and "kept" as red against green, which is the exact
+   pairing red-green colour deficiency erases, on the most important
+   distinction the product makes.
+
+   Applied through CSS custom properties rather than by re-rendering: SVG
+   presentation attributes ARE CSS properties, so `fill="var(--hm-c-spend)"`
+   resolves, and switching schemes recomputes values without React doing
+   anything. That also means the server-rendered markup is identical whatever
+   the reader has chosen, so this can never cause a hydration mismatch. */
+:root {
+  --hm-c-income: #ff7518;
+  --hm-c-bucket: #5b7db1;
+  --hm-c-spend: #c94f4f;
+  --hm-c-saved: #248a54;
+  --hm-c-at-risk: #e8a012;
+  --hm-c-neutral: #9aa0a6;
+  --hm-c-obligation: #8a7a5e;
+  --hm-c-member: #9b6bb3;
+}
+
+/* Okabe–Ito, the palette designed so every pair stays distinct under
+   deuteranopia, protanopia and tritanopia. The point of the whole scheme is the
+   spend/saved pair: vermillion against bluish-green separates by hue AND by
+   lightness, so it survives when hue alone does not. */
+:root[data-chart-scheme="cvd"] {
+  --hm-c-income: #e69f00;
+  --hm-c-bucket: #0072b2;
+  --hm-c-spend: #d55e00;
+  --hm-c-saved: #009e73;
+  --hm-c-at-risk: #cc79a7;
+  --hm-c-neutral: #767676; /* darkened from #9AA0A6: 4.5:1 on white */
+  --hm-c-obligation: #56b4e9;
+  --hm-c-member: #7a5195;
+}
+
+/* For a projector, or a bright room. Deeper and more saturated, with wider
+   lightness gaps between neighbouring roles — on conference hardware the soft
+   tones above turn into one grey. */
+:root[data-chart-scheme="contrast"] {
+  --hm-c-income: #b34700;
+  --hm-c-bucket: #12467a;
+  --hm-c-spend: #9b1c1c;
+  --hm-c-saved: #0b5c37;
+  --hm-c-at-risk: #8a5a00;
+  --hm-c-neutral: #52565a;
+  --hm-c-obligation: #4a3f2a;
+  --hm-c-member: #5b2d73;
+}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
+import { CHART_VARS } from "@/lib/chartPalette";
 
 // Sankey money-flow: Income → Buckets → where it lands (Spending vs Saved).
 // Node height ∝ RM throughput, ribbon width ∝ RM flow. Everything is derived
@@ -41,9 +42,9 @@ const OTHER_ID = "__other__";
 const MAX_DESTS = 12;
 
 const ALLOC = new Set(["ALLOCATES_FIXED", "ALLOCATES_PCT", "FUNDS"]);
-const AMBER = "#FF7518";
-const RED = "#C94F4F";
-const GREEN = "#248A54";
+const AMBER = CHART_VARS.income;
+const RED = CHART_VARS.spend;
+const GREEN = CHART_VARS.saved;
 
 interface Placed {
   id: string;
@@ -205,7 +206,7 @@ function build(nodes: SankNode[], edges: SankEdge[], ccy: string, lang: Locale, 
     .map((id) => {
       const inV = bucketIn.get(id) ?? 0;
       const spent = bucketOut.get(id) ?? 0;
-      return { id, label: byId.get(id)?.label ?? id, col: 1, value: Math.max(inV, spent), color: "#5B7DB1", inV, spent };
+      return { id, label: byId.get(id)?.label ?? id, col: 1, value: Math.max(inV, spent), color: CHART_VARS.bucket, inV, spent };
     })
     .sort((a, b) => b.value - a.value);
 

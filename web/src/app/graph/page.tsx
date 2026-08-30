@@ -11,6 +11,7 @@ import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
 import FlexibleInput from "./FlexibleInput";
 import CurrencySwitcher from "./CurrencySwitcher";
+import ChartSchemePicker from "./ChartSchemePicker";
 import RatesNote from "../RatesNote";
 import { t as translate } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -161,7 +162,8 @@ export default async function GraphPage({
             a bottom-nav tab, Records and Guide are in the More menu. Repeating
             them beside the title made the busiest page in the app open with four
             competing links above the graph it exists to show. */}
-        <nav className="flex items-center gap-3 text-sm">
+        <nav className="flex flex-wrap items-center gap-3 text-sm">
+          <ChartSchemePicker label={tr("g.scheme.label")} />
           <CurrencySwitcher current={ccy} />
         </nav>
       </header>

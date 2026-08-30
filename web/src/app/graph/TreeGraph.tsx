@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
 import ChartEmpty from "./ChartEmpty";
+import { CHART_VARS } from "@/lib/chartPalette";
 
 // Tidy hierarchical "tree branch": Household → spending tier → bucket → vendor.
 // A genuine tree (single parent per node), laid out left→right with the classic
@@ -38,10 +39,10 @@ interface TNode {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  on_track: "#248A54",
-  at_risk: "#E8A012",
-  over_budget: "#C94F4F",
-  unfunded: "#9AA0A6",
+  on_track: CHART_VARS.saved,
+  at_risk: CHART_VARS.atRisk,
+  over_budget: CHART_VARS.spend,
+  unfunded: CHART_VARS.neutral,
 };
 // Fallback only — the server passes real labels from moneyView.CATEGORY_META.
 // Keep these two in step.
@@ -145,7 +146,7 @@ export default function TreeGraph({
               label: v.vendorLabel,
               badge: "🏪",
               sub: rm0(v.amount),
-              color: "#C94F4F",
+              color: CHART_VARS.spend,
               depth: 3,
               y: 0,
               w: 0,
@@ -156,7 +157,7 @@ export default function TreeGraph({
           id: `tier-${t}`,
           label: meta.label,
           badge: meta.badge,
-          color: "#5B7DB1",
+          color: CHART_VARS.bucket,
           depth: 1,
           y: 0,
           w: 0,
@@ -168,7 +169,7 @@ export default function TreeGraph({
       id: "__root__",
       label: rootLabel,
       badge: "💠",
-      color: "#9B6BB3",
+      color: CHART_VARS.member,
       depth: 0,
       y: 0,
       w: 0,

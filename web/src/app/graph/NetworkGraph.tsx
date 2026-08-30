@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { limitFor } from "@/lib/chartData";
+import { CHART_VARS } from "@/lib/chartPalette";
 
 // Force-directed node-link view of the knowledge graph (classic KG look).
 // Dependency-free: a small deterministic force simulation (golden-angle seed,
@@ -23,22 +24,22 @@ export interface NetEdge {
 }
 
 const KIND_FILL: Record<string, string> = {
-  income_source: "#FF7518",
-  bucket: "#5B7DB1",
-  wallet: "#5B7DB1",
-  vendor: "#C94F4F",
-  goal: "#248A54",
-  obligation: "#8A7A5E",
-  member: "#9B6BB3",
+  income_source: CHART_VARS.income,
+  bucket: CHART_VARS.bucket,
+  wallet: CHART_VARS.bucket,
+  vendor: CHART_VARS.spend,
+  goal: CHART_VARS.saved,
+  obligation: CHART_VARS.obligation,
+  member: CHART_VARS.member,
 };
 
 const REL_STROKE: Record<string, { stroke: string; dash?: string }> = {
-  ALLOCATES_FIXED: { stroke: "#FF7518" },
-  ALLOCATES_PCT: { stroke: "#FF7518", dash: "6 3" },
-  FUNDS: { stroke: "#FF7518" },
-  SPENT_AT: { stroke: "#C94F4F" },
-  CONTRIBUTES_TO: { stroke: "#248A54", dash: "4 4" },
-  OWES: { stroke: "#8A7A5E", dash: "2 4" },
+  ALLOCATES_FIXED: { stroke: CHART_VARS.income },
+  ALLOCATES_PCT: { stroke: CHART_VARS.income, dash: "6 3" },
+  FUNDS: { stroke: CHART_VARS.income },
+  SPENT_AT: { stroke: CHART_VARS.spend },
+  CONTRIBUTES_TO: { stroke: CHART_VARS.saved, dash: "4 4" },
+  OWES: { stroke: CHART_VARS.obligation, dash: "2 4" },
 };
 
 const W = 900;
