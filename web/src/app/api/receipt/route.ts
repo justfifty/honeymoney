@@ -4,7 +4,7 @@ import { isDatabaseConfigured, activeAiProvider, isProviderConfigured } from "@/
 import { requirePermission } from "@/lib/household";
 import { readReceipt } from "@/lib/receipt";
 import { apiError } from "@/lib/apiError";
-import { aiConsentGiven } from "@/lib/aiGuard";
+import { aiDocumentsAllowed, isLocalProvider } from "@/lib/aiGuard";
 
 export const runtime = "nodejs";
 
@@ -37,11 +37,14 @@ export async function POST(request: NextRequest) {
     // client already treats any non-ok response as "scan it on-device instead".
     // That fallback is not a consolation prize here: it is the zero-egress path
     // the product is designed around.
-    if (!(await aiConsentGiven(ctx.user.id))) {
+    // Scales with EGRESS, not with the word "AI": on a local engine the
+    // document never leaves the machine HoneyMoney runs on, so there is no
+    // third-party disclosure for a household to consent to.
+    if (!(await aiDocumentsAllowed(ctx.user.id, { local: isLocalProvider(activeAiProvider()) }))) {
       return NextResponse.json(
         {
           error: "ai_consent_missing",
-          message: "AI processing is off for this household. Scanning on-device instead.",
+          message: "Sending documents to an AI service is off for this household. Reading it on your device instead.",
         },
         { status: 501 },
       );

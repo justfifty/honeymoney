@@ -139,10 +139,47 @@ export async function providerForTenant(
  * consented, because the demo personas are fictional and there is no data
  * subject whose consent could be missing.
  */
+/**
+ * May a model word this household's answers?
+ *
+ * Grants `ai_phrasing`, and honours the retired `ai_processing` switch as an
+ * equivalent — an old grant covered strictly more than this, so reading it
+ * forward takes nothing the household did not already agree to. See the note on
+ * `Purpose` in lib/consent.ts for why the reverse mapping is refused.
+ */
 export async function aiConsentGiven(userId: string | null | undefined): Promise<boolean> {
   if (!userId) return true;
   try {
+    if (await hasConsent(userId, "ai_phrasing")) return true;
     return await hasConsent(userId, "ai_processing");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * May this household's own documents — a receipt photo, a bank statement — be
+ * sent to an outside AI service?
+ *
+ * Deliberately NOT satisfied by the legacy `ai_processing` grant. That switch
+ * was presented as "use AI", and reading an upload permission out of it would
+ * be inferring the most consequential consent in the app from the vaguest
+ * wording it ever used.
+ *
+ * `local` short-circuits, and that is the useful part: on a self-hosted
+ * deployment with Ollama the document never leaves the machine HoneyMoney runs
+ * on, so there is no third-party disclosure to consent to. The permission scales
+ * with egress rather than with the word "AI" — which is why a family running
+ * this on one laptop is asked for less, not more.
+ */
+export async function aiDocumentsAllowed(
+  userId: string | null | undefined,
+  opts: { local?: boolean } = {},
+): Promise<boolean> {
+  if (!userId) return true;
+  if (opts.local) return true;
+  try {
+    return await hasConsent(userId, "ai_documents");
   } catch {
     return false;
   }

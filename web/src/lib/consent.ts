@@ -39,8 +39,41 @@ import { pbList, pbCreate, pbStr } from "./pocketbase";
 // point of storing the version instead of a boolean.
 export const NOTICE_VERSION = "2026-08-28";
 
+// ── why there are TWO AI purposes ───────────────────────────────────────────
+//
+// There used to be one, `ai_processing`, and it gated three things that are not
+// alike:
+//
+//   • phrasing an answer  — the cloud engine is sent slot NAMES and a locale.
+//     No figures, no labels, no free text. Nothing about the household leaves.
+//   • reading a receipt or a statement — the document itself is uploaded to
+//     Google or Groq. This is the household's data, leaving.
+//   • the same two on a LOCAL engine — nothing leaves at all, by construction.
+//
+// One switch for all three forces a bad trade in both directions. A household
+// that just wants Honey to write a warmer sentence had to authorise uploading
+// its receipts to do it; a household that refuses had phrasing withdrawn too,
+// for a call that would have disclosed nothing. PDPA consent is purpose-limited
+// and a purpose this broad is not really specific, which is the standard it is
+// supposed to meet.
+//
+// So consent now scales with EGRESS, which is the thing a person is actually
+// deciding about:
+//
+//   ai_phrasing   → a model may word your answers. Class 0-1 only.
+//   ai_documents  → a receipt or statement may be sent to an outside AI service.
+//
+// LEGACY: `ai_processing` is kept in the union because the ledger is append-only
+// and old grants must stay readable. It is NOT in PURPOSES, so it can never be
+// written again, and aiGuard maps an old grant forward to ai_phrasing ONLY —
+// never to ai_documents. Someone who ticked one box in 2026 did not agree to
+// upload their receipts, and inferring that they did is exactly the move this
+// split exists to prevent.
 export type Purpose =
   | "core_processing"
+  | "ai_phrasing"
+  | "ai_documents"
+  /** @deprecated Legacy single AI switch. Readable, never writable. */
   | "ai_processing"
   | "partner_offers"
   | "research_aggregate";
@@ -78,9 +111,24 @@ export const PURPOSES: PurposeSpec[] = [
     directMarketing: false,
   },
   {
-    key: "ai_processing",
-    labelKey: "consent.ai.label",
-    helpKey: "consent.ai.help",
+    // Discloses nothing about the household — the cloud engine receives slot
+    // names and a locale. Still opt-in rather than default-on: "we send no
+    // figures" is a claim the user should get to check, not one they should
+    // have to discover they are already relying on.
+    key: "ai_phrasing",
+    labelKey: "consent.aiPhrasing.label",
+    helpKey: "consent.aiPhrasing.help",
+    required: false,
+    default: false,
+    directMarketing: false,
+  },
+  {
+    // The only purpose here that sends a household's own data to a third party.
+    // Off by default and asked for separately, because it is the one a person
+    // would actually want to think about.
+    key: "ai_documents",
+    labelKey: "consent.aiDocuments.label",
+    helpKey: "consent.aiDocuments.help",
     required: false,
     default: false,
     directMarketing: false,

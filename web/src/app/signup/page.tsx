@@ -26,7 +26,11 @@ function SignupForm() {
   // purposes is the single most-fined pattern in modern privacy enforcement.
   // Keeping these as three independent booleans rather than one object makes it
   // structurally impossible to flip them together by accident.
+  // Two separate answers, because they are two separate bargains: one sends
+  // nothing about the household, the other uploads its documents. Both start
+  // false -- a signup form is the worst possible place to pre-tick either.
   const [aiOk, setAiOk] = useState(false);
+  const [aiDocsOk, setAiDocsOk] = useState(false);
   const [partnerOk, setPartnerOk] = useState(false);
   const [researchOk, setResearchOk] = useState(false);
 
@@ -54,7 +58,8 @@ function SignupForm() {
           name,
           inviteCode: code.trim() || undefined,
           consents: {
-            ai_processing: aiOk,
+            ai_phrasing: aiOk,
+            ai_documents: aiDocsOk,
             partner_offers: partnerOk,
             research_aggregate: researchOk,
           },
@@ -144,8 +149,14 @@ function SignupForm() {
             <Consent
               checked={aiOk}
               onChange={setAiOk}
-              label="Let Honey use AI"
-              help="Ask Honey and receipt scanning send the text you capture to an AI provider. Off means both stay switched off."
+              label="Let Honey word her answers"
+              help="An AI service is sent placeholder names like {saving} — never your amounts, merchants or question. Off means the same numbers in fixed wording."
+            />
+            <Consent
+              checked={aiDocsOk}
+              onChange={setAiDocsOk}
+              label="Send receipts and statements to an AI service"
+              help="Only this one shares your own data. Off means receipts are still scanned — on your phone, nothing uploaded."
             />
             {/* Not offered yet — see PARTNER_OFFERS_ENABLED in lib/consent.ts.
                 Asking for a purpose we are not licensed to act on would collect

@@ -84,9 +84,33 @@ export interface AiStatusStrings {
   usingOwn: string;
 }
 
-const HOW_TO: Record<Provider, { title: string; cost: string; steps: string[]; link: string }> = {
+// `where` is not decoration. The panel used to list these three as if they were
+// interchangeable picks, and they are not: two are somebody else's computer and
+// one is yours. A household on honeymoney.app reading "nothing leaves the
+// machine it runs on" reasonably concluded that meant their phone, installed
+// Ollama on their laptop, and found nothing had changed — because the Ollama
+// client is SERVER-side (lib/ai.ts reads OLLAMA_URL), so it is the machine
+// running HoneyMoney that matters, not the one holding the browser.
+//
+// Saying so costs nothing and buys the stronger claim underneath it: on a
+// self-hosted deployment this is a genuine no-third-party path, and on the
+// hosted service Ask Honey already sends no figures to anyone. Both are true;
+// neither was legible.
+interface HowTo {
+  title: string;
+  /** Where the engine physically runs — the thing the old copy left ambiguous. */
+  where: string;
+  cost: string;
+  steps: string[];
+  link: string;
+  /** What you actually get for the trouble, in plain words. */
+  payoff?: string;
+}
+
+const HOW_TO: Record<Provider, HowTo> = {
   groq: {
     title: "Groq",
+    where: "Runs on Groq's servers.",
     cost: "Free tier, no card. Fastest to set up.",
     steps: [
       "Create an API key at console.groq.com/keys",
@@ -98,6 +122,7 @@ const HOW_TO: Record<Provider, { title: string; cost: string; steps: string[]; l
   },
   gemini: {
     title: "Gemini Flash",
+    where: "Runs on Google's servers.",
     cost: "Free tier, no card. The only engine that also reads receipt images.",
     steps: [
       "Create an API key at aistudio.google.com/apikey",
@@ -108,15 +133,25 @@ const HOW_TO: Record<Provider, { title: string; cost: string; steps: string[]; l
     link: "https://aistudio.google.com/apikey",
   },
   ollama: {
-    title: "Ollama (local)",
-    cost: "Zero cost, zero cloud — nothing leaves the machine it runs on.",
+    title: "Ollama — your own machine",
+    where: "Runs on the computer that runs HoneyMoney — your own laptop, if you host it yourself. Not your phone.",
+    cost: "Free, no key, no account. Nothing is sent to anyone.",
     steps: [
-      "Install from ollama.com/download, then: ollama pull llama3.2",
-      "AI_PROVIDER=ollama",
+      "Install Ollama from ollama.com/download — Windows, macOS or Linux",
+      "ollama pull llama3.2",
+      "Check it answers: open http://localhost:11434 — it should say “Ollama is running”",
       "OLLAMA_URL=http://localhost:11434",
       "OLLAMA_MODEL=llama3.2",
     ],
     link: "https://ollama.com/download",
+    payoff:
+      "You do not need to be a company to do this. One person, a couple or a family can run " +
+      "HoneyMoney and Ollama on a single laptop at home and keep everything on it — the same " +
+      "setup an employer or a cooperative would use, just smaller. " +
+      "And it is the only setting where Honey sees your actual figures: on a cloud engine she " +
+      "is sent placeholder names and never the amounts, so she writes a little stiffly. Locally " +
+      "there is nowhere for the data to go, so she gets the real question and answers in your " +
+      "own numbers. About 2 GB to download once, then it costs nothing and works offline.",
   },
 };
 
@@ -286,27 +321,50 @@ export default function AiStatus({
                 </button>
               </div>
 
-              <p className="mt-1 text-xs text-zinc-500">{how.cost}</p>
+              {/* Where it runs comes BEFORE what it costs. A reader deciding
+                  between these three is really deciding whose computer their
+                  money is described on, and that was the one thing the card
+                  never said. */}
+              <p className="mt-1 text-xs font-medium text-zinc-600 dark:text-zinc-300">{how.where}</p>
+              <p className="mt-0.5 text-xs text-zinc-500">{how.cost}</p>
               {h?.error && <p className="mt-1 break-words text-xs text-red-600 dark:text-red-400">{h.error}</p>}
 
               {open === p && (
                 <div className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs dark:bg-zinc-950/40">
                   <ol className="list-decimal space-y-1.5 pl-4">
                     {how.steps.map((step, i) => (
-                      <li key={i} className={i === 0 ? "" : "font-mono"}>
+                      // Monospace is for things you TYPE somewhere, not for
+                      // every line after the first. The old rule was positional,
+                      // which was fine while every step past step 1 happened to
+                      // be an environment variable; Ollama's walkthrough adds a
+                      // "check it worked" step, and rendering plain English in
+                      // code font makes instructions look like a command.
+                      // The mono font goes on the CONTENT, never on the <li>:
+                      // styling the item restyles its marker too, so "2." and
+                      // "4." sat a few pixels off from "1." and "3." and the
+                      // list read as slightly broken.
+                      <li key={i}>
                         {i === 0 ? (
                           <a href={how.link} target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:underline">
                             {step}
                           </a>
+                        ) : /^[A-Z_]+=|^ollama\s/.test(step) ? (
+                          <code className="font-mono">{step}</code>
                         ) : (
                           step
                         )}
                       </li>
                     ))}
                   </ol>
+                  {how.payoff && (
+                    <p className="mt-2 rounded-lg bg-emerald-50 p-2 leading-relaxed text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                      {how.payoff}
+                    </p>
+                  )}
                   <p className="mt-2 text-zinc-500">
                     Set these in <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">web/.env.local</code> to make it
-                    the server default — or paste the key below to use it for this household only.
+                    the server default — or {p === "ollama" ? "set the address" : "paste the key"} below to use it for this
+                    household only.
                   </p>
                 </div>
               )}
@@ -399,12 +457,26 @@ export default function AiStatus({
                   <span className="mt-1 block text-[11px] text-zinc-500">{s.modelHint}</span>
                 </label>
 
+                {/* This is the one message in the panel a HOUSEHOLD can do
+                    nothing about — it is a server setting. It used to hand them
+                    a `node -e ... randomBytes(32)` incantation and disable the
+                    save button, which reads as "you have broken something" to a
+                    person whose only mistake was opening Settings. The refusal
+                    itself is right and stays: a key that cannot be encrypted is
+                    not stored at all. Only the audience changed. */}
                 {needsSecretsKey && (
-                  <p className="rounded-lg bg-red-50 p-2 text-[11px] leading-relaxed text-red-700 dark:bg-red-950/40 dark:text-red-300">
-                    <code className="font-mono">AI_SECRETS_KEY</code> is not set on the server, so a key cannot be stored
-                    encrypted — and it will not be stored any other way. Generate one with{" "}
-                    <code className="font-mono">node -e &quot;console.log(require(&apos;crypto&apos;).randomBytes(32).toString(&apos;base64&apos;))&quot;</code>{" "}
-                    and set it before saving.
+                  <p className="rounded-lg bg-amber-50 p-2 text-[11px] leading-relaxed text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <strong>Saving a key is turned off on this server.</strong> HoneyMoney will not store an AI key unless it
+                    can encrypt it first, and the encryption key is missing — so nothing here is lost, it simply will not
+                    save. Everything else keeps working, and Honey still answers using the built-in wording.{" "}
+                    <span className="opacity-80">
+                      If you are the one running this server, set{" "}
+                      <code className="font-mono">AI_SECRETS_KEY</code> in{" "}
+                      <code className="font-mono">web/.env.local</code> to a random 32-byte value:{" "}
+                      <code className="font-mono">
+                        node -e &quot;console.log(require(&apos;crypto&apos;).randomBytes(32).toString(&apos;base64&apos;))&quot;
+                      </code>
+                    </span>
                   </p>
                 )}
 

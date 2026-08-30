@@ -30,9 +30,21 @@ const COPY: Record<string, { label: string; help: string }> = {
     label: "Run the app",
     help: "Store the records you enter and compute your H-Score. This is what HoneyMoney does — to stop it, close your account below.",
   },
+  // Two switches, because they are two different bargains. See the note on
+  // Purpose in lib/consent.ts.
+  ai_phrasing: {
+    label: "Let Honey word her answers",
+    help: "Honey works out every figure on our own server either way — this only decides who writes the sentence around it. An outside AI service is sent placeholder names like {saving} and {gap}, plus your language. It is never sent your amounts, your labels, your merchants or your question. With this off you get the same numbers in fixed wording.",
+  },
+  ai_documents: {
+    label: "Send receipts and statements to an AI service",
+    help: "This is the one that shares your own data. A receipt photo or bank statement you choose to scan is uploaded to an AI provider that may be outside Malaysia. With this off, receipts are still read — on your own phone, by the built-in scanner, with nothing uploaded — and statement files are still parsed here. Turn it on only if you want the extra accuracy on hard receipts.",
+  },
+  // Retired in favour of the two above. Kept so a household whose ledger still
+  // carries the old grant sees a name rather than a raw key.
   ai_processing: {
-    label: "AI features",
-    help: "Ask Honey and receipt scanning send the text you capture to an AI provider, which may be outside Malaysia. Never your password, your email, your H-Score, or another member's records. Do not put account numbers, IC numbers or other people's details into a prompt. Core budgeting, forecasts and the H-Score all work with this off.",
+    label: "AI features (old setting)",
+    help: "Replaced by the two settings above. Your earlier answer still counts as permission to word your answers, and never as permission to upload a receipt.",
   },
   partner_offers: {
     label: "Matched financial products",
