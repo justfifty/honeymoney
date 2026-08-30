@@ -601,12 +601,17 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
           >
             <rect x={n.x} y={n.y} width={NW} height={Math.max(2, n.h)} rx={3} fill={n.color} />
             {labelFits(n.h) && (
-              <text x={lx} y={n.y + n.h / 2 - 1} textAnchor={anchor} fontSize="11" fontWeight="600" className="fill-zinc-700 dark:fill-zinc-200">
+              <text x={lx} y={n.y + n.h / 2 - 1} textAnchor={anchor} fontSize="11" fontWeight="600" className="hm-sank-label fill-zinc-800">
                 {n.label}
               </text>
             )}
+            {/* zinc-500, not zinc-400. The amount was the worst-hit line on the
+                chart -- the lowest-contrast text sitting over the busiest part
+                of the ribbon -- and it is the number the label exists to
+                deliver. Measured 4.83:1 on white, against 2.56:1 before, so it
+                also stops failing WCAG AA for small text. */}
             {labelFits(n.h) && n.h >= 26 && (
-              <text x={lx} y={n.y + n.h / 2 + 12} textAnchor={anchor} fontSize="9.5" className="fill-zinc-400">
+              <text x={lx} y={n.y + n.h / 2 + 12} textAnchor={anchor} fontSize="9.5" className="hm-sank-label fill-zinc-500">
                 {rm0(n.value)}
               </text>
             )}

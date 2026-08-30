@@ -402,3 +402,23 @@ a,
   --hm-c-obligation: #4a3f2a;
   --hm-c-member: #5b2d73;
 }
+
+/* ── Sankey labels, legible over whatever runs behind them ──────────────────
+   A Sankey label has to sit beside its own bar or it stops being that bar's
+   label — and beside the bar is exactly where the ribbons run. There is no
+   dependable white space to move it to, so the label carries its own
+   background instead: `paint-order: stroke fill` draws a white stroke UNDER
+   the glyphs, which is the map-making solution to text over terrain.
+
+   It became necessary when the flow dots arrived. A static ribbon behind a word
+   is a flat wash the eye reads through; dots travelling through the same word
+   are movement inside the text, and that is genuinely hard to read.
+
+   3px, not more: the halo should be invisible as an effect. Wider and the type
+   starts to look emboldened, which is a different lie about emphasis. */
+.hm-sank-label {
+  paint-order: stroke fill;
+  stroke: #ffffff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
