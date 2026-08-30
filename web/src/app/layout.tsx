@@ -11,6 +11,7 @@ import LegalUpdateNotice from "./LegalUpdateNotice";
 import OfflineGate from "./OfflineGate";
 import BottomNav from "./BottomNav";
 import ChromeGate from "./ChromeGate";
+import BootPrefs from "./BootPrefs";
 
 // Routes that ship their own navigation and must not also get the site's.
 // /demo is a one-page app with its own bottom tab bar; two fixed bars stack,
@@ -121,6 +122,7 @@ export default async function RootLayout({
           and the last ~1.6rem of every page sat underneath it, unreachable.
           Keep the two in step: change one, change the other. */}
       <body className="min-h-full flex flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <BootPrefs />
         <FxRates table={table} />
         {/* dotted sunburst that trails the cursor behind every page.
             Renders nothing on touch devices — it is a pointer effect, and it was

@@ -107,9 +107,10 @@ export function shortDate(iso: string): string {
   return d.toLocaleDateString("en-MY", { day: "numeric", month: "short" });
 }
 
-export const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  on_track: { label: "On track", cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  at_risk: { label: "At risk", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300" },
-  over_budget: { label: "Over budget", cls: "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300" },
-  unfunded: { label: "Unfunded", cls: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400" },
-};
+// STATUS_STYLE lived here: four bucket statuses as Tailwind class pairs, with
+// English labels this app never used (every caller translated the status
+// itself). Its one consumer was the dashboard, and the classes were the reason
+// the dashboard could not follow the chart colour scheme — Tailwind utilities
+// are compiled, so no runtime palette can reach them. The status-to-colour
+// question is now answered once, for charts and chips alike, by
+// statusColor/statusTint/statusInk in lib/chartPalette.ts.

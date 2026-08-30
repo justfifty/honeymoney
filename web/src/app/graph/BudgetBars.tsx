@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
 import ChartEmpty from "./ChartEmpty";
-import { CHART_VARS } from "@/lib/chartPalette";
+import { statusColor } from "@/lib/chartPalette";
 
 // Budget vs Actual — one shared RM scale across every bucket, so bar lengths are
 // directly comparable (unlike the dashboard's per-bucket % bars). Each row shows
@@ -18,13 +18,6 @@ export interface BarRow {
   projected: number;
   status: "on_track" | "at_risk" | "over_budget" | "unfunded";
 }
-
-const STATUS_COLOR: Record<string, string> = {
-  on_track: CHART_VARS.saved,
-  at_risk: CHART_VARS.atRisk,
-  over_budget: CHART_VARS.spend,
-  unfunded: CHART_VARS.neutral,
-};
 
 const W = 900;
 const ROW = 40;
@@ -98,7 +91,7 @@ export default function BudgetBars({ rows, ccy = "MYR" }: { rows: BarRow[]; ccy?
       {data.map((r, i) => {
         const y = TOP + i * ROW;
         const cy = y + ROW / 2;
-        const color = STATUS_COLOR[r.status] ?? STATUS_COLOR.unfunded;
+        const color = statusColor(r.status);
         const allocW = xOf(r.allocated) - LABEL_W;
         const projW = xOf(Math.min(r.projected, plotMax)) - LABEL_W;
         const active = hover === null || hover === r.id;

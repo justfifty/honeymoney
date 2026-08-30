@@ -86,3 +86,81 @@ export const SCHEME_STORAGE_KEY = "hm.chart.scheme.v1";
 export function isChartScheme(v: unknown): v is ChartScheme {
   return v === "honey" || v === "cvd" || v === "contrast";
 }
+
+// ── The same roles, as a surface rather than a mark ─────────────────────────
+//
+// A chart paints a role SOLID. The rest of the app paints the same role as a
+// chip or a tile: a light fill with dark text on it. Those two needs are one
+// decision — "what colour is over-budget" — and they were being answered in two
+// places, in two colour systems, with only the chart half wired to the scheme
+// picker. `CHART_TINTS` and `CHART_INKS` are the surface half of every role
+// here; globals.css derives them from the solid with color-mix(), so a new
+// scheme still declares exactly eight colours.
+//
+// Use them TOGETHER. The contrast guarantee is between a role's own tint and
+// its own ink — measured at worst 5.27:1 across all three schemes, so AA at the
+// small sizes these are set in. Ink on a DIFFERENT role's tint is not checked
+// and has no reason to pass.
+
+/** A light fill of the role's hue — something to put text on. */
+export const CHART_TINTS = {
+  income: "var(--hm-t-income)",
+  bucket: "var(--hm-t-bucket)",
+  spend: "var(--hm-t-spend)",
+  saved: "var(--hm-t-saved)",
+  atRisk: "var(--hm-t-at-risk)",
+  neutral: "var(--hm-t-neutral)",
+  obligation: "var(--hm-t-obligation)",
+  member: "var(--hm-t-member)",
+};
+
+/** Text to put on that role's tint — or on white, where it also passes. */
+export const CHART_INKS = {
+  income: "var(--hm-i-income)",
+  bucket: "var(--hm-i-bucket)",
+  spend: "var(--hm-i-spend)",
+  saved: "var(--hm-i-saved)",
+  atRisk: "var(--hm-i-at-risk)",
+  neutral: "var(--hm-i-neutral)",
+  obligation: "var(--hm-i-obligation)",
+  member: "var(--hm-i-member)",
+};
+
+/** The four states a bucket can be in. Mirrors BucketProjection["status"]. */
+export type BucketStatus = "on_track" | "at_risk" | "over_budget" | "unfunded";
+
+// WHICH ROLE EACH STATUS IS, decided once. This mapping was written out
+// independently in BudgetBars (a STATUS_COLOR record), in the /graph legend (as
+// four literal hexes, which is why the legend went on describing the honey
+// scheme after the reader had switched away from it), in Treemap, in TreeGraph
+// and in the dashboard (as Tailwind class names, which the scheme could not
+// reach at all). Five copies, and the legend one had already drifted.
+//
+// on_track is `saved` and not a green of its own: a bucket you have not
+// overspent is money you still have, which is the same fact the goals and the
+// savings ribbons are drawing. One meaning, one colour.
+const STATUS_ROLE: Record<BucketStatus, keyof typeof CHART_VARS> = {
+  on_track: "saved",
+  at_risk: "atRisk",
+  over_budget: "spend",
+  unfunded: "neutral",
+};
+
+function role(status: string): keyof typeof CHART_VARS {
+  return STATUS_ROLE[status as BucketStatus] ?? "neutral";
+}
+
+/** The solid colour for a bucket status — bars, marks, ribbons. */
+export function statusColor(status: string): string {
+  return CHART_VARS[role(status)];
+}
+
+/** The tint for a bucket status — chips, badges, tile backgrounds. */
+export function statusTint(status: string): string {
+  return CHART_TINTS[role(status)];
+}
+
+/** The text colour to use on that tint. */
+export function statusInk(status: string): string {
+  return CHART_INKS[role(status)];
+}

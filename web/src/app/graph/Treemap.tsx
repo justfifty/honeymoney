@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { fmtMoney } from "@/lib/format";
 import { topNWithOther, limitFor, otherLabel } from "@/lib/chartData";
 import ChartEmpty from "./ChartEmpty";
-import { CHART_VARS } from "@/lib/chartPalette";
+import { statusColor } from "@/lib/chartPalette";
 
 // Squarified treemap of buckets: cell AREA ∝ monthly allocation (where the plan
 // commits money), cell COLOR ∝ status, and a solid fill rising from the baseline
@@ -20,10 +20,10 @@ export interface TreemapCell {
 }
 
 const STATUS: Record<string, { solid: string; label: string }> = {
-  on_track: { solid: CHART_VARS.saved, label: "On track" },
-  at_risk: { solid: CHART_VARS.atRisk, label: "At risk" },
-  over_budget: { solid: CHART_VARS.spend, label: "Over budget" },
-  unfunded: { solid: CHART_VARS.neutral, label: "Unfunded" },
+  on_track: { solid: statusColor("on_track"), label: "On track" },
+  at_risk: { solid: statusColor("at_risk"), label: "At risk" },
+  over_budget: { solid: statusColor("over_budget"), label: "Over budget" },
+  unfunded: { solid: statusColor("unfunded"), label: "Unfunded" },
 };
 
 const W = 920;

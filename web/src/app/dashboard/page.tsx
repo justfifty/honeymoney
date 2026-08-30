@@ -7,13 +7,15 @@ import { detectRecurring } from "@/lib/radar";
 import { can, resolveViewTenant } from "@/lib/household";
 import { listGoals } from "@/lib/goals";
 import { pbList, pbStr } from "@/lib/pocketbase";
-import { rm, shortDate, STATUS_STYLE } from "@/lib/format";
+import { rm, shortDate } from "@/lib/format";
+import { CHART_INKS, CHART_VARS, statusColor, statusInk, statusTint } from "@/lib/chartPalette";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
 import type { BucketProjection } from "@/lib/types";
 import { dataLabel } from "@/lib/dataLabels";
 import RecordRow from "../records/RecordRow";
 import PrivacyToggle from "./PrivacyToggle";
+import ChartSchemePicker from "../ChartSchemePicker";
 import HoneyAsk from "./HoneyAsk";
 import LocalOverlay from "../LocalOverlay";
 
@@ -213,14 +215,28 @@ export default async function Dashboard() {
               outline — removing the h1 outright would leave the page with no
               heading at all, which is a worse trade than a little duplication. */}
           <h1 className="sr-only">{tr("dash.subtitle")}</h1>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
+          {/* ONE DISPLAY ROW, two controls that answer the same question: how
+              should this screen show my money. They were not together before
+              because they were not both here — the colour scheme was mounted
+              only on /graph, so someone who chose the colour-blind-safe palette
+              there came back to a dashboard drawing spend and saved as red
+              against green, the exact pair that scheme exists to separate. It
+              applies app-wide now (see BootPrefs), which makes a control
+              reachable from one page the wrong shape for it.
+
+              Grouping them also gives this header a job. It held a single small
+              button above a band of empty space, so the page opened on nothing
+              and the first real figure sat lower than it needed to.
+
+              The in-page Graph shortcut that used to sit here is gone: Graph is
+              a first-class tab in both the header and the bottom bar, so a link
+              here would duplicate a control that is permanently on screen. The
+              empty-buckets state further down still links to the graph, because
+              there the point is not navigation — it is "you have no buckets
+              yet, here is where you build them". */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <PrivacyToggle hideLabel={tr("dash.privacy.hide")} showLabel={tr("dash.privacy.show")} />
-            {/* The in-page Graph shortcut that used to sit here is gone: Graph
-                is now a first-class tab beside Dashboard in both the header and
-                the bottom bar, so a link here would duplicate a control that is
-                permanently on screen. The empty-buckets state further down still
-                links to the graph, because there the point is not navigation —
-                it is "you have no buckets yet, here is where you build them". */}
+            <ChartSchemePicker label={tr("g.scheme.label")} />
           </div>
         </header>
 
@@ -277,31 +293,76 @@ export default async function Dashboard() {
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             {projection.map((b) => {
-              const style = STATUS_STYLE[b.status] ?? STATUS_STYLE.unfunded;
-              const pct =
-                b.allocated > 0
-                  ? Math.min(100, Math.round((b.projected_spend / b.allocated) * 100))
-                  : 0;
+              // SCALED TO THE LARGER OF THE TWO, which is the fix this bar
+              // needed. It used to be projected/allocated clamped to 100%, so a
+              // bucket RM5 over budget and one RM500 over drew an identical
+              // full bar — the app knew the difference, put a status chip next
+              // to it, and then flattened the only picture of how far over it
+              // had gone. /graph's budget-vs-actual view has always drawn the
+              // overshoot against an allocation marker; now the two agree, and
+              // a bar means the same thing on both screens.
+              //
+              // `over` comes from the figures, not from the status string, so
+              // the mark and the chip cannot end up disagreeing.
+              const over = b.projected_spend > b.allocated;
+              const denom = Math.max(b.allocated, b.projected_spend);
+              const pctOf = (v: number) => (denom > 0 ? (v / denom) * 100 : 0);
+              const capPct = pctOf(b.allocated);
+              const spentPct = pctOf(b.projected_spend);
               return (
                 <div
                   key={b.bucket_id}
                   className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{dataLabel(locale, b.bucket_label)}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${style.cls}`}>
+                    {/* Tint and ink from the palette rather than Tailwind's
+                        rose/amber/emerald: this chip is the same four-state
+                        legend the charts draw, and before this it was the one
+                        that ignored the reader's colour scheme. */}
+                    <span
+                      className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+                      style={{ background: statusTint(b.status), color: statusInk(b.status) }}
+                    >
                       {tr(`status.${b.status}`)}
                     </span>
                   </div>
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                  {/* aria-hidden on purpose: both figures, and the overshoot,
+                      are stated in words on the line directly below, and a
+                      meter whose value can exceed its own maximum has no
+                      honest ARIA to offer. */}
+                  <div className="hm-meter relative mt-3" aria-hidden>
                     <div
-                      className={`h-full ${b.status === "over_budget" ? "bg-rose-500" : b.status === "at_risk" ? "bg-amber-500" : "bg-emerald-500"}`}
-                      style={{ width: `${pct}%` }}
+                      className="hm-meter-fill"
+                      style={{ width: `${spentPct}%`, background: statusColor(b.status) }}
                     />
+                    {over && (
+                      <>
+                        {/* the stretch that ran past the allocation — hatched,
+                            so over-budget survives greyscale and every form of
+                            colour vision, not only the default palette */}
+                        <span
+                          className="hm-meter-over absolute inset-y-0"
+                          style={{ left: `${capPct}%`, right: `${100 - spentPct}%` }}
+                        />
+                        {/* and where the allocation actually ended */}
+                        <span
+                          className="absolute inset-y-0 w-0.5 bg-white/85"
+                          style={{ left: `${capPct}%` }}
+                        />
+                      </>
+                    )}
                   </div>
-                  <div className="mt-2 flex justify-between text-xs text-zinc-500">
+                  <div className="mt-2 flex justify-between gap-2 text-xs text-zinc-500">
                     <span>{tr("dash.proj")} <span className="hm-money">{rm(b.projected_spend)}</span></span>
-                    <span>{tr("dash.of")} <span className="hm-money">{rm(b.allocated)}</span></span>
+                    {over ? (
+                      <span className="font-medium" style={{ color: statusInk(b.status) }}>
+                        <span className="hm-money">{rm(b.projected_spend - b.allocated)}</span>{" "}
+                        {tr("dash.overBy")}
+                      </span>
+                    ) : (
+                      <span>{tr("dash.of")} <span className="hm-money">{rm(b.allocated)}</span></span>
+                    )}
                   </div>
                 </div>
               );
@@ -373,11 +434,22 @@ export default async function Dashboard() {
                     </p>
                   ) : (
                     <>
-                      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                        {/* Green, because a goal is money you still have and chose
-                            to keep — the one thing green means in this app. `pct`
-                            clamps so the bar cannot draw past its container. */}
-                        <div className="h-full bg-emerald-500" style={{ width: `${g.pct}%` }} />
+                      <div className="hm-meter mt-3">
+                        {/* Filling in `income`, reached in `saved` — the rule
+                            /goals uses, so the same goal is not told as two
+                            different stories on two screens. It used to be
+                            green here from the day it was set, which made
+                            "we've reached it" the one thing this card could not
+                            say. `pct` clamps so the bar cannot draw past its
+                            container; `pctRaw` decides whether it is done,
+                            because that is the unclamped truth. */}
+                        <div
+                          className="hm-meter-fill"
+                          style={{
+                            width: `${g.pct}%`,
+                            background: g.pctRaw >= 100 ? CHART_VARS.saved : CHART_VARS.income,
+                          }}
+                        />
                       </div>
                       <div className="mt-2 flex justify-between text-xs text-zinc-500">
                         {/* pctRaw, not pct: 120% of a goal is an achievement, and
@@ -386,7 +458,10 @@ export default async function Dashboard() {
                           <span className="hm-money">{rm(g.current)}</span> {tr("dash.of")}{" "}
                           <span className="hm-money">{rm(g.target)}</span>
                         </span>
-                        <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                        <span
+                          className="font-medium"
+                          style={{ color: g.pctRaw >= 100 ? CHART_INKS.saved : CHART_INKS.income }}
+                        >
                           {g.pctRaw}%
                         </span>
                       </div>
@@ -510,12 +585,18 @@ export default async function Dashboard() {
   }
 }
 
+// A figure and its label. `good` is set on exactly one of them — the projected
+// balance — because a negative balance is the only number on this page that
+// means something has gone wrong. It is drawn in the palette's `spend` ink
+// rather than Tailwind's rose, so the warning colour here is the same one the
+// charts use for money leaving, and it follows the reader's scheme.
 function Stat({ label, value, good }: { label: string; value: string; good?: boolean }) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="text-xs text-zinc-500">{label}</div>
       <div
-        className={`hm-money mt-1 text-lg font-semibold ${good === false ? "text-rose-600 dark:text-rose-400" : ""}`}
+        className="hm-money mt-1 text-lg font-semibold"
+        style={good === false ? { color: CHART_INKS.spend } : undefined}
       >
         {value}
       </div>

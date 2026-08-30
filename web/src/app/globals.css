@@ -422,3 +422,95 @@ a,
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+
+/* ── The same palette, off the charts ───────────────────────────────────────
+   The eight roles above are drawn as solid marks inside an SVG. Everywhere
+   ELSE in the app the same eight facts appear as a status chip, a meter, or a
+   figure in a tile — a light tint carrying dark text — and those surfaces were
+   written in Tailwind's stock rose/amber/emerald months before the palette
+   existed. So a reader who switched to the colour-blind-safe scheme got six
+   charts that obeyed and a dashboard that did not: the bucket bar on /graph
+   turned vermillion while the bar for the SAME bucket on /dashboard stayed red
+   against green — the one pairing the whole scheme exists to remove.
+
+   Deriving them rather than hand-picking three more sets of hexes is the point.
+   `color-mix()` resolves at use, so these follow whatever `--hm-c-*` currently
+   is; a scheme has to define eight values and gets its chips and meters for
+   free, and no scheme can ship a tint that disagrees with its own chart.
+
+   The two percentages were measured, not chosen. -t- is a fill to put text ON:
+   14% is where the hue is still identifiable and the tint still reads as a
+   background rather than a block of colour. -i- is text to put on that fill,
+   and 52% toward ink is where the WORST of the 24 role x scheme pairs — honey's
+   at-risk amber, which is the brightest hue in the set and therefore the one
+   that decides this — reaches 5.27:1 on its own tint and 5.82:1 on white. That
+   clears AA (4.5:1) for the small text these chips are actually set in, with
+   room to spare.
+
+   It does not clear AAA, and it deliberately is not trying to. Pushing amber to
+   7:1 on a pale amber ground means an ink so dark that the role stops being
+   identifiable by hue at all, which costs more than the extra ratio buys — the
+   chips carry their status in words as well, and the marks they key to are the
+   full-strength colours above. If a scheme is ever added, re-run the check
+   before shipping it: the guarantee is per-scheme, not global. */
+:root {
+  --hm-t-income: color-mix(in oklab, var(--hm-c-income) 14%, #ffffff);
+  --hm-t-bucket: color-mix(in oklab, var(--hm-c-bucket) 14%, #ffffff);
+  --hm-t-spend: color-mix(in oklab, var(--hm-c-spend) 14%, #ffffff);
+  --hm-t-saved: color-mix(in oklab, var(--hm-c-saved) 14%, #ffffff);
+  --hm-t-at-risk: color-mix(in oklab, var(--hm-c-at-risk) 14%, #ffffff);
+  --hm-t-neutral: color-mix(in oklab, var(--hm-c-neutral) 14%, #ffffff);
+  --hm-t-obligation: color-mix(in oklab, var(--hm-c-obligation) 14%, #ffffff);
+  --hm-t-member: color-mix(in oklab, var(--hm-c-member) 14%, #ffffff);
+
+  --hm-i-income: color-mix(in oklab, var(--hm-c-income) 52%, #14231a);
+  --hm-i-bucket: color-mix(in oklab, var(--hm-c-bucket) 52%, #14231a);
+  --hm-i-spend: color-mix(in oklab, var(--hm-c-spend) 52%, #14231a);
+  --hm-i-saved: color-mix(in oklab, var(--hm-c-saved) 52%, #14231a);
+  --hm-i-at-risk: color-mix(in oklab, var(--hm-c-at-risk) 52%, #14231a);
+  --hm-i-neutral: color-mix(in oklab, var(--hm-c-neutral) 52%, #14231a);
+  --hm-i-obligation: color-mix(in oklab, var(--hm-c-obligation) 52%, #14231a);
+  --hm-i-member: color-mix(in oklab, var(--hm-c-member) 52%, #14231a);
+}
+
+/* ── Meters, drawn to the same rules as the charts ──────────────────────────
+   Every progress bar in the app — buckets, goals, the five H-Score criteria —
+   was its own set of Tailwind classes with its own idea of height, radius and
+   colour. One track and one fill, so a bar means the same thing on whichever
+   screen it appears. */
+.hm-meter {
+  height: 0.5rem;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 9999px;
+  /* background-COLOR, not the `background` shorthand. These rules are
+     unlayered and Tailwind's utilities sit in @layer utilities, so anything
+     declared here beats a class on the element no matter what order they are
+     written in — and the shorthand would have reset background-image to none,
+     silently erasing the hatched track the H-Score uses to say "this criterion
+     is resting on no data". */
+  background-color: #f1f1f3;
+}
+.hm-meter-fill {
+  height: 100%;
+  border-radius: 9999px;
+  /* Bars grow to their value rather than appearing at it. 600ms matches the
+     H-Score ring, which was already doing this and was the only one. */
+  transition: width 600ms cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-meter-fill { transition: none; }
+}
+
+/* The part of a bar that ran PAST its allocation. Hatched, not merely a second
+   colour: over-budget is the one state a household has to be able to read at a
+   glance, and the charts already treat "colour alone" as insufficient (see the
+   H-Score's hatched thin-data bars, and the whole reason the schemes exist).
+   The hatch survives greyscale, a projector, and every form of colour vision. */
+.hm-meter-over {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.5) 0 3px,
+    transparent 3px 6px
+  );
+}

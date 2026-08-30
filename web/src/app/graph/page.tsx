@@ -11,7 +11,8 @@ import BudgetBars from "./BudgetBars";
 import FocusBar from "./FocusBar";
 import FlexibleInput from "./FlexibleInput";
 import CurrencySwitcher from "./CurrencySwitcher";
-import ChartSchemePicker from "./ChartSchemePicker";
+import ChartSchemePicker from "../ChartSchemePicker";
+import { CHART_VARS, statusColor } from "@/lib/chartPalette";
 import RatesNote from "../RatesNote";
 import { t as translate } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -472,20 +473,25 @@ export default async function GraphPage({
       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-xs text-zinc-500">
         {(mode === "treemap" || mode === "tree" || mode === "bars") && (
           <>
-            <LegendDot color="#248A54" label={tr("status.on_track")} />
-            <LegendDot color="#E8A012" label={tr("status.at_risk")} />
-            <LegendDot color="#C94F4F" label={tr("status.over_budget")} />
-            <LegendDot color="#9AA0A6" label={tr("status.unfunded")} />
+            {/* From the palette, not from four literal hexes. These WERE the
+                honey scheme's hexes, frozen: switch to the colour-blind-safe
+                palette and every mark in the chart moved while the key that
+                explains those marks stayed put — a legend that describes a
+                picture the reader is not looking at is worse than none. */}
+            <LegendDot color={statusColor("on_track")} label={tr("status.on_track")} />
+            <LegendDot color={statusColor("at_risk")} label={tr("status.at_risk")} />
+            <LegendDot color={statusColor("over_budget")} label={tr("status.over_budget")} />
+            <LegendDot color={statusColor("unfunded")} label={tr("status.unfunded")} />
           </>
         )}
         {(mode === "sankey" || mode === "flow" || mode === "organic") && (
           <>
-            <LegendDot color="#FF7518" label={tr("g.legend.allocation")} />
-            <LegendDot color="#C94F4F" label={tr("g.legend.spending")} />
-            <LegendDot color="#248A54" label={tr("g.legend.savedGoal")} />
+            <LegendDot color={CHART_VARS.income} label={tr("g.legend.allocation")} />
+            <LegendDot color={CHART_VARS.spend} label={tr("g.legend.spending")} />
+            <LegendDot color={CHART_VARS.saved} label={tr("g.legend.savedGoal")} />
           </>
         )}
-        {mode === "organic" && <LegendDot color="#5B7DB1" label={tr("g.legend.bucket")} />}
+        {mode === "organic" && <LegendDot color={CHART_VARS.bucket} label={tr("g.legend.bucket")} />}
       </div>
 
       <RatesNote ccy={ccy} />
@@ -523,15 +529,24 @@ export default async function GraphPage({
   );
 }
 
+// The figures above the chart, keyed to the chart. `tone` names the role the
+// number belongs to, and the tile carries it as a 3px rule down its leading
+// edge in that role's own colour — so "spent this month" and the red ribbons
+// below it are visibly the same fact, in whichever scheme is on. A tinted
+// border on all four sides was doing neither job: too weak to key the tile to
+// anything, and strong enough to make four tiles look like four alerts.
 function Stat({ label, value, tone }: { label: string; value: string; tone: "income" | "alloc" | "spend" | "save" }) {
-  const ring: Record<string, string> = {
-    income: "border-amber-300 dark:border-amber-800",
-    alloc: "border-zinc-200 dark:border-zinc-800",
-    spend: "border-rose-300 dark:border-rose-900",
-    save: "border-emerald-300 dark:border-emerald-900",
+  const edge: Record<string, string> = {
+    income: CHART_VARS.income,
+    alloc: CHART_VARS.bucket,
+    spend: CHART_VARS.spend,
+    save: CHART_VARS.saved,
   };
   return (
-    <div className={`rounded-xl border bg-white px-3 py-2 dark:bg-zinc-900 ${ring[tone]}`}>
+    <div
+      className="rounded-xl border border-zinc-200 border-l-[3px] bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900"
+      style={{ borderLeftColor: edge[tone] }}
+    >
       <div className="text-xs text-zinc-500">{label}</div>
       <div className="mt-0.5 text-lg font-semibold tracking-tight">{value}</div>
     </div>

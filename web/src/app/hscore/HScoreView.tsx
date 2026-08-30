@@ -24,14 +24,27 @@ import {
 import { categoryFor } from "@/lib/directory";
 import { EXPLAIN, METHODOLOGY, isThin, leverFor } from "@/lib/hscoreExplain";
 import DirectoryView from "./DirectoryView";
+import { CHART_INKS, CHART_VARS } from "@/lib/chartPalette";
 
 type Tr = (k: string, vars?: Record<string, string | number>) => string;
 
-const BAND_STYLE: Record<Band, { ring: string; text: string; chip: string }> = {
-  building: { ring: "#8B94A3", text: "text-zinc-600 dark:text-zinc-300", chip: "bg-zinc-100 dark:bg-zinc-800" },
-  steady: { ring: "#3E7BB6", text: "text-sky-700 dark:text-sky-300", chip: "bg-sky-50 dark:bg-sky-950/40" },
-  strong: { ring: "#2E8B57", text: "text-emerald-700 dark:text-emerald-300", chip: "bg-emerald-50 dark:bg-emerald-950/40" },
-  thriving: { ring: "#E8A012", text: "text-amber-700 dark:text-amber-300", chip: "bg-amber-50 dark:bg-amber-950/40" },
+// The four bands, drawn from the chart palette rather than from four hexes of
+// their own. Three of those hexes were near-misses for colours the charts
+// already use — #2E8B57 against the palette's #248A54 for the same idea of
+// "healthy", #E8A012 exactly the at-risk amber but meaning the opposite here —
+// and none of them moved when the reader switched scheme, so the biggest
+// coloured object in the app was the one thing on screen still arguing for the
+// default palette.
+//
+// The mapping is deliberate and it is not a status: a band is a stage, so it
+// climbs neutral → bucket → saved → income, ending on the brand's own honey for
+// the top band. Nothing here reuses `spend` or `atRisk`, because a low score is
+// not an error and must not be coloured like one.
+const BAND_STYLE: Record<Band, { ring: string; text: string }> = {
+  building: { ring: CHART_VARS.neutral, text: CHART_INKS.neutral },
+  steady: { ring: CHART_VARS.bucket, text: CHART_INKS.bucket },
+  strong: { ring: CHART_VARS.saved, text: CHART_INKS.saved },
+  thriving: { ring: CHART_VARS.income, text: CHART_INKS.income },
 };
 
 const rm = (n: number) => `RM${Math.round(n).toLocaleString("en-MY")}`;
@@ -57,7 +70,7 @@ function ScoreRing({ hscore, tr }: { hscore: HScore; tr: Tr }) {
             fill="none"
             strokeWidth="12"
             strokeLinecap="round"
-            stroke={provisional ? "#9AA0A6" : style.ring}
+            stroke={provisional ? CHART_VARS.neutral : style.ring}
             strokeDasharray={`${filled} ${C - filled}`}
             opacity={provisional ? 0.45 : 1}
             style={{ transition: "stroke-dasharray 600ms ease-out" }}
@@ -71,7 +84,10 @@ function ScoreRing({ hscore, tr }: { hscore: HScore; tr: Tr }) {
         </div>
       </div>
 
-      <p className={`mt-3 font-display text-lg font-semibold ${provisional ? "text-zinc-400" : style.text}`}>
+      <p
+        className={`mt-3 font-display text-lg font-semibold ${provisional ? "text-zinc-400" : ""}`}
+        style={provisional ? undefined : { color: style.text }}
+      >
         {provisional ? tr("hscore.provisional") : tr(`hscore.band.${hscore.band}`)}
       </p>
       {!provisional && (
@@ -226,10 +242,10 @@ function SubScoreBars({
                 </span>
               </div>
               <div
-                className={`mt-1.5 h-2 overflow-hidden rounded-full ${
+                className={`hm-meter mt-1.5 ${
                   thin
                     ? "bg-[repeating-linear-gradient(45deg,#e4e4e7_0_4px,transparent_4px_8px)] dark:bg-[repeating-linear-gradient(45deg,#3f3f46_0_4px,transparent_4px_8px)]"
-                    : "bg-zinc-200 dark:bg-zinc-800"
+                    : ""
                 }`}
                 role="meter"
                 aria-valuenow={s.points}
@@ -241,10 +257,23 @@ function SubScoreBars({
                     short amber bar. The brief requires "low because we don't
                     know" to be visually distinct from "low because of your
                     finances", and colour alone would not survive greyscale — so
-                    the distinction is a texture change as well as a hue. */}
+                    the distinction is a texture change as well as a hue.
+
+                    Otherwise ONE colour for all five, and that stays true. These
+                    are the parts of a score, not four states of a bucket:
+                    colouring a low criterion like an over-budget bucket would
+                    say the household had done something wrong, when the honest
+                    reading is "there is room here". The length carries the whole
+                    message. Both hues come from the chart palette now, so the
+                    high-contrast scheme can darken them for a projector along
+                    with everything else. */}
                 <div
-                  className={`h-full rounded-full ${thin ? "bg-zinc-400/50" : "bg-amber-500"}`}
-                  style={{ width: `${pct}%`, transition: "width 600ms ease-out" }}
+                  className="hm-meter-fill"
+                  style={{
+                    width: `${pct}%`,
+                    background: thin ? CHART_VARS.neutral : CHART_VARS.income,
+                    opacity: thin ? 0.5 : 1,
+                  }}
                 />
               </div>
               <p className="mt-1 text-xs text-zinc-400">

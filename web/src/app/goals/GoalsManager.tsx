@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 // for a reason. `import type` is erased at compile time, so no server-only code
 // follows it into the client bundle.
 import type { Goal } from "@/lib/goals";
+import { CHART_INKS, CHART_TINTS, CHART_VARS } from "@/lib/chartPalette";
 interface Category {
   key: string;
   emoji: string;
@@ -276,12 +277,22 @@ function GoalCard({
   }
 
   return (
+    // A reached goal turns the whole card the `saved` tint — the same colour as
+    // its own bar, as an on-track bucket, and as the savings ribbons on /graph.
+    // It was emerald-50, which looked identical under the default palette and
+    // stayed exactly where it was under the other two.
     <div
       className={
         "rounded-2xl border p-5 " +
-        (done
-          ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30"
-          : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900")
+        (done ? "" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900")
+      }
+      style={
+        done
+          ? {
+              background: CHART_TINTS.saved,
+              borderColor: "color-mix(in oklab, var(--hm-c-saved) 35%, #ffffff)",
+            }
+          : undefined
       }
     >
       <div className="flex items-center justify-between gap-3">
@@ -317,16 +328,23 @@ function GoalCard({
         {/* pctRaw, not pct. The bar clamps so it cannot draw past its container;
             the NUMBER must not, because 120% of a goal is an achievement and
             rounding it to 100% quietly takes it from whoever earned it. */}
-        <span className={"text-lg font-bold " + (done ? "text-emerald-600" : "text-amber-600")}>
+        {/* Reached is `saved` — money kept — and in progress is `income`, the
+            brand's own honey. Both from the chart palette, so a goal reads the
+            same here as it does on the dashboard's goal cards and in the graph's
+            savings ribbons, in whichever colour scheme the reader chose. */}
+        <span
+          className="text-lg font-bold"
+          style={{ color: done ? CHART_INKS.saved : CHART_INKS.income }}
+        >
           {goal.pctRaw}%
         </span>
       </div>
 
       {/* progress bar with 25/50/75 milestone ticks */}
-      <div className="relative mt-3 h-2.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+      <div className="hm-meter relative mt-3">
         <div
-          className={"h-full " + (done ? "bg-emerald-500" : "bg-amber-500")}
-          style={{ width: `${goal.pct}%` }}
+          className="hm-meter-fill"
+          style={{ width: `${goal.pct}%`, background: done ? CHART_VARS.saved : CHART_VARS.income }}
         />
         {[25, 50, 75].map((m) => (
           <span key={m} className="absolute top-0 h-full w-px bg-white/70 dark:bg-black/40" style={{ left: `${m}%` }} />
@@ -355,7 +373,7 @@ function GoalCard({
       )}
 
       {done ? (
-        <p className="mt-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+        <p className="mt-3 text-sm font-medium" style={{ color: CHART_INKS.saved }}>
           🎉 You did it — target reached. You earned this by saving.
           {goal.pctRaw > 100 && <> You are {goal.pctRaw - 100}% past it.</>}
         </p>
