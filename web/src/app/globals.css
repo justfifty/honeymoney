@@ -318,19 +318,33 @@ a,
    and the paths are simple cubics, but it is the reason this is capped to the
    ribbons actually in focus rather than applied to every stroke on the page —
    and the reason it was measured on the landing page rather than assumed. */
+/* DOTS, not dashes. A dash with round caps is a lozenge, and a line of
+   lozenges reads as a dotted border — a style applied to the ribbon rather than
+   something moving along it. A dash of length ~0 with `stroke-linecap: round`
+   renders as a CIRCLE whose diameter is the stroke width, so the same one
+   animated property now produces discrete particles travelling the path. That
+   is the difference between "this line is dashed" and "money is moving".
+
+   0.01 rather than 0 because a zero-length dash is allowed to disappear
+   entirely; a hair above zero is a dot everywhere.
+
+   The gap and the keyframe distance must stay equal, or the dots drift out of
+   step with their own period and the loop visibly stutters once a cycle. */
 @keyframes hm-sankey-dash {
-  to { stroke-dashoffset: -34; }
+  to { stroke-dashoffset: -22.01; }
 }
 .hm-sankey-flow {
-  stroke-dasharray: 7 27;
-  opacity: 0.75;
-  animation: hm-sankey-dash 1.9s linear infinite;
+  stroke-dasharray: 0.01 22;
+  opacity: 0.85;
+  /* Per-ribbon, set inline. Every ribbon moving at one speed reads as a
+     mechanism; a spread reads as flow. */
+  animation: hm-sankey-dash var(--hm-flow-dur, 2s) linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* Still drawn, still still. The dashes read as a texture on the ribbon
      rather than as motion, so the chart loses nothing it needed. */
-  .hm-sankey-flow { animation: none; opacity: 0.45; }
+  .hm-sankey-flow { animation: none; opacity: 0.5; }
 }
 
 /* ── Chart palette ──────────────────────────────────────────────────────────

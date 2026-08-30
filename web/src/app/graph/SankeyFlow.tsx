@@ -467,10 +467,19 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
                 // as beads on a string, not as flow. A floor keeps the thinnest
                 // ribbons from losing their dash entirely; the ceiling is what
                 // keeps the widest ones looking like movement.
-                strokeWidth={Math.min(5, Math.max(1.5, r.width * 0.3))}
+                strokeWidth={Math.min(6, Math.max(2, r.width * 0.34))}
                 strokeLinecap="round"
                 className="hm-sankey-flow"
-                style={{ animationDelay: `${-(i % 7) * 0.34}s` }}
+                // Speed AND phase vary per ribbon. Identical timing on every
+                // path reads as one machine ticking; a spread reads as many
+                // things moving independently, which is what a Sankey is. Both
+                // derive from the index — never Math.random, because this
+                // renders on the server and again on the client and the two
+                // must agree exactly.
+                style={{
+                  animationDelay: `${-(i % 7) * 0.34}s`,
+                  ["--hm-flow-dur" as string]: `${1.7 + (i % 5) * 0.28}s`,
+                }}
                 aria-hidden="true"
                 pointerEvents="none"
               />
