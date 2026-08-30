@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/household";
 import { PdfPasswordError } from "@/lib/pdf";
 import { readStatement } from "@/lib/statement";
 import { apiError } from "@/lib/apiError";
-import { aiDocumentsAllowed, isLocalProvider } from "@/lib/aiGuard";
+import { aiCloudDataAllowed, isLocalProvider } from "@/lib/aiGuard";
 
 export const runtime = "nodejs";
 
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Scales with EGRESS, not with the word "AI": on a local engine the
     // document never leaves the machine HoneyMoney runs on, so there is no
     // third-party disclosure for a household to consent to.
-    if (!(await aiDocumentsAllowed(ctx.user.id, { local: isLocalProvider(activeAiProvider()) }))) {
+    if (!(await aiCloudDataAllowed(ctx.user.id, { local: isLocalProvider(activeAiProvider()) }))) {
       return NextResponse.json(
         {
           error: "ai_consent_missing",

@@ -61,18 +61,19 @@ export const NOTICE_VERSION = "2026-08-28";
 // deciding about:
 //
 //   ai_phrasing   → a model may word your answers. Class 0-1 only.
-//   ai_documents  → a receipt or statement may be sent to an outside AI service.
+//   ai_cloud_data → your own figures, labels, receipts and statements may be
+//                   sent to an outside AI service.
 //
 // LEGACY: `ai_processing` is kept in the union because the ledger is append-only
 // and old grants must stay readable. It is NOT in PURPOSES, so it can never be
 // written again, and aiGuard maps an old grant forward to ai_phrasing ONLY —
-// never to ai_documents. Someone who ticked one box in 2026 did not agree to
+// never to ai_cloud_data. Someone who ticked one box in 2026 did not agree to
 // upload their receipts, and inferring that they did is exactly the move this
 // split exists to prevent.
 export type Purpose =
   | "core_processing"
   | "ai_phrasing"
-  | "ai_documents"
+  | "ai_cloud_data"
   /** @deprecated Legacy single AI switch. Readable, never writable. */
   | "ai_processing"
   | "partner_offers"
@@ -126,9 +127,9 @@ export const PURPOSES: PurposeSpec[] = [
     // The only purpose here that sends a household's own data to a third party.
     // Off by default and asked for separately, because it is the one a person
     // would actually want to think about.
-    key: "ai_documents",
-    labelKey: "consent.aiDocuments.label",
-    helpKey: "consent.aiDocuments.help",
+    key: "ai_cloud_data",
+    labelKey: "consent.aiCloudData.label",
+    helpKey: "consent.aiCloudData.help",
     required: false,
     default: false,
     directMarketing: false,

@@ -54,12 +54,17 @@ function SetupNotice({ reason, lang }: { reason: string; lang: Locale }) {
 async function HoneyInsight({
   projection,
   locale,
+  userId,
 }: {
   projection: BucketProjection[];
   locale: Locale;
+  /** Whose consent governs whether this sentence may be written by a cloud
+   *  model. Threaded down rather than re-resolved so the component cannot be
+   *  rendered without someone having decided whose data it is. */
+  userId: string | null;
 }) {
   const tr = (k: string) => t(locale, k);
-  const insight = await getHoneyInsight(projection, locale);
+  const insight = await getHoneyInsight(projection, locale, userId);
   return (
     <>
       <div className="flex items-center gap-2 text-sm font-medium opacity-90">
@@ -477,7 +482,7 @@ export default async function Dashboard() {
         {/* Honey insight */}
         <section className="mt-8 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg">
           <Suspense fallback={<HoneyInsightSkeleton locale={locale} />}>
-            <HoneyInsight projection={projection} locale={locale} />
+            <HoneyInsight projection={projection} locale={locale} userId={ctx?.user?.id ?? null} />
           </Suspense>
         </section>
 

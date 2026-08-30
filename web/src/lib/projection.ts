@@ -5,8 +5,9 @@
 
 import { pbList, pbStr, pbListAll } from "./pocketbase";
 import { inHouseholdTotals } from "./attribution";
-import { isGeminiConfigured } from "./config";
+import { isGeminiConfigured, activeAiProvider } from "./config";
 import { honeyInsight } from "./gemini";
+import { aiCloudDataAllowed, isLocalProvider } from "./aiGuard";
 import { t, type Locale } from "./i18n";
 import { dataLabel } from "./dataLabels";
 import { redactPrivate, privateBucketIds, PRIVATE_LABEL } from "./privacy";
@@ -294,9 +295,26 @@ function ruleBasedInsight(projection: BucketProjection[], locale: Locale): strin
   return t(locale, "honey.ontrack");
 }
 
+/**
+ * ⚠️ THIS SENDS THE HOUSEHOLD'S OWN DATA TO A CLOUD MODEL, and for a long time
+ * it asked nobody. buildContext() interpolates real bucket labels — the comment
+ * in lib/gemini.ts uses "Ma's dialysis" as its example, which is exactly the
+ * kind of label people write — alongside exact RM figures. It is class 2, it ran
+ * on every dashboard render, and the only gate was `isGeminiConfigured()`.
+ *
+ * The receipt and statement routes had been given a consent check; this one was
+ * missed because it does not look like an upload. It is the same disclosure: a
+ * third party outside Malaysia receives what this household earns, owes and
+ * spends it on. `userId` is required rather than optional so that a future
+ * caller has to think about whose data it is holding.
+ *
+ * Declining costs nothing that matters — ruleBasedInsight() is a real insight
+ * computed here from the same projection, not an error state.
+ */
 export async function getHoneyInsight(
   projection: BucketProjection[],
   locale: Locale = "en",
+  userId?: string | null,
 ): Promise<{ text: string; source: "gemini" | "rule-based" }> {
   // Nothing is funded ⇒ there is no plan to comment on, and the model is not
   // asked. `buildContext` would hand it a list of zeroes (or an empty string)
@@ -304,6 +322,12 @@ export async function getHoneyInsight(
   // the sentence this fix exists to stop showing.
   const funded = projection.some((b) => b.status !== "unfunded");
   if (!isGeminiConfigured() || !funded) {
+    return { text: ruleBasedInsight(projection, locale), source: "rule-based" };
+  }
+  // Consent, checked before the snapshot is built rather than after — building
+  // it is what assembles the labels and figures into one string.
+  const local = isLocalProvider(activeAiProvider());
+  if (!(await aiCloudDataAllowed(userId, { local }))) {
     return { text: ruleBasedInsight(projection, locale), source: "rule-based" };
   }
   try {

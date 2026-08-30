@@ -36,15 +36,15 @@ const COPY: Record<string, { label: string; help: string }> = {
     label: "Let Honey word her answers",
     help: "Honey works out every figure on our own server either way — this only decides who writes the sentence around it. An outside AI service is sent placeholder names like {saving} and {gap}, plus your language. It is never sent your amounts, your labels, your merchants or your question. With this off you get the same numbers in fixed wording.",
   },
-  ai_documents: {
-    label: "Send receipts and statements to an AI service",
-    help: "This is the one that shares your own data. A receipt photo or bank statement you choose to scan is uploaded to an AI provider that may be outside Malaysia. With this off, receipts are still read — on your own phone, by the built-in scanner, with nothing uploaded — and statement files are still parsed here. Turn it on only if you want the extra accuracy on hard receipts.",
+  ai_cloud_data: {
+    label: "Let an AI service see your figures and receipts",
+    help: "The only setting here that sends your own data outside. It covers three things: a receipt photo you scan, a bank statement you import, and the insight sentence on your dashboard — which is written from your real bucket names and amounts. It goes to Google (Gemini) or Groq on their free tiers, on servers that may be outside Malaysia. With this OFF you lose none of the app: receipts are still read on your own phone by the built-in scanner with nothing uploaded, statements are still parsed here, and the dashboard insight is still written — by our own code, from the same numbers. Turn it on if you want the extra accuracy on hard or handwritten receipts.",
   },
   // Retired in favour of the two above. Kept so a household whose ledger still
   // carries the old grant sees a name rather than a raw key.
   ai_processing: {
     label: "AI features (old setting)",
-    help: "Replaced by the two settings above. Your earlier answer still counts as permission to word your answers, and never as permission to upload a receipt.",
+    help: "Replaced by the two settings above. Your earlier answer still counts as permission to word your answers, and never as permission to send your figures or receipts anywhere.",
   },
   partner_offers: {
     label: "Matched financial products",

@@ -172,14 +172,14 @@ export async function aiConsentGiven(userId: string | null | undefined): Promise
  * with egress rather than with the word "AI" — which is why a family running
  * this on one laptop is asked for less, not more.
  */
-export async function aiDocumentsAllowed(
+export async function aiCloudDataAllowed(
   userId: string | null | undefined,
   opts: { local?: boolean } = {},
 ): Promise<boolean> {
   if (!userId) return true;
   if (opts.local) return true;
   try {
-    return await hasConsent(userId, "ai_documents");
+    return await hasConsent(userId, "ai_cloud_data");
   } catch {
     return false;
   }

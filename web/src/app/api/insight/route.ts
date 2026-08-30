@@ -19,13 +19,13 @@ export async function GET() {
   }
 
   try {
-    const { tenantId, isDemo } = await resolveViewTenant();
+    const { tenantId, ctx, isDemo } = await resolveViewTenant();
     if (!tenantId) {
       return NextResponse.json({ error: "No household to show." }, { status: 404 });
     }
 
     const projection = await getBucketProjection(tenantId);
-    const insight = await getHoneyInsight(projection);
+    const insight = await getHoneyInsight(projection, "en", ctx?.user?.id ?? null);
     return NextResponse.json({ tenantId, isDemo, projection, insight });
   } catch (err) {
     return apiError(err);

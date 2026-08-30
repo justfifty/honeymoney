@@ -59,7 +59,7 @@ function SignupForm() {
           inviteCode: code.trim() || undefined,
           consents: {
             ai_phrasing: aiOk,
-            ai_documents: aiDocsOk,
+            ai_cloud_data: aiDocsOk,
             partner_offers: partnerOk,
             research_aggregate: researchOk,
           },
@@ -155,8 +155,8 @@ function SignupForm() {
             <Consent
               checked={aiDocsOk}
               onChange={setAiDocsOk}
-              label="Send receipts and statements to an AI service"
-              help="Only this one shares your own data. Off means receipts are still scanned — on your phone, nothing uploaded."
+              label="Let an AI service see your figures and receipts"
+              help="The only one that sends your data outside — to Google or Groq, possibly outside Malaysia. Covers scanned receipts, imported statements and your dashboard insight. Off means receipts are still scanned on your phone, and nothing is uploaded."
             />
             {/* Not offered yet — see PARTNER_OFFERS_ENABLED in lib/consent.ts.
                 Asking for a purpose we are not licensed to act on would collect

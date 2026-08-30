@@ -15,9 +15,12 @@
 //                 NAMES and a locale — "{saving}", "{gap}", "en" — and never a
 //                 figure, a label, a merchant or the question. Nothing about the
 //                 household leaves.
-//   ai_documents  A receipt photo or a bank statement the household chose to
-//                 scan may be uploaded to an outside AI service. This is the
-//                 household's own data, leaving.
+//   ai_cloud_data Your own figures and labels leave. Three paths reach this:
+//                 a receipt photo, a bank statement, and — the one that hid for
+//                 longest — the dashboard "Honey insight", which interpolates
+//                 real bucket labels and exact RM amounts into a prompt on every
+//                 render. It does not look like an upload, which is precisely
+//                 why it went ungated while the two obvious ones were fixed.
 //
 // One switch made both of those the same decision, so a household that wanted a
 // warmer sentence had to authorise uploading its receipts, and one that refused
@@ -25,11 +28,11 @@
 // purpose-limited; a purpose broad enough to cover both is not specific.
 //
 // ⚠️ NO BACKFILL, AND THAT IS THE POINT. It is tempting to write an
-// ai_documents=true row for everyone who once granted ai_processing. That would
+// ai_cloud_data=true row for everyone who once granted ai_processing. That would
 // manufacture the most consequential permission in the app out of the vaguest
 // wording it ever used ("Let Honey use AI"). Existing grants are instead read
 // FORWARD in lib/aiGuard.ts: an old ai_processing grant satisfies ai_phrasing,
-// and never ai_documents. Households who want document scanning tick a box that
+// and never ai_cloud_data. Households who want document scanning tick a box that
 // says what it does.
 //
 // ai_processing stays in the value list because the ledger is append-only and
@@ -42,7 +45,7 @@ migrate(
     const field = consents.fields.getByName("purpose");
     if (!field) throw new Error("consents.purpose not found — schema drifted");
 
-    for (const v of ["ai_phrasing", "ai_documents"]) {
+    for (const v of ["ai_phrasing", "ai_cloud_data"]) {
       if (!field.values.includes(v)) field.values.push(v);
     }
     app.save(consents);
@@ -54,7 +57,7 @@ migrate(
     const consents = app.findCollectionByNameOrId("consents");
     const field = consents.fields.getByName("purpose");
     if (!field) return;
-    field.values = field.values.filter((v) => v !== "ai_phrasing" && v !== "ai_documents");
+    field.values = field.values.filter((v) => v !== "ai_phrasing" && v !== "ai_cloud_data");
     app.save(consents);
   },
 );
