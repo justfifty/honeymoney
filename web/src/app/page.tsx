@@ -4,10 +4,44 @@ import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import IosInstallHint from "./IosInstallHint";
 import TryItNow from "./TryItNow";
+import SankeyFlow from "./graph/SankeyFlow";
+import { getFocusedView } from "@/lib/focusView";
+import { config } from "@/lib/config";
+
+/**
+ * The demo household's graph, for the hero chart — or null, which is a normal
+ * outcome rather than an error.
+ *
+ * The landing page is on the snapshot list (scripts/build-static-site.mjs)
+ * BECAUSE it has to survive the database being unreachable, and a live chart is
+ * the one element here that needs one. So every failure path returns null and
+ * the caller falls back to the screenshot: an unreadable graph must degrade to
+ * the old picture, never to an empty frame on the first thing a visitor sees.
+ *
+ * Fictional personas, so there is nothing to redact — the seeded household is
+ * the same one /graph shows any anonymous visitor.
+ */
+async function heroGraph(locale: Awaited<ReturnType<typeof getLocale>>) {
+  const tenantId = config.demoPersonaIds[2] ?? config.demoPersonaIds[0];
+  if (!tenantId) return null;
+  try {
+    const view = await getFocusedView(tenantId, { kind: "all" }, locale, config.demoPersonaIds, {
+      redact: false,
+    });
+    const nodes = view.graph.nodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label }));
+    const edges = view.graph.edges.map((e) => ({ src: e.src, dst: e.dst, rel: e.rel, flow: e.flow }));
+    // A graph with no edges draws an empty frame, which is worse than the
+    // screenshot it replaced.
+    return edges.length > 4 ? { nodes, edges } : null;
+  } catch {
+    return null;
+  }
+}
 
 export default async function Home() {
   const locale = await getLocale();
   const tr = (k: string) => t(locale, k);
+  const live = await heroGraph(locale);
 
   // ⚠️ ONLY THE FIRST THREE RENDER — see `trust.slice(0, 3)` below. The list is
   // longer than the bar, so anything appended here is written and never shown,
@@ -139,14 +173,39 @@ export default async function Home() {
       {/* ---------- PRODUCT SHOT ---------- */}
       <section className="px-6 pb-4">
         <figure className="hm-animate hm-delay-4 mx-auto max-w-4xl overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl ring-1 ring-amber-100">
-          <Image
-            src="/product-sankey.png"
-            alt={tr("home.shot.caption")}
-            width={1600}
-            height={900}
-            priority
-            className="h-auto w-full"
-          />
+          {/* THE LIVE CHART, not a picture of it.
+              This was a PNG — a screenshot of the one thing the product is
+              best at, on the page whose entire job is a first impression. The
+              component renders on the server and its flow animation is pure
+              CSS, so the static snapshot captures real SVG that still moves at
+              the edge with the origin switched off. A visitor now sees the
+              actual renderer, and it is the same code /graph runs.
+
+              FALLS BACK TO THE SCREENSHOT, deliberately. This page is in the
+              snapshot list precisely so it survives the database being
+              unreachable, and a live chart is the one thing here that needs a
+              database. If the demo graph cannot be read at render time we show
+              the PNG rather than an empty box — the landing page must never be
+              the thing that breaks when PocketBase does. */}
+          {live ? (
+            <div className="px-2 pt-2">
+              <SankeyFlow
+                ccy="MYR"
+                lang={locale}
+                nodes={live.nodes}
+                edges={live.edges}
+              />
+            </div>
+          ) : (
+            <Image
+              src="/product-sankey.png"
+              alt={tr("home.shot.caption")}
+              width={1600}
+              height={900}
+              priority
+              className="h-auto w-full"
+            />
+          )}
           <figcaption className="border-t border-zinc-100 px-4 py-2 text-center text-xs text-zinc-500">
             {tr("home.shot.caption")}
           </figcaption>
