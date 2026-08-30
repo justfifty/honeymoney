@@ -41,7 +41,14 @@ export default async function Home() {
               844px fold before the visitor learned anything. A brand a first-time
               visitor has never heard of does not earn the top of the fold; what
               they get does. */}
-          <h1 className="hm-animate hm-delay-1 mx-auto mt-2 max-w-2xl text-[1.7rem] font-extrabold leading-[1.15] tracking-tight text-balance text-zinc-900 sm:text-4xl dark:text-white">
+          {/* The scale escalates past `sm`, which it did not before: the
+              headline stopped growing at 36px and a 1440px window rendered a
+              hero the same size as a tablet's, surrounded by empty space. A
+              headline that does not scale with the viewport reads as timid on
+              the widest screens, which is exactly where a first-time visitor is
+              deciding whether this is a real product. max-w grows with it, or
+              the bigger type just wraps into more lines. */}
+          <h1 className="hm-animate hm-delay-1 mx-auto mt-2 max-w-2xl text-[1.7rem] font-extrabold leading-[1.12] tracking-tight text-balance text-zinc-900 sm:text-4xl md:max-w-3xl md:text-5xl lg:text-6xl dark:text-white">
             {tr("home.outcome")}
           </h1>
           {/* Hidden on a phone: three lines of positioning between the headline
@@ -97,6 +104,36 @@ export default async function Home() {
             }}
           />
         </div>
+      </section>
+
+      {/* ---------- PROOF BAND ---------- */}
+      {/* Four figures directly under the fold, which is where a landing page of
+          this kind puts its evidence. Every one is COUNTABLE in this repo —
+          LOCALES has six entries, CURRENCIES has nine, CHART_ORDER has six, and
+          the price is zero — and that is the whole selection rule. HoneyMoney is
+          pre-traction, so the numbers a visitor would expect here (users,
+          volume, uptime) do not exist, and inventing them is a MAIC
+          disqualifier as well as a lie. What is true is that the product is
+          unusually finished for its stage, and these are the four facts that
+          show it without claiming a single customer. */}
+      <section aria-label={tr("home.proof.label")} className="px-6 pb-10">
+        <dl className="hm-animate hm-delay-4 mx-auto grid max-w-3xl grid-cols-2 gap-x-4 gap-y-6 text-center sm:grid-cols-4">
+          {[
+            { n: "6", k: "home.proof.langs" },
+            { n: "9", k: "home.proof.currencies" },
+            { n: "6", k: "home.proof.views" },
+            { n: "RM0", k: "home.proof.price" },
+          ].map((s) => (
+            <div key={s.k}>
+              <dt className="font-display text-3xl font-extrabold tracking-tight text-amber-600 sm:text-4xl dark:text-amber-400">
+                {s.n}
+              </dt>
+              {/* leading-snug and no truncation: BM and Tamil run considerably
+                  longer than English here and must wrap, not clip. */}
+              <dd className="mt-1 text-xs leading-snug text-zinc-600 dark:text-zinc-400">{tr(s.k)}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* ---------- PRODUCT SHOT ---------- */}

@@ -170,6 +170,13 @@ const en: Dict = {
   "role.readOnly": "Your role is view-only, so you can't change records here.",
   // landing page
   "home.badge": "MAIC Nexus 2026 · Track T3 — Fintech",
+  // The proof band. Every figure is countable in this codebase - see the note
+  // in app/page.tsx for why nothing about users or volume appears here.
+  "home.proof.label": "What is built today",
+  "home.proof.langs": "languages, not just English",
+  "home.proof.currencies": "currencies, for cross-border pay",
+  "home.proof.views": "views of one money graph",
+  "home.proof.price": "to use, forever",
   "home.tagline": "AI financial wellness for Malaysian individuals, couples and families — funding transparency, spending autonomy.",
   "home.slogan": "Happy Wife, Happy Life.",
   "home.ctaDemo": "Open the live demo",
@@ -1218,6 +1225,11 @@ const ms: Dict = {
   "demo.signInToAdd": "Log masuk untuk tambah rekod anda sendiri",
   "role.readOnly": "Peranan anda lihat sahaja, jadi anda tidak boleh ubah rekod di sini.",
   "home.badge": "MAIC Nexus 2026 · Trek T3 — Fintech",
+  "home.proof.label": "Apa yang sudah dibina",
+  "home.proof.langs": "bahasa, bukan bahasa Inggeris sahaja",
+  "home.proof.currencies": "mata wang, untuk bayaran rentas sempadan",
+  "home.proof.views": "paparan bagi satu graf wang",
+  "home.proof.price": "untuk digunakan, selamanya",
   "home.tagline": "Kesejahteraan kewangan AI untuk individu, pasangan dan keluarga Malaysia — telus dalam dana, bebas dalam belanja.",
   "home.slogan": "Isteri Gembira, Hidup Bahagia.",
   "home.ctaDemo": "Buka demo langsung",

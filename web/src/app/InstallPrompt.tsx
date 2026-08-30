@@ -17,13 +17,43 @@ export default function InstallPrompt() {
   const { canPrompt, isIos, iosNeedsSafari, installed, promptInstall } = usePwaInstall();
   const [dismissed, setDismissed] = useState(true); // assume dismissed until we read storage (avoids SSR flash)
 
+  // NOT SHOWN UNTIL THE VISITOR HAS SEEN SOMETHING.
+  //
+  // This appeared the instant the page did, and on the landing page it is
+  // bottom-right of a hero whose whole job is one product visual — so a
+  // first-time visitor's first impression was a card asking them to install an
+  // app they had not yet been shown. Measured on both 1440x900 and 390x844: the
+  // banner overlapped the Sankey in both.
+  //
+  // Waiting for one viewport of scroll makes it an offer to somebody who has
+  // demonstrated interest rather than an interruption of the pitch. The timer
+  // is the fallback for a fold that fits without scrolling — a short page, or a
+  // desktop window tall enough that there is nothing to scroll past.
+  const [engaged, setEngaged] = useState(false);
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISS_KEY) === "1");
+
+    const check = () => {
+      if (window.scrollY > window.innerHeight * 0.6) {
+        setEngaged(true);
+        window.removeEventListener("scroll", check);
+      }
+    };
+    window.addEventListener("scroll", check, { passive: true });
+    const timer = window.setTimeout(() => setEngaged(true), 20_000);
+    // No initial synchronous check. A page restored mid-scroll fires `scroll`
+    // on the first movement, and the timer covers a fold with nothing to scroll
+    // past — so the subscription is the only thing that ever sets state, which
+    // is the shape the effect is meant to have.
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.clearTimeout(timer);
+    };
   }, []);
 
   const anyIos = isIos || iosNeedsSafari;
   // Show only when there is a real install path and the user hasn't opted out.
-  if (dismissed || installed || (!canPrompt && !anyIos)) return null;
+  if (dismissed || !engaged || installed || (!canPrompt && !anyIos)) return null;
 
   function dismiss() {
     localStorage.setItem(DISMISS_KEY, "1");
