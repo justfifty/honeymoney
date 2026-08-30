@@ -423,19 +423,58 @@ export default function SankeyFlow({ nodes, edges, ccy = "MYR", lang = "en" }: {
       <text x={W / 2} y={26} textAnchor="middle" fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.buckets")}</text>
       <text x={W - 64} y={26} textAnchor="end" fontSize="12" fontWeight="700" className="fill-zinc-400">{tr("g.sankey.landing")}</text>
 
-      {ribbons.map((r) => {
+      {ribbons.map((r, i) => {
         const active = focus === null || focus === r.src || focus === r.dst;
         return (
-          <path
-            key={r.key}
-            d={r.d}
-            fill="none"
-            stroke={r.color}
-            strokeWidth={r.width}
-            opacity={active ? 0.5 : 0.08}
-          >
-            <title>{r.label}</title>
-          </path>
+          <g key={r.key}>
+            <path
+              d={r.d}
+              fill="none"
+              stroke={r.color}
+              strokeWidth={r.width}
+              opacity={active ? 0.5 : 0.08}
+            >
+              <title>{r.label}</title>
+            </path>
+            {/* The flow, as a second stroke along the SAME path.
+                A Sankey drawn once is a picture of where money went; the eye
+                reads a still diagram as a structure rather than as movement,
+                and "your money is flowing somewhere you did not choose" is the
+                whole argument this chart exists to make. Dashes travelling
+                left-to-right say it without a legend.
+
+                Deliberately a sibling rather than a filter or a gradient on the
+                ribbon itself: the ribbon keeps its exact geometry, colour and
+                hover target, so nothing about the readable chart depends on the
+                decoration. Remove this element and the diagram is unchanged.
+
+                Only ACTIVE ribbons move. When a focus lens dims the rest,
+                animating the dimmed ones would make the thing you are not
+                looking at the busiest part of the frame.
+
+                The stagger is per-ribbon and derived from the index, not
+                random: this component renders on the server and again on the
+                client and the two must agree exactly. */}
+            {active && (
+              <path
+                d={r.d}
+                fill="none"
+                stroke={r.color}
+                // CAPPED, not simply proportional. Ribbon width is the RM
+                // amount, so a salary ribbon is enormous and 34% of enormous is
+                // a row of lozenges the size of the dashes' own gaps — it reads
+                // as beads on a string, not as flow. A floor keeps the thinnest
+                // ribbons from losing their dash entirely; the ceiling is what
+                // keeps the widest ones looking like movement.
+                strokeWidth={Math.min(5, Math.max(1.5, r.width * 0.3))}
+                strokeLinecap="round"
+                className="hm-sankey-flow"
+                style={{ animationDelay: `${-(i % 7) * 0.34}s` }}
+                aria-hidden="true"
+                pointerEvents="none"
+              />
+            )}
+          </g>
         );
       })}
 
