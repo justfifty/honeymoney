@@ -48,7 +48,26 @@ const BUCKET = "honeymoney-backups";
 const BACKUP_DIR = join(ROOT, "pocketbase", "pb_data", "backups");
 const KEY_FILE = join(HERE, ".pb-backup-key");
 const CREDS_FILE = join(HERE, ".r2-credentials.json");
-const KEEP_REMOTE = 30;
+// 14, NOT 30, and this number is not an operations preference — it is a promise
+// already published in two languages. lib/legalDocs.ts tells every household,
+// in the privacy notice they consented to: "the last 14 daily backups with
+// Cloudflare R2, encrypted. Older ones are deleted automatically on that rolling
+// cycle." / "14 sandaran harian terakhir dengan Cloudflare R2".
+//
+// It was 30. So HoneyMoney held a household's sealed financial history for twice
+// as long as it told them, and the excess was invisible — a backup nobody
+// deletes leaves no trace of not having been deleted. Under the PDPA's Retention
+// Principle the over-keep is the breach, not the under-keep: the notice is the
+// purpose limitation, and data outliving it is data held without a basis.
+//
+// Changing the NOTICE to 30 would have been the other way to make these agree,
+// and is the wrong way round. It would rewrite a term people already accepted to
+// match what the code happened to do, and NOTICE_VERSION exists precisely so
+// that kind of change has to be re-consented rather than quietly adopted.
+//
+// ⚠️ The first run after this lands DELETES the backups aged 15-30 days. That is
+// the deletion the notice already promised, arriving late.
+const KEEP_REMOTE = 14;
 
 const ALGO = "aes-256-gcm";
 const IV_BYTES = 12; // 96 bits, the size GCM is specified for
