@@ -151,6 +151,39 @@ async function cacheFirst(request, cacheName) {
  */
 const NAV_TIMEOUT_MS = 3000;
 
+/**
+ * Is this a page that rendered WITHOUT the household's data?
+ *
+ * A React Server Component cannot set a status code, so the "we can't reach
+ * your records" screen (app/DegradedNotice.tsx) comes back as a perfectly
+ * ordinary 200 — and this worker cached it like any other. That is worse than
+ * showing it: an outage OVERWROTE the last good copy of the dashboard, so the
+ * next time that household opened the app with no signal, the offline fallback
+ * they got was an error page instead of yesterday's balances. The outage
+ * outlived itself, in a cache, on a phone.
+ *
+ * `data-hm-degraded` is the marker the notice carries for exactly this. Read
+ * from a CLONE, so the response handed to the page is untouched, and only the
+ * first chunk — the attribute is in the first element of <body>, and streaming
+ * a whole dashboard through here to check a flag would cost more than the flag
+ * is worth.
+ */
+async function isDegraded(res) {
+  const type = res.headers.get("content-type") || "";
+  if (!type.includes("text/html")) return false;
+  try {
+    const reader = res.clone().body?.getReader();
+    if (!reader) return false;
+    const { value } = await reader.read();
+    reader.cancel();
+    return new TextDecoder().decode(value || new Uint8Array()).includes("data-hm-degraded");
+  } catch {
+    // Unreadable for any reason — treat as fine to cache, which is exactly the
+    // behaviour this worker had before the check existed.
+    return false;
+  }
+}
+
 async function networkFirst(request) {
   const cache = await caches.open(SHELL);
   try {
@@ -160,8 +193,10 @@ async function networkFirst(request) {
     // has already been given the cached page.
     const live = fetch(request);
     live
-      .then((res) => {
-        if (res && res.status === 200) cache.put(request, res.clone());
+      .then(async (res) => {
+        if (res && res.status === 200 && !(await isDegraded(res))) {
+          cache.put(request, res.clone());
+        }
       })
       .catch(() => undefined);
 

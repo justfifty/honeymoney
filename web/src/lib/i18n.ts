@@ -394,6 +394,17 @@ const en: Dict = {
   "dash.unknownVendor": "Unknown",
   "dash.setup.title": "Almost there — finish setup",
   "dash.setup.reasonNoDb": "PocketBase isn't configured yet, so there's no household graph to show.",
+
+  // The ledger is up but unreachable — see app/DegradedNotice.tsx. Written for
+  // somebody who has been logging spends for a month and has just been told,
+  // wrongly, to "finish setup". Say what is true, say it is temporary, and do
+  // not hand them a job that is not theirs.
+  "dash.down.title": "We can't reach your records right now",
+  "dash.down.body": "This is on our side, not yours — the server that holds your household's records isn't answering. It's usually back within a few minutes.",
+  "dash.down.bodyWhere": "This is on our side, not yours — the server that holds {where} isn't answering. It's usually back within a few minutes.",
+  "dash.down.safe": "Nothing has been lost. Your records are safe, and anything you add offline will sync when we're back.",
+  "dash.down.retry": "Try again",
+  "dash.down.detail": "Technical detail:",
   "dash.setup.reasonNoTenant": "Set DEMO_TENANT_ID in web/.env.local (the demo household is hhrahman1111111).",
   "dash.setup.reasonError": "Could not load the household graph: {message}",
   "dash.setup.unknownError": "Unknown error",
@@ -1467,6 +1478,13 @@ const ms: Dict = {
   "dash.unknownVendor": "Tidak diketahui",
   "dash.setup.title": "Hampir siap — lengkapkan persediaan",
   "dash.setup.reasonNoDb": "PocketBase belum dikonfigurasikan, jadi tiada graf isi rumah untuk dipaparkan.",
+
+  "dash.down.title": "Kami tidak dapat mencapai rekod anda buat masa ini",
+  "dash.down.body": "Ini masalah di pihak kami, bukan anda — pelayan yang menyimpan rekod isi rumah anda tidak menjawab. Biasanya ia pulih dalam beberapa minit.",
+  "dash.down.bodyWhere": "Ini masalah di pihak kami, bukan anda — pelayan yang menyimpan {where} tidak menjawab. Biasanya ia pulih dalam beberapa minit.",
+  "dash.down.safe": "Tiada apa-apa yang hilang. Rekod anda selamat, dan apa sahaja yang anda tambah di luar talian akan disegerakkan apabila kami kembali.",
+  "dash.down.retry": "Cuba lagi",
+  "dash.down.detail": "Butiran teknikal:",
   "dash.setup.reasonNoTenant": "Tetapkan DEMO_TENANT_ID dalam web/.env.local (isi rumah demo ialah hhrahman1111111).",
   "dash.setup.reasonError": "Tidak dapat memuatkan graf isi rumah: {message}",
   "dash.setup.unknownError": "Ralat tidak diketahui",

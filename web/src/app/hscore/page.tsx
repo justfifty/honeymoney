@@ -2,11 +2,12 @@ import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
 import { resolveViewTenant } from "@/lib/household";
 import { getHScore } from "@/lib/hscoreData";
-import { pbList, pbStr } from "@/lib/pocketbase";
+import { pbList, pbStr, isUnreachable } from "@/lib/pocketbase";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
 import HScoreClient from "./HScoreClient";
 import LocalOverlay from "../LocalOverlay";
+import DegradedNotice from "../DegradedNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +35,31 @@ export default async function HScorePage() {
   // The streak reads the same tenant's transactions but needs nothing the score
   // produces, so the two go out together. In series it was one round trip
   // waiting on another for no reason.
-  const [result, streakMonths] = await Promise.all([
-    getHScore(tenantId, { persist: Boolean(ctx) }),
-    // Months in a row with at least one entry — the streak the Building tier
-    // shows instead of applause.
-    loggingStreak(tenantId),
-  ]);
+  // Wrapped, because it was not, and an unreachable ledger threw straight past
+  // this page into a bare framework error screen. /hscore has no error.tsx of
+  // its own, so "the database is having a moment" looked like the app had
+  // crashed. It has not; it cannot see the data.
+  let result: Awaited<ReturnType<typeof getHScore>>;
+  let streakMonths: number;
+  try {
+    [result, streakMonths] = await Promise.all([
+      getHScore(tenantId, { persist: Boolean(ctx) }),
+      // Months in a row with at least one entry — the streak the Building tier
+      // shows instead of applause.
+      loggingStreak(tenantId),
+    ]);
+  } catch (err) {
+    if (!isUnreachable(err)) throw err;
+    return (
+      <main className="mx-auto min-h-full w-full max-w-lg px-4 py-16 sm:px-6">
+        <DegradedNotice
+          lang={locale}
+          detail={err instanceof Error ? err.message : undefined}
+          where={tr("hscore.title")}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto min-h-full w-full max-w-lg px-4 py-5 sm:px-6">

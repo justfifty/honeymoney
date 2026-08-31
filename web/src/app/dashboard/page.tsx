@@ -6,7 +6,7 @@ import { getSpendRecords } from "@/lib/records";
 import { detectRecurring } from "@/lib/radar";
 import { can, resolveViewTenant } from "@/lib/household";
 import { listGoals } from "@/lib/goals";
-import { pbList, pbStr } from "@/lib/pocketbase";
+import { pbList, pbStr, isUnreachable } from "@/lib/pocketbase";
 import { rm, shortDate } from "@/lib/format";
 import { CHART_INKS, CHART_VARS, statusColor, statusInk, statusTint } from "@/lib/chartPalette";
 import { getLocale } from "@/lib/locale";
@@ -19,6 +19,7 @@ import ChartSchemePicker from "../ChartSchemePicker";
 import HoneyAsk from "./HoneyAsk";
 import ChaseCat from "./ChaseCat";
 import LocalOverlay from "../LocalOverlay";
+import DegradedNotice from "../DegradedNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -189,6 +190,17 @@ export default async function Dashboard() {
     view = { projection, editable, radar, goals, bucketOptions, rank, totalAllocated, totalProjected };
   } catch (err) {
     const message = err instanceof Error ? err.message : tr("dash.setup.unknownError");
+    // TWO DIFFERENT FAILURES, and they were being told as one. "The database is
+    // not answering" is temporary and none of the reader's business to fix;
+    // "the database is not configured" is a developer with an empty .env. The
+    // household got the second message for the first problem on 2026-08-31.
+    if (isUnreachable(err)) {
+      return (
+        <main className="min-h-full px-6 py-16">
+          <DegradedNotice lang={locale} detail={message} />
+        </main>
+      );
+    }
     return (
       <main className="min-h-full px-6 py-16">
         <SetupNotice reason={tr("dash.setup.reasonError", { message })} lang={locale} />

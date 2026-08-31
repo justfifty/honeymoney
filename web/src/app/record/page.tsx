@@ -3,13 +3,14 @@ import { isDatabaseConfigured } from "@/lib/config";
 import { resolveViewTenant, can, listMembers } from "@/lib/household";
 import type { Composition } from "@/lib/attribution";
 import { getBucketProjection, getRecentSpend } from "@/lib/projection";
-import { pbList, pbFirst, pbStr } from "@/lib/pocketbase";
+import { pbList, pbFirst, pbStr, isUnreachable } from "@/lib/pocketbase";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
 import { dataLabel } from "@/lib/dataLabels";
 import { fmtMoney, shortDate } from "@/lib/format";
 import AddTransaction from "../dashboard/AddTransaction";
 import PetCat from "./PetCat";
+import DegradedNotice from "../DegradedNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -35,16 +36,35 @@ export default async function RecordPage() {
 
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
 
-  const [projection, vendorNodes, recent, members, tenant] = await Promise.all([
-    getBucketProjection(tenantId),
-    pbList<{ id: string; label: string }>("nodes", {
-      filter: `tenant = ${pbStr(tenantId)} && kind = 'vendor'`,
-      perPage: 200,
-    }),
-    getRecentSpend(tenantId, 6, { viewerMemberId: ctx?.memberId, redact: Boolean(ctx) }),
-    listMembers(tenantId),
-    pbFirst<{ id: string; composition?: string }>("tenants", `id = ${pbStr(tenantId)}`),
-  ]);
+  // Wrapped for the same reason /hscore is: this route had no catch and no
+  // error.tsx, so an unreachable ledger threw past it into a framework error
+  // screen. /record is the DAILY landing and the default tab — the one screen
+  // that must never look broken — and the honest message is that we cannot see
+  // the data, not that something crashed.
+  let projection: Awaited<ReturnType<typeof getBucketProjection>>;
+  let vendorNodes: { id: string; label: string }[];
+  let recent: Awaited<ReturnType<typeof getRecentSpend>>;
+  let members: Awaited<ReturnType<typeof listMembers>>;
+  let tenant: { id: string; composition?: string } | null;
+  try {
+    [projection, vendorNodes, recent, members, tenant] = await Promise.all([
+      getBucketProjection(tenantId),
+      pbList<{ id: string; label: string }>("nodes", {
+        filter: `tenant = ${pbStr(tenantId)} && kind = 'vendor'`,
+        perPage: 200,
+      }),
+      getRecentSpend(tenantId, 6, { viewerMemberId: ctx?.memberId, redact: Boolean(ctx) }),
+      listMembers(tenantId),
+      pbFirst<{ id: string; composition?: string }>("tenants", `id = ${pbStr(tenantId)}`),
+    ]);
+  } catch (err) {
+    if (!isUnreachable(err)) throw err;
+    return (
+      <main className="mx-auto min-h-full w-full min-w-0 max-w-lg px-4 py-16 sm:px-6">
+        <DegradedNotice lang={locale} detail={err instanceof Error ? err.message : undefined} />
+      </main>
+    );
+  }
 
   // Household composition is CONTEXT, not a control — Task 6 is explicit that it
   // belongs in settings and is merely SHOWN here. Falls back to the shape of the

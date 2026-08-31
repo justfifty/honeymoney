@@ -53,6 +53,34 @@ const PB_TIMEOUT_MS = Number(process.env.POCKETBASE_TIMEOUT_MS ?? 6000);
  * `fetch`, but it always ends. The error names the collection path so a failure
  * says WHICH read gave up, not merely that something did.
  */
+/**
+ * "The ledger is not answering" — as a type, so a PAGE can tell it apart from
+ * every other thing that can go wrong behind a read.
+ *
+ * ── WHY THIS EXISTS ────────────────────────────────────────────────────────
+ *
+ * On 2026-08-31 the DOM Cloud host went down, taking PocketBase with it, and
+ * the dashboard told the household: "Almost there — finish setup". Nothing was
+ * unfinished. Their data was fine, sitting on a machine that had stopped
+ * answering for twenty minutes. That message sends somebody hunting for a
+ * settings screen that was never broken, and it is the difference between "the
+ * app is having a moment" and "I have lost my records".
+ *
+ * A page cannot make that distinction from a string, so the distinction has to
+ * survive the throw.
+ */
+export class PocketBaseUnreachable extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PocketBaseUnreachable";
+  }
+}
+
+/** True for the one failure a reader should be reassured about, not alarmed by. */
+export function isUnreachable(err: unknown): boolean {
+  return err instanceof PocketBaseUnreachable;
+}
+
 async function pbTimedFetch(
   url: string,
   init: RequestInit,
@@ -63,8 +91,18 @@ async function pbTimedFetch(
     return await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
   } catch (err) {
     if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-      throw new Error(
+      throw new PocketBaseUnreachable(
         `PocketBase did not answer within ${ms}ms on ${what} — is it running, and is ${config.pocketbaseUrl} reachable?`,
+      );
+    }
+    // DNS, TLS, connection refused, socket reset — the host, not the request.
+    // `fetch` reports all of them as a bare TypeError, which is indistinguishable
+    // from a programming mistake until you look at the cause; treating them as
+    // "unreachable" is right because there is no request the caller could have
+    // made that would have worked.
+    if (err instanceof TypeError) {
+      throw new PocketBaseUnreachable(
+        `PocketBase at ${config.pocketbaseUrl} could not be reached on ${what}: ${err.message}`,
       );
     }
     throw err;
