@@ -17,7 +17,7 @@
 // Prerequisite: `npm run build && npm run start` in web/ (the same server the
 // tunnel publishes — deploy/start-honeymoney.ps1 already runs it).
 
-import { mkdir, writeFile, readFile, rm, cp } from "node:fs/promises";
+import { mkdir, writeFile, readFile, rm, cp, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -183,6 +183,59 @@ async function main() {
         `Rebuild and restart the app, then re-run this script.\n  e.g. ${missing[0]}`,
     );
   }
+
+  // 5b. NOTHING IN dist/ MAY EXCEED CLOUDFLARE PAGES' PER-FILE CEILING.
+  //
+  //     ── WHY THIS CHECK EXISTS, AND WHY IT IS HERE RATHER THAN AT UPLOAD ──
+  //
+  //     Pages refuses any single file over 25 MiB, and it refuses it at
+  //     `wrangler pages deploy` — which is the LAST step, long after the app
+  //     bundle has been pushed to the origin. So an oversized file does not
+  //     fail a deploy, it STRANDS one: the origin serves new HTML while the
+  //     edge still holds the old snapshot, every content-hashed asset the new
+  //     HTML references 404s, and the site renders unstyled and never hydrates.
+  //
+  //     That is not hypothetical and it is not rare. On 2026-08-27 a re-cut demo
+  //     video reached 27.4 MiB and did exactly this; NEXT.md records it as the
+  //     third time the unstyled-site failure had arrived, each time "by a route
+  //     nobody had considered". The file had nothing to do with the app. It was
+  //     a deck asset that grew by 9 MB, and nothing anywhere warned.
+  //
+  //     Failing HERE costs a rebuild. Failing at upload costs an outage, so the
+  //     check belongs before the push, not after it — and it names the file and
+  //     its size, because "deployment failed" was never the hard part.
+  const PAGES_MAX_BYTES = 25 * 1024 * 1024;
+  const oversized = [];
+  const walk = async (dir) => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) await walk(full);
+      else {
+        const { size } = await stat(full);
+        // `>=`, not `>`. A file of EXACTLY 25 MiB sits on a boundary whose
+        // inclusivity is Cloudflare's to define and not ours to bet a deploy
+        // on, and scripts/build-demo-video.mjs already refuses at `>=` — two
+        // guards against the same ceiling that disagree by one byte is how a
+        // file passes one and is rejected by the other. Caught by planting a
+        // 26,214,400-byte file, which is exactly 25 MiB: `>` let it through.
+        if (size >= PAGES_MAX_BYTES) oversized.push({ rel: path.relative(DIST, full), size });
+      }
+    }
+  };
+  await walk(DIST);
+  if (oversized.length) {
+    const mb = (n) => `${(n / 1024 / 1024).toFixed(1)} MiB`;
+    throw new Error(
+      `${oversized.length} file(s) exceed Cloudflare Pages' ${mb(PAGES_MAX_BYTES)} per-file limit, ` +
+        `and \`wrangler pages deploy\` would reject the WHOLE upload:\n` +
+        oversized.map((f) => `  ${f.rel}  ${mb(f.size)}`).join("\n") +
+        `\n\nShrink or drop each one and re-run. If it is the demo video, re-encode it ` +
+        `(two-pass x264 at a lower bitrate got 27.4 MiB down to 22.7 MiB with no visible loss ` +
+        `on slides and slow pans). Deploying with this unfixed strands the edge on the OLD ` +
+        `snapshot while the origin serves the NEW build — the unstyled-site failure.`,
+    );
+  }
+  log(`✓ no file over ${(PAGES_MAX_BYTES / 1024 / 1024).toFixed(0)} MiB`);
 
   // 6. The worker + caching rules that turn the folder into the site. The
   //    worker's snapshot list is stamped from ROUTES so a page can never be

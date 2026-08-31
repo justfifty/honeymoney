@@ -33,11 +33,23 @@ across `/`, `/record`, `/login` and `/dashboard`: **11 assets each, all 200**, a
 the new Record component confirmed present in the JavaScript the site actually
 serves.
 
-⬜ **`build-demo-video.mjs` should refuse to write a file over 24 MiB**, naming
-this reason. The encoder targets quality and has no idea a downstream host has a
-ceiling; the check belongs where the file is made, not where it is rejected.
-⬜ **`site:publish` should pre-flight `dist/` for oversized files** before the app
-bundle is pushed, so the ordering failure cannot happen at all.
+[x] **`build-demo-video.mjs` refuses to write an oversized file** — done, and it
+was already done when this line was written: the encoder asserts `>= 25 MiB` and
+exits 1, naming the reason. The check belongs where the file is made, not where
+it is rejected.
+[x] **`site:publish` pre-flights `dist/` for oversized files** — done 2026-08-31,
+in `build-static-site.mjs` step 5b. Walks the finished `dist/` and throws before
+the worker is stamped, naming every offending file and its size. Failing here
+costs a rebuild; failing at `wrangler pages deploy` costs an outage, because by
+then the app bundle is already live on the origin and the edge is stranded on the
+old snapshot.
+
+> Verified by planting a 26,214,400-byte file in `web/public` and running the real
+> build: it failed, exit 1, named the file. **That test also caught a bug in the
+> guard** — 26,214,400 is *exactly* 25 MiB and the first version used `>`, so it
+> passed. Now `>=`, matching `build-demo-video.mjs`; two guards against one
+> ceiling that disagree by a byte are how a file passes one and is rejected by
+> the other.
 
 ### Also
 
@@ -582,7 +594,7 @@ See `DEPLOY.md` + `deploy/` (start/stop scripts, logon auto-start task, `secrets
 
 All three **mandatory** documents are generated as upload-ready PDFs in `docs/deck/`,
 plus recommended extras. Registration guide + team profiles filled — **one blank left:
-Chua's 12-digit MyKad number.**
+Chua's 12-digit MyKad number — DONE, entered on the portal by Chua on 2026-08-31.**
 
 - [x] **Pitch deck** — `docs/deck/HoneyMoney_Pitch_Deck_MAIC2026.pdf` (12 slides, one per criterion; plain-English rewrite; source `PITCH_DECK.html`).
 - [x] **Project summary** — `docs/deck/HoneyMoney_Project_Summary_MAIC2026.pdf` (source `PROJECT_SUMMARY.html`).
@@ -590,7 +602,7 @@ Chua's 12-digit MyKad number.**
 - [x] **Demo video** — `docs/deck/HoneyMoney_Demo_MAIC2026.mp4` (35s auto-generated explainer from real app screenshots) + `docs/deck/DEMO_SCRIPT.md` (full 3-min shot list).
 - [x] **Knowledge-graph gallery** — `docs/deck/graph_gallery/` (14 screenshots: 6 views · People/Vendor/Category lenses · 3 personas) + README mapping each to the rubric.
 - [x] **Registration guide** — `docs/REGISTRATION.md`, verified against the live MAIC portal (6-step flow; team 1–5; **team leader need not be Malaysian**; no slide cap; deck+summary+AI-disclosure mandatory).
-- [x] **Team profiles** — Chua Kia Wah (Team Leader / Business Lead, **Malaysian, MyKad**) + Pong Woon Wei (Tech Lead, SG). ⬜ Chua's MyKad number is the only outstanding field.
+- [x] **Team profiles** — Chua Kia Wah (Team Leader / Business Lead, **Malaysian, MyKad**) + Pong Woon Wei (Tech Lead, SG). [x] MyKad entered on the portal by Chua, **CONFIRMED DONE 2026-08-31** — Chua registered on the MAIC portal and entered it himself. The number is deliberately NOT recorded in this repo: it is a third party's national ID, it has no use here, and a PDPA project should not be the place it leaks from.
 - [x] **Shareable learn page** (Artifact) — 2-min walkthrough with the demo video embedded (for sending to teammates/judges).
 
 ---
@@ -1359,7 +1371,7 @@ Every submission is scored 1–10 by three independent judges on five weighted c
 
 ## 1. Disqualifiers — check these FIRST (a fail here = instant out)
 
-- [~] **Malaysian citizen on team.** Member = **Chua Kia Wah** (Malaysian, MyKad); satisfies the gate. ⬜ Only his **12-digit MyKad number** is still needed (enter on the portal). Pong is Singaporean — fine, team leader need not be Malaysian.
+- [x] **Malaysian citizen on team.** Member = **Chua Kia Wah** (Malaysian, MyKad); satisfies the gate. MyKad number entered on the portal — **CONFIRMED DONE 2026-08-31** — Chua registered on the MAIC portal and entered it himself. The number is deliberately NOT recorded in this repo: it is a third party's national ID, it has no use here, and a PDPA project should not be the place it leaks from. Pong is Singaporean — fine, team leader need not be Malaysian.
 - [x] **Real commit history.** Pushed to `justfifty/honeymoney` and committing daily (real, non-backdated). Never backdate.
 - [x] **AI disclosure.** Ready — `docs/AI_DISCLOSURE.md` + PDF. Honest: AI is *optional* & multi-provider; on-device OCR (tesseract.js) + voice (browser) use no tokens; coding is AI-assisted.
 - [ ] **Track locked at submission.** Commit to T3, no hedging.
@@ -1390,7 +1402,7 @@ Prizes: Champion RM 200K cash + RM 100K equity + HATI incubation · 1st RU RM 10
 ### Recommended (treat as required — top 100 all submit these)
 - [x] **Demo video** — `docs/deck/HoneyMoney_Demo_MAIC2026.mp4` (35s auto explainer; full 3-min shot list in `DEMO_SCRIPT.md`). `[1]`
 - [x] **Artifact link** — GitHub repo `justfifty/honeymoney` + live URL honeymoney.app. `[1][4]`
-- [~] **Member profiles** — filled in `docs/REGISTRATION.md §8`, Chua flagged Malaysian. ⬜ MyKad number pending. *eligibility*
+- [x] **Member profiles** — filled in `docs/REGISTRATION.md §8`, Chua flagged Malaysian. MyKad entered on the portal 2026-08-31. *eligibility — the gate is closed*
 
 ### Traction (highest ROI for Commercial score)
 - [ ] **≥1 signed corporate LOI** — Malaysian SME/HR agrees to pilot as an employee wellness benefit. Template in `docs/LOI_TEMPLATE.md`. `[2]`
@@ -2264,7 +2276,7 @@ the k≥10 suppression rule exists as a function BEFORE the feature that needs i
       about data custody.
 
 ### 🔴 Blocking the submission
-1. [~] **Chua Kia Wah's MyKad number** — the last eligibility field. Nothing else is
+1. [x] **Chua Kia Wah's MyKad number** — DONE 2026-08-31, entered on the portal by Chua. Nothing else is
    outstanding on the team profile. *(Malaysian-citizen member confirmed.)*
 2. [ ] **Register on the MAIC portal** — pack is ready (deck · summary · AI disclosure ·
    video · repo · live URL). See `docs/REGISTRATION.md`. **Do not leave this to the

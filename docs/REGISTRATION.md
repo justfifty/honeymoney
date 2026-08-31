@@ -10,7 +10,7 @@
 
 ## 0. Do this FIRST — the eligibility gate (a fail here = instant out)
 
-- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Satisfied by Member 1 (Chua Kia Wah, Malaysian, Business Lead). Member 2 (PONG Woon Wei) is Singaporean. Still needed: Chua's MyKad number as proof — provide it before final submit.**
+- [ ] **≥1 Malaysian citizen (MyKad holder) on the team.** PRs / international students do **not** count. **← Satisfied by Member 1 (Chua Kia Wah, Malaysian, Business Lead). Member 2 (PONG Woon Wei) is Singaporean. MyKad proof entered on the MAIC portal by Chua, 2026-08-31 — this gate is CLOSED. The number itself is deliberately not recorded in this repo.**
 - [ ] **One person = one team** (no cross-team participation).
 - [ ] **Track locked = T3** (Financial Services & Fintech). Commit, no hedging.
 - [ ] **Genuine commit history** — HoneyMoney already has real, non-backdated commits; keep committing through submission (never backdate). Repo: `github.com/justfifty/honeymoney`.
@@ -186,7 +186,7 @@ pilot / mentorship you want].
 **Still to fill in before submit (human input needed):**
 
 - [ ] Real team member names + roles (replace `[Name]`/`[Member N]` in the deck slide 11, the project summary PDF, and §3/§8).
-- [ ] **Malaysian citizen's MyKad number** — the eligibility proof (see §0). Do not submit without this confirmed.
+- [x] **Malaysian citizen's MyKad number** — the eligibility proof (see §0). **CONFIRMED DONE 2026-08-31** — Chua registered on the MAIC portal and entered it himself. The number is deliberately NOT recorded in this repo: it is a third party's national ID, it has no use here, and a PDPA project should not be the place it leaks from.
 
 ---
 
@@ -208,10 +208,17 @@ pilot / mentorship you want].
 
 ## 8. Member profiles
 
-> ⚠️ **Eligibility:** Member 1 (Chua Kia Wah) is **Malaysian**, so the T3
-> Malaysian-citizen gate is satisfied. The one outstanding item is his **MyKad number**
-> (the eligibility proof) — plus his email/phone — which must be filled in before final
-> submit. A LinkedIn profile is not proof on its own; the form needs the MyKad number.
+> ✅ **Eligibility — CLOSED 2026-08-31.** Member 1 (Chua Kia Wah) is **Malaysian**,
+> so the T3 Malaysian-citizen gate is satisfied, and he has now **registered on the
+> MAIC portal and entered his own MyKad number, email and phone**. Nothing on this
+> gate is outstanding.
+>
+> **The MyKad number is deliberately NOT written down here, and must not be.** It is
+> a third party's national identity number; this repository has no use for it, no
+> code path that reads it, and no business holding it. It lives in the MAIC portal,
+> entered by the person it belongs to. An app whose pitch is that it handles
+> household data carefully should not be the place someone else's IC leaks from.
+>
 > Member 2 (PONG Woon Wei) is Singaporean and joins in a personal capacity.
 >
 > **Note — shared email:** both members currently use `justfifty1976@gmail.com`. If the
