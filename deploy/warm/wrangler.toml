@@ -1,0 +1,32 @@
+# The warmer. A Worker whose entire job is to make sure somebody has knocked on
+# the origin's door recently, so that no real visitor is the one who wakes it.
+#
+# WHY THIS IS ITS OWN WORKER, and not three lines in deploy/pages/_worker.js:
+# Pages Functions cannot carry cron triggers. `[triggers]` in a Pages project is
+# accepted by the config parser and never fires — the same silent-drop shape as
+# `min_instances` in deploy/domcloud/pb.deploy.yml. A standalone Worker is the
+# only place on this account where a schedule actually runs.
+#
+# It has no routes, so it is not on the request path for anything. If it stops
+# working the site is exactly as it is today: correct, with a cold start on the
+# first visit after an idle spell.
+name = "honeymoney-warm"
+main = "src/warm.js"
+compatibility_date = "2026-05-22"
+
+[triggers]
+# Every 3 minutes. Passenger's default pool_idle_time is 300s and DOM Cloud
+# drops `min_instances` from the NGINX config without saying so
+# (deploy/domcloud/pb.deploy.yml), so staying resident has to be bought from
+# outside — and it has to be bought at an interval comfortably UNDER 300s, or
+# the process is already gone by the time the next knock arrives.
+#
+# Cost: 480 requests a day against a free tier of 100,000. The origin's metered
+# egress is untouched — /api/health answers a few hundred bytes.
+crons = ["*/3 * * * *"]
+
+[vars]
+# Both halves of the origin. The app is what visitors hit; PocketBase is what
+# the app hits, and it pays its own SQLite-open cold start on first use.
+APP_HEALTH = "https://honeymoney-app.domcloud.dev/api/health"
+PB_HEALTH = "https://honeymoney-pb.domcloud.dev/api/health"

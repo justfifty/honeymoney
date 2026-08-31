@@ -32,9 +32,45 @@ const ORIGIN_HOST = "honeymoney-app.domcloud.dev";
 // only what `wrangler pages dev` sees if you run the worker un-built.
 const SNAPSHOT = new Set(/* @snapshot-routes */ ["/", "/guide", "/learn", "/gallery", "/deck"]);
 
-// Long enough to ride out a slow cold start on the laptop, short enough that a
-// visitor never sits on a blank tab waiting for a machine that is switched off.
-const ORIGIN_TIMEOUT_MS = 8000;
+// ── HOW LONG A VISITOR WAITS FOR THE ORIGIN ─────────────────────────────────
+//
+// One 8-second number used to cover every request, and it was the wrong number
+// twice over. Measured 2026-08-31 with the origin refusing TCP outright:
+//
+//     honeymoney.app/dashboard   ttfb 8.08s -> 503
+//     honeymoney.app/record      ttfb 8.08s -> 503
+//
+// Nobody waits eight seconds to be told the page is not there, and tapping four
+// tabs cost thirty-two. Meanwhile the SAME number capped /api/insight/ask,
+// which calls a language model and is entitled to take longer than any page.
+// So the budget is now per kind of request, because the kinds are not alike:
+//
+//   navigation   2500  A human is watching a blank tab, and we hold a snapshot
+//                      to give them instead. A healthy render measures ~100ms
+//                      and a Passenger cold start ~3s — which is why the warmer
+//                      exists (deploy/warm/) rather than why this number is big.
+//   RSC          1500  A failed prefetch is free: the click after it becomes an
+//                      ordinary navigation. Never make a visitor wait on one.
+//   everything   25000 /api/* included. An LLM answer is not a slow origin, and
+//                      cutting it off at 8s turned a working feature into a
+//                      failure that looked like downtime.
+const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, other: 25000 };
+
+// ── THE BREAKER ─────────────────────────────────────────────────────────────
+//
+// A shorter timeout still charges EVERY request the full wait while the origin
+// is down. The breaker charges the first one only: a connection-level failure
+// parks a marker in this colo's cache, and for the next 20 seconds requests
+// skip the round trip and go straight to the snapshot (~50ms, measured against
+// the 2.5s they would otherwise each pay).
+//
+// It half-opens by expiry rather than by counter — when the marker ages out the
+// next request probes for real — and a single success deletes it, so recovery
+// is immediate rather than something to wait out. Per-colo is the right scope:
+// this is "can MY edge reach the origin", which is exactly what a visitor
+// routed through that colo is about to find out.
+const BREAKER_TTL_S = 20;
+const BREAKER_KEY = "https://honeymoney.invalid/__origin-breaker";
 
 // Cloudflare's own "I can't reach your origin" range (1033/523/530 etc.) plus
 // the gateway codes a dying tunnel emits. A real 500 from the app is NOT here:
@@ -104,18 +140,29 @@ export default {
     //    and still fall back to the snapshot if it's down.
     if (SNAPSHOT.has(pathname) && isPageRequest(request, url)) {
       if (!needsPersonalRender(request)) return snapshot(env, url, request);
-      return (await tryOrigin(request, url)) ?? (await snapshot(env, url, request));
+      return (await tryOrigin(request, url, "nav")) ?? (await snapshot(env, url, request));
     }
 
     // 3. A failed prefetch is harmless — the click after it just becomes a full
     //    page load. Never answer an RSC request with HTML; that confuses the
     //    router far more than a 404 does.
     if (isRscRequest(request, url)) {
-      return (await tryOrigin(request, url)) ?? new Response(null, { status: 404 });
+      return (await tryOrigin(request, url, "rsc")) ?? new Response(null, { status: 404 });
     }
 
-    // 4. The app proper.
-    const live = await tryOrigin(request, url);
+    // 4. The app proper. A page GET is a person waiting in front of a blank
+    //    tab and gets the short budget; a POST, an /api/* call or an upload is
+    //    work in flight and gets the long one.
+    //
+    //    ⚠️ `isPageRequest` IS NOT ENOUGH ON ITS OWN — it answers "GET or HEAD,
+    //    and not RSC", which every /api/* GET also satisfies. Measured against a
+    //    live origin while writing this: GET /api/health was classified as a
+    //    navigation, given 2.5s, and 503'd at 2.55s on a host that answers in
+    //    1.8s when cold. An API route is not a person staring at a blank tab and
+    //    there is no snapshot to give it instead, so the path has to be part of
+    //    the question.
+    const isNav = isPageRequest(request, url) && !pathname.startsWith("/api/");
+    const live = await tryOrigin(request, url, isNav ? "nav" : "other");
     if (live) return live;
     return pathname.startsWith("/api/") ? offlineJson() : offlinePage(url);
   },
@@ -178,9 +225,53 @@ async function snapshot(env, url, request) {
   return out;
 }
 
-// Returns null — never throws — when the laptop can't be reached, so every
+/**
+ * Is this colo currently holding an "origin is down" marker?
+ *
+ * Cache API rather than KV: no binding to provision, no eventual consistency to
+ * reason about, and the blast radius of a wrong answer is one navigation seeing
+ * the snapshot for at most BREAKER_TTL_S. KV would also bill a read on every
+ * request to the site.
+ */
+async function breakerOpen() {
+  try {
+    return Boolean(await caches.default.match(BREAKER_KEY));
+  } catch {
+    // No Cache API (wrangler dev in some modes) — degrade to "always probe",
+    // which is exactly the behaviour this worker had before the breaker.
+    return false;
+  }
+}
+
+async function tripBreaker() {
+  try {
+    await caches.default.put(
+      BREAKER_KEY,
+      new Response("down", { headers: { "Cache-Control": `max-age=${BREAKER_TTL_S}` } }),
+    );
+  } catch {
+    /* see breakerOpen */
+  }
+}
+
+async function resetBreaker() {
+  try {
+    await caches.default.delete(BREAKER_KEY);
+  } catch {
+    /* see breakerOpen */
+  }
+}
+
+// Returns null — never throws — when the origin can't be reached, so every
 // caller can decide for itself what "offline" should look like.
-async function tryOrigin(request, url) {
+//
+// `kind` picks the wait from ORIGIN_TIMEOUT_MS and decides whether a failure is
+// evidence about the ORIGIN or merely about this request. A slow language model
+// on /api/* is the second kind, and must not park a marker that sends the next
+// visitor's dashboard to the snapshot.
+async function tryOrigin(request, url, kind = "other") {
+  if (await breakerOpen()) return null;
+
   const target = new URL(url);
   target.protocol = "https:";
   target.hostname = ORIGIN_HOST;
@@ -191,8 +282,17 @@ async function tryOrigin(request, url) {
   req.headers.set("X-Forwarded-Proto", "https");
 
   try {
-    const res = await fetch(req, { redirect: "manual", signal: AbortSignal.timeout(ORIGIN_TIMEOUT_MS) });
-    if (ORIGIN_DOWN.has(res.status)) return null;
+    const res = await fetch(req, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(ORIGIN_TIMEOUT_MS[kind] ?? ORIGIN_TIMEOUT_MS.other),
+    });
+    if (ORIGIN_DOWN.has(res.status)) {
+      await tripBreaker();
+      return null;
+    }
+    // Anything the app itself answered — a 200, a redirect, even a real 500 —
+    // proves the origin is up. Clearing here is what makes recovery immediate.
+    await resetBreaker();
     // Returned untouched, deliberately. `new Response(res.body, res)` copies
     // Content-Encoding and Content-Length from a body we no longer hold in that
     // form, and the mismatch reaches any client that didn't advertise brotli as
@@ -201,8 +301,14 @@ async function tryOrigin(request, url) {
     // that origin responses carry no X-HoneyMoney-Served header; their absence
     // is the signal.
     return res;
-  } catch {
-    return null; // timeout, DNS, TLS, connection refused — all mean "off".
+  } catch (err) {
+    // A TimeoutError means "not within the budget for THIS kind of request",
+    // and for /api/* that is a slow answer, not a dead host. Everything else —
+    // DNS, TLS, connection refused — is the host, whatever was being asked of
+    // it, and is worth sparing the next visitor the same wait.
+    const timedOut = err && err.name === "TimeoutError";
+    if (!timedOut || kind === "nav") await tripBreaker();
+    return null;
   }
 }
 
