@@ -151,12 +151,24 @@ export default async function Home() {
           unusually finished for its stage, and these are the four facts that
           show it without claiming a single customer. */}
       <section aria-label={tr("home.proof.label")} className="px-6 pb-10">
-        <dl className="hm-animate hm-delay-4 mx-auto grid max-w-3xl grid-cols-2 gap-x-4 gap-y-6 text-center sm:grid-cols-4">
+        {/* THREE facts, not four. "RM0 — to use, forever" was removed on
+            2026-08-31: it is the only one of these that was a PROMISE rather
+            than a measurement. The other three are countable today and stay
+            true whatever happens to the business; "forever" is a pricing
+            commitment made before there is a business model to keep it with,
+            and the deck's own model already says free-for-households alongside
+            a paid B2B tier. A claim that cannot be checked sits badly next to
+            three that can.
+            Free is still said, in the place it belongs — home.trust.free,
+            "Runs at RM 0", which is a statement about what the thing costs to
+            operate rather than a forever-price for the reader.
+            Grid drops to 3 columns to match; on mobile the odd one out spans
+            both so it centres instead of stranding in the left column. */}
+        <dl className="hm-animate hm-delay-4 mx-auto grid max-w-3xl grid-cols-2 gap-x-4 gap-y-6 text-center [&>*:last-child]:col-span-2 sm:grid-cols-3 sm:[&>*:last-child]:col-span-1">
           {[
             { n: "6", k: "home.proof.langs" },
             { n: "9", k: "home.proof.currencies" },
             { n: "6", k: "home.proof.views" },
-            { n: "RM0", k: "home.proof.price" },
           ].map((s) => (
             <div key={s.k}>
               <dt className="font-display text-3xl font-extrabold tracking-tight text-amber-600 sm:text-4xl dark:text-amber-400">
