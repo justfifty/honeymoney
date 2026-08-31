@@ -133,12 +133,50 @@ async function cacheFirst(request, cacheName) {
   return res;
 }
 
+/**
+ * How long a navigation waits for the network before the cached copy wins.
+ *
+ * `fetch` has no timeout of its own, so "network-first" against a host that
+ * accepts the connection and then says nothing meant waiting out the browser's
+ * own limit — a minute and more — on a blank tab, with a perfectly good cached
+ * copy of the page sitting one line below in this function. The whole point of
+ * a fallback is that it is reachable.
+ *
+ * This does NOT loosen the rule in the header. A finance app must never serve
+ * yesterday's balance from a cache when today's is one request away, and it
+ * still does not: the network is asked first, every time, and only a network
+ * that has FAILED to answer within the budget hands over. Three seconds is well
+ * past a warm origin render (~100 ms measured) and past a Passenger cold start
+ * (~3 s is the reason it is not two).
+ */
+const NAV_TIMEOUT_MS = 3000;
+
 async function networkFirst(request) {
   const cache = await caches.open(SHELL);
   try {
-    const res = await fetch(request);
-    if (res && res.status === 200) cache.put(request, res.clone());
-    return res;
+    // Not AbortSignal.timeout on the fetch itself: aborting would also cancel
+    // the request, and this request is the thing that repopulates the cache.
+    // Racing lets the answer keep arriving and be stored even after the reader
+    // has already been given the cached page.
+    const live = fetch(request);
+    live
+      .then((res) => {
+        if (res && res.status === 200) cache.put(request, res.clone());
+      })
+      .catch(() => undefined);
+
+    const res = await Promise.race([
+      live,
+      new Promise((resolve) => setTimeout(() => resolve(null), NAV_TIMEOUT_MS)),
+    ]);
+    if (res) return res;
+
+    // The budget ran out. A cached page beats a blank tab; nothing cached means
+    // we go on waiting, because an offline page would be a lie while a real
+    // response is still in flight.
+    const stale = await cache.match(request);
+    if (stale) return stale;
+    return await live;
   } catch {
     const hit = await cache.match(request);
     if (hit) return hit;
