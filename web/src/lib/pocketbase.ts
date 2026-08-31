@@ -12,6 +12,65 @@ interface PBListResult<T> {
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
+/**
+ * How long any ONE call to PocketBase may take before it is abandoned.
+ *
+ * ── WHY THIS HAD TO EXIST ──────────────────────────────────────────────────
+ *
+ * There was no timeout here at all, and `fetch` does not impose one. That is
+ * fine while PocketBase answers in milliseconds on the same host, and it is not
+ * fine in the one case that actually happens: the host stops accepting
+ * connections without refusing them. A refusal fails in under a second; a
+ * blackhole hangs until the operating system gives up, which is tens of
+ * seconds, and every server render that touched the ledger hung with it.
+ *
+ * Measured on 2026-08-31, during a DOM Cloud outage in sgp, against the LANDING
+ * PAGE — a route with no household data on it, which reaches PocketBase only
+ * for the cached FX table in the root layout:
+ *
+ *     PocketBase unreachable      10.7 s, every request, consistently
+ *     PocketBase answering         0.22 s
+ *
+ * So an outage on the ledger did not degrade the site, it stopped it — and it
+ * did so on pages that do not need a ledger to render.
+ *
+ * ── WHY 6 SECONDS, AND WHY PER REQUEST ─────────────────────────────────────
+ *
+ * Per REQUEST, not per operation, which is what makes this safe for
+ * `pbListAll`: paging a hundred thousand rows legitimately takes 11 s (see the
+ * note below), but it does so as a hundred separate calls of ~100 ms each, and
+ * each of those is what is bounded here.
+ *
+ * 6 s clears the slowest thing a single call is known to do by a wide margin —
+ * a cold PocketBase start is a SQLite open, measured at 1.8 s — while turning
+ * an unreachable ledger from a hang into an error the page can catch and say
+ * something about. Every read path in this app is already wrapped in a
+ * try/catch that renders a notice; none of them had a way to reach it.
+ */
+const PB_TIMEOUT_MS = Number(process.env.POCKETBASE_TIMEOUT_MS ?? 6000);
+
+/**
+ * `fetch`, but it always ends. The error names the collection path so a failure
+ * says WHICH read gave up, not merely that something did.
+ */
+async function pbTimedFetch(
+  url: string,
+  init: RequestInit,
+  what: string,
+  ms: number = PB_TIMEOUT_MS,
+): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+  } catch (err) {
+    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+      throw new Error(
+        `PocketBase did not answer within ${ms}ms on ${what} — is it running, and is ${config.pocketbaseUrl} reachable?`,
+      );
+    }
+    throw err;
+  }
+}
+
 async function getToken(): Promise<string> {
   if (!isPocketBaseConfigured()) {
     throw new Error(
@@ -21,7 +80,7 @@ async function getToken(): Promise<string> {
   // superuser tokens last ~2 weeks; refresh well before that
   if (cachedToken && Date.now() < cachedToken.expiresAt) return cachedToken.token;
 
-  const res = await fetch(
+  const res = await pbTimedFetch(
     `${config.pocketbaseUrl}/api/collections/_superusers/auth-with-password`,
     {
       method: "POST",
@@ -32,6 +91,7 @@ async function getToken(): Promise<string> {
       }),
       cache: "no-store",
     },
+    "auth",
   );
   if (!res.ok) {
     throw new Error(`PocketBase auth failed (${res.status}) — is it running? Try: npm run pb:start`);
@@ -43,15 +103,19 @@ async function getToken(): Promise<string> {
 
 async function pbFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getToken();
-  const res = await fetch(`${config.pocketbaseUrl}${path}`, {
-    ...init,
-    headers: {
-      Authorization: token,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
+  const res = await pbTimedFetch(
+    `${config.pocketbaseUrl}${path}`,
+    {
+      ...init,
+      headers: {
+        Authorization: token,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
     },
-    cache: "no-store",
-  });
+    path,
+  );
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`PocketBase ${res.status} on ${path}: ${detail.slice(0, 300)}`);
@@ -64,12 +128,32 @@ async function pbFetch<T>(path: string, init?: RequestInit): Promise<T> {
 // List records with a PocketBase filter expression.
 export async function pbList<T>(
   collection: string,
-  opts: { filter?: string; sort?: string; expand?: string; perPage?: number } = {},
+  opts: {
+    filter?: string;
+    sort?: string;
+    expand?: string;
+    perPage?: number;
+    /**
+     * Only these columns, comma-separated — PocketBase's own `?fields=`.
+     *
+     * Worth having because some reads want ONE column of a wide row. The
+     * logging streak on /hscore is the clearest case: it asks for up to a
+     * thousand transactions and uses nothing but `occurred_at`, so without this
+     * it pulls every amount, note, bucket, attribution and attachment name in
+     * the household's month to build a set of "YYYY-MM" strings.
+     *
+     * Leave it unset when the caller genuinely reads the record — a narrowed
+     * read that later grows a field is a silently-undefined property, which is
+     * a worse failure than a wide one.
+     */
+    fields?: string;
+  } = {},
 ): Promise<T[]> {
   const params = new URLSearchParams({ perPage: String(opts.perPage ?? 500), skipTotal: "1" });
   if (opts.filter) params.set("filter", opts.filter);
   if (opts.sort) params.set("sort", opts.sort);
   if (opts.expand) params.set("expand", opts.expand);
+  if (opts.fields) params.set("fields", opts.fields);
   const data = await pbFetch<PBListResult<T>>(
     `/api/collections/${collection}/records?${params.toString()}`,
   );
@@ -211,12 +295,22 @@ export async function pbUploadFiles(
     // record does not silently discard the first.
     form.append(`+${field}`, new Blob([f.bytes as unknown as BlobPart], { type: f.type }), f.name);
   }
-  const res = await fetch(`${config.pocketbaseUrl}/api/collections/${collection}/records/${id}`, {
-    method: "PATCH",
-    headers: { Authorization: token },
-    body: form,
-    cache: "no-store",
-  });
+  // A far longer budget than PB_TIMEOUT_MS, and deliberately so: this request
+  // carries a receipt photo, and the timeout has to clear the upload rather
+  // than the round trip. It is here at all for the same reason as the others —
+  // a blackholed host must fail, not hang — and 30 s is well past anything a
+  // phone-sized image takes while still being an end.
+  const res = await pbTimedFetch(
+    `${config.pocketbaseUrl}/api/collections/${collection}/records/${id}`,
+    {
+      method: "PATCH",
+      headers: { Authorization: token },
+      body: form,
+      cache: "no-store",
+    },
+    `${collection}/${id} (upload)`,
+    30000,
+  );
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`PocketBase ${res.status} uploading to ${collection}/${id}: ${detail.slice(0, 300)}`);
@@ -246,6 +340,13 @@ export async function pbFileResponse(
   const params = new URLSearchParams();
   if (opts.thumb) params.set("thumb", opts.thumb);
   const qs = params.toString();
+  // ⚠️ NO TIMEOUT HERE, and that is not an oversight. This returns a STREAMING
+  // response that the caller pipes to the browser, and `AbortSignal.timeout`
+  // covers the whole exchange — body included — so any budget generous enough
+  // for a large attachment on a slow connection is no longer a useful bound,
+  // and any budget tight enough to be a bound would truncate real downloads
+  // mid-stream. A hung attachment costs one image; a truncated one costs the
+  // reader a file they think they have.
   return fetch(
     `${config.pocketbaseUrl}/api/files/${collection}/${encodeURIComponent(recordId)}/${encodeURIComponent(filename)}${qs ? `?${qs}` : ""}`,
     { headers: { Authorization: token }, cache: "no-store" },

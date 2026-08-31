@@ -72,6 +72,11 @@ async function loggingStreak(tenantId: string): Promise<number> {
     filter: `tenant = ${pbStr(tenantId)}`,
     sort: "-occurred_at",
     perPage: 1000,
+    // The type above is the whole truth about what this reads: one column, out
+    // of which it builds a set of "YYYY-MM". Without `fields` PocketBase sends
+    // the entire row — amount, note, bucket, attribution, attachment names —
+    // a thousand times, to answer a question about months.
+    fields: "occurred_at",
   });
   const seen = new Set(rows.map((r) => r.occurred_at.slice(0, 7)));
   const now = new Date();
