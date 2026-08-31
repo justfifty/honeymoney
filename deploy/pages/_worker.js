@@ -49,9 +49,35 @@
 // fixable in this file; it is a plan change or a different origin, and the
 // snapshot below is what carries the public pages through it either way.
 //
-// Order matters: DOM Cloud first because it is always on, and the laptop is
-// only mostly on. Swapping the two entries inverts that, and is the rollback.
-const ORIGINS = ["honeymoney-app.domcloud.dev", "origin.honeymoney.app"];
+// ── ORDER: THE LAPTOP IS FIRST, AND THAT IS A MEASUREMENT ──────────────────
+//
+// It was DOM Cloud first, on the reasoning that DOM Cloud is always on and the
+// laptop is only mostly on. That reasoning was correct in August 2026 and is
+// not correct now, because "always on" turned out to mean "always on a host
+// with no swap left". Both origins, same minute, same page, 2026-08-31:
+//
+//     origin.honeymoney.app     /dashboard  0.144s  0.109s  0.105s   200
+//     honeymoney-app.domcloud   /dashboard  blackholed — code 000 x3
+//
+// With DOM Cloud first, every one of those reads cost the full nav budget
+// before the laptop was even asked: honeymoney.app/dashboard measured 2.77s,
+// serving correctly, entirely spent waiting for a host that was never going to
+// answer. Reversed, the same read is ~110ms and DOM Cloud is what catches a
+// Windows Update reboot instead of what everyone waits on.
+//
+// This does not make the laptop "the server" again in the sense the notes above
+// warn about. It is one of two, either can serve, and the snapshot still
+// carries every public page if both are gone. What it does is stop the SICKER
+// of the two being the one everybody queues behind.
+//
+// ⚠️ THE COROLLARY IS THAT THE LAPTOP'S BUILD NOW MATTERS FIRST. It serves most
+// reads, so a stale laptop is not a degraded fallback any more, it is the site.
+// See deploy/domcloud/README.md §1b — `npm run build` then
+// `Start-ScheduledTask -TaskName HoneyMoney-Restart`, and NOT plain `HoneyMoney`,
+// which is the port-guarded watchdog and no-ops against a healthy app.
+//
+// Swapping the two entries back is the whole rollback.
+const ORIGINS = ["origin.honeymoney.app", "honeymoney-app.domcloud.dev"];
 
 // Public pages that exist in the snapshot. The build script rewrites this line
 // from its own ROUTES list, so the two can never drift; the literal here is
