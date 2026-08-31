@@ -15,17 +15,43 @@
 // Where the app answers. Must NOT be this worker's own route, or requests would
 // loop back here.
 //
-// 2026-08-24: moved from origin.honeymoney.app — the tunnel to the laptop — to
-// the DOM Cloud site. That single line is what makes the SIGNED-IN half of
-// honeymoney.app 24/7; the public half already was. The laptop path is left
-// entirely intact: `origin` still resolves, the tunnel still runs, and putting
-// the old value back and redeploying is the whole rollback.
+// ── TWO ORIGINS, TRIED IN ORDER ────────────────────────────────────────────
 //
-// The fallback below still matters. DOM Cloud Lite has no `docker` feature, so
-// the app is spawned by Passenger on demand rather than sitting resident, and
-// the first request after an idle spell pays a cold start (~3s measured). That
-// is well inside ORIGIN_TIMEOUT_MS, but the snapshot remains the safety net.
-const ORIGIN_HOST = "honeymoney-app.domcloud.dev";
+// This was one host, and one host is what turned a bad afternoon on somebody
+// else's shared server into honeymoney.app being down. Measured ON the DOM
+// Cloud box on 2026-08-31, while the site was flapping:
+//
+//     Mem:  15636 total   13891 used    265 free
+//     Swap:  8191 total    8191 used      0 free     <- completely exhausted
+//     load average: 1.17, 1.38, 3.33
+//
+// Our own four Next processes are 418 MB of that. The rest is other tenants, on
+// a machine we do not control and cannot size. A host with no swap left does
+// not REFUSE connections, it stops answering them — which is precisely the
+// blackhole this worker kept spending its whole timeout against.
+//
+// So the laptop origin is not history after all. It still runs, still has its
+// tunnel and its DNS, and it answered while DOM Cloud did not:
+//
+//     origin.honeymoney.app   conn 0.028s   ttfb 0.153s   200
+//
+// SAFE TO FAIL OVER TO, specifically because of what it is NOT doing: it has no
+// copy of the ledger. Both origins read the same PocketBase, so there is one
+// database and no split brain. The session survives the switch for the same
+// reason — `hm_auth` carries a PocketBase token that either origin validates
+// against that same database, and there is no app-level signing key for the two
+// to disagree about.
+//
+// WHAT THIS COVERS, AND WHAT IT DOES NOT. It covers the app site dying while
+// the database lives: our processes OOM-killed, Passenger wedged, a bad deploy.
+// It does NOT cover the whole DOM Cloud host going down, because PocketBase is
+// on that same host — measured, the two went dark together. That one is not
+// fixable in this file; it is a plan change or a different origin, and the
+// snapshot below is what carries the public pages through it either way.
+//
+// Order matters: DOM Cloud first because it is always on, and the laptop is
+// only mostly on. Swapping the two entries inverts that, and is the rollback.
+const ORIGINS = ["honeymoney-app.domcloud.dev", "origin.honeymoney.app"];
 
 // Public pages that exist in the snapshot. The build script rewrites this line
 // from its own ROUTES list, so the two can never drift; the literal here is
@@ -54,7 +80,10 @@ const SNAPSHOT = new Set(/* @snapshot-routes */ ["/", "/guide", "/learn", "/gall
 //   everything   25000 /api/* included. An LLM answer is not a slow origin, and
 //                      cutting it off at 8s turned a working feature into a
 //                      failure that looked like downtime.
-const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, other: 25000 };
+//   asset        2000  A content-hashed file that the edge does not have. The
+//                      page referencing it is already rendering, so this is a
+//                      race against the reader noticing an unstyled screen.
+const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, asset: 2000, other: 25000 };
 
 // ── THE BREAKER ─────────────────────────────────────────────────────────────
 //
@@ -69,8 +98,12 @@ const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, other: 25000 };
 // is immediate rather than something to wait out. Per-colo is the right scope:
 // this is "can MY edge reach the origin", which is exactly what a visitor
 // routed through that colo is about to find out.
+//
+// PER HOST, now that there are two. A marker parked by a dead DOM Cloud must
+// not stop the very next request from trying the laptop — that would make the
+// breaker defeat the failover it is supposed to make cheap.
 const BREAKER_TTL_S = 20;
-const BREAKER_KEY = "https://honeymoney.invalid/__origin-breaker";
+const breakerKey = (host) => `https://honeymoney.invalid/__origin-breaker/${host}`;
 
 // Cloudflare's own "I can't reach your origin" range (1033/523/530 etc.) plus
 // the gateway codes a dying tunnel emits. A real 500 from the app is NOT here:
@@ -128,6 +161,21 @@ export default {
       // keeps its immutable header) and removes the only way this failure
       // outlives the deploy that caused it.
       if (pathname.startsWith("/_next/static/") && res.status !== 200) {
+        // ── ASK THE ORIGINS BEFORE GIVING UP ──────────────────────────────
+        //
+        // Necessary the moment there is more than one origin. The snapshot's
+        // /_next/static comes from ONE build, and a page rendered by the other
+        // origin references that build's content hashes — so a failover could
+        // serve a perfectly good page whose every script 404s at the edge,
+        // which is the unstyled never-hydrating failure described above,
+        // arriving by a new route.
+        //
+        // Only on a miss, so the happy path is untouched: a present asset is
+        // still answered from the edge without a round trip. And still
+        // `missingAsset` if nobody has it, because a genuine 404 must stay
+        // loud and uncacheable.
+        const fromOrigin = await tryOrigin(request, url, "asset");
+        if (fromOrigin && fromOrigin.status === 200) return fromOrigin;
         return missingAsset(res.status);
       }
       return res;
@@ -233,9 +281,9 @@ async function snapshot(env, url, request) {
  * the snapshot for at most BREAKER_TTL_S. KV would also bill a read on every
  * request to the site.
  */
-async function breakerOpen() {
+async function breakerOpen(host) {
   try {
-    return Boolean(await caches.default.match(BREAKER_KEY));
+    return Boolean(await caches.default.match(breakerKey(host)));
   } catch {
     // No Cache API (wrangler dev in some modes) — degrade to "always probe",
     // which is exactly the behaviour this worker had before the breaker.
@@ -243,10 +291,10 @@ async function breakerOpen() {
   }
 }
 
-async function tripBreaker() {
+async function tripBreaker(host) {
   try {
     await caches.default.put(
-      BREAKER_KEY,
+      breakerKey(host),
       new Response("down", { headers: { "Cache-Control": `max-age=${BREAKER_TTL_S}` } }),
     );
   } catch {
@@ -254,27 +302,28 @@ async function tripBreaker() {
   }
 }
 
-async function resetBreaker() {
+async function resetBreaker(host) {
   try {
-    await caches.default.delete(BREAKER_KEY);
+    await caches.default.delete(breakerKey(host));
   } catch {
     /* see breakerOpen */
   }
 }
 
-// Returns null — never throws — when the origin can't be reached, so every
-// caller can decide for itself what "offline" should look like.
-//
-// `kind` picks the wait from ORIGIN_TIMEOUT_MS and decides whether a failure is
-// evidence about the ORIGIN or merely about this request. A slow language model
-// on /api/* is the second kind, and must not park a marker that sends the next
-// visitor's dashboard to the snapshot.
-async function tryOrigin(request, url, kind = "other") {
-  if (await breakerOpen()) return null;
+/**
+ * Ask ONE origin. Returns null — never throws — when it cannot be reached.
+ *
+ * `kind` picks the wait from ORIGIN_TIMEOUT_MS and decides whether a failure is
+ * evidence about the HOST or merely about this request. A slow language model
+ * on /api/* is the second kind, and must not park a marker that sends the next
+ * visitor's dashboard somewhere else.
+ */
+async function askOrigin(request, url, host, kind) {
+  if (await breakerOpen(host)) return null;
 
   const target = new URL(url);
   target.protocol = "https:";
-  target.hostname = ORIGIN_HOST;
+  target.hostname = host;
   target.port = "";
 
   const req = new Request(target, request);
@@ -287,12 +336,12 @@ async function tryOrigin(request, url, kind = "other") {
       signal: AbortSignal.timeout(ORIGIN_TIMEOUT_MS[kind] ?? ORIGIN_TIMEOUT_MS.other),
     });
     if (ORIGIN_DOWN.has(res.status)) {
-      await tripBreaker();
+      await tripBreaker(host);
       return null;
     }
     // Anything the app itself answered — a 200, a redirect, even a real 500 —
-    // proves the origin is up. Clearing here is what makes recovery immediate.
-    await resetBreaker();
+    // proves the host is up. Clearing here is what makes recovery immediate.
+    await resetBreaker(host);
     // Returned untouched, deliberately. `new Response(res.body, res)` copies
     // Content-Encoding and Content-Length from a body we no longer hold in that
     // form, and the mismatch reaches any client that didn't advertise brotli as
@@ -307,9 +356,36 @@ async function tryOrigin(request, url, kind = "other") {
     // DNS, TLS, connection refused — is the host, whatever was being asked of
     // it, and is worth sparing the next visitor the same wait.
     const timedOut = err && err.name === "TimeoutError";
-    if (!timedOut || kind === "nav") await tripBreaker();
+    if (!timedOut || kind === "nav") await tripBreaker(host);
     return null;
   }
+}
+
+/**
+ * Ask each origin in turn, and hand back the first one that answers.
+ *
+ * ⚠️ ONLY BODYLESS REQUESTS FAIL OVER, and that is a correctness rule, not a
+ * simplification. A Request's body can be read once; retrying a POST against a
+ * second host means either buffering the upload at the edge — receipts and
+ * statement imports, unbounded, in a Worker's memory — or risking a write that
+ * lands TWICE in a household's ledger because the first host actually got it
+ * and died before answering. Neither is worth it, and neither is needed: the
+ * app already queues failed writes on the client (lib/offlineQueue.ts, and the
+ * OfflineGate that flushes it), which is the right layer for a retry because it
+ * is the only one that knows whether the write already happened.
+ *
+ * So GET and HEAD — every navigation, every prefetch, every read — get the
+ * second chance, and writes get an honest failure they already know how to
+ * recover from.
+ */
+async function tryOrigin(request, url, kind = "other") {
+  const canFailOver = request.method === "GET" || request.method === "HEAD";
+  for (const host of ORIGINS) {
+    const res = await askOrigin(request, url, host, kind);
+    if (res) return res;
+    if (!canFailOver) break;
+  }
+  return null;
 }
 
 // ── offline responses ────────────────────────────────────────────────────────

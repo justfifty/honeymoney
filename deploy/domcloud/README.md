@@ -165,6 +165,32 @@ serving out of), stages `standalone/` + `static/` + `public/`, and extracts it o
 SSH into `~/public_html`. Re-run it after any change; it is the DOM Cloud equivalent
 of `npm run site:deploy`. `-DryRun` builds and stages without shipping.
 
+#### 1b. Refresh the FALLBACK origin too
+
+`deploy/pages/_worker.js` now tries two origins in order — DOM Cloud, then
+`origin.honeymoney.app`, the laptop behind the tunnel — so a GET that the DOM
+Cloud box cannot answer is served by this machine instead of by the offline
+page. That only helps if the laptop is running the same code:
+
+```powershell
+cd web; npm run build            # into .next, which is what the laptop serves
+git checkout -- tsconfig.json    # next build rewrites it; this is noise
+Start-ScheduledTask -TaskName HoneyMoney-Restart
+```
+
+⚠️ **`Start-ScheduledTask -TaskName HoneyMoney` is NOT enough.** That task runs
+the idempotent, port-guarded start script, so against a healthy app on :3000 it
+is a deliberate no-op — it is a watchdog, not a restart. It will happily leave
+the OLD build serving and report success. `HoneyMoney-Restart` is the one that
+stops first. Verified the difference on 2026-08-31: after `npm run build` and
+`HoneyMoney`, `/hscore` still came back without the new markup; after
+`HoneyMoney-Restart` it had it.
+
+A stale fallback is degraded rather than broken — the worker asks the origins
+for any `/_next/static/*` the snapshot lacks, so a page rendered by an
+out-of-step laptop still finds its own scripts — but it will serve older
+behaviour, so keep the two in step.
+
 ### 2. Give the app its environment
 
 `~/.env.honeymoney` on the host, `chmod 600`, read by `start-app.sh` at spawn. It is
