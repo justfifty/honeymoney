@@ -69,6 +69,41 @@ const nextConfig: NextConfig = {
   // at, and the origin does no speculative work for links nobody touches.
   experimental: {
     dynamicOnHover: true,
+
+    // ── THE BACK BUTTON, AND THE TAB YOU JUST CAME FROM ────────────────────
+    //
+    // Next 16 ships `staleTimes.dynamic` at 0, which means the client router
+    // cache keeps a dynamically-rendered page for no time at all. Every route
+    // in this app that matters is `force-dynamic`, so Dashboard -> H-Score ->
+    // Dashboard was three renders in Singapore for two distinct pages, and the
+    // third one re-fetched figures that were seconds old and had not moved.
+    //
+    // Measured 2026-08-31 from KL: the edge answers its snapshot in 119ms, and
+    // an origin round trip is the entire rest of the wait. Not making the trip
+    // is the only version of that which is free.
+    //
+    // ── WHY 60 SECONDS IS NOT A STALE BALANCE ─────────────────────────────
+    //
+    // The number that would be dangerous here is one that outlives a WRITE, and
+    // it cannot: `router.refresh()` drops the whole client router cache, and
+    // every path in this app that changes money already calls it —
+    // dashboard/AddTransaction (which is also what /record renders),
+    // records/RecordRow, goals/GoalsManager, graph/FlexibleInput,
+    // import/StatementImport, household/HouseholdManager. So the cache can only
+    // ever hold figures that nothing has changed since they were read.
+    //
+    // What is left is another household member writing on their own device
+    // inside the same minute, which this page would not have shown live anyway
+    // — there is no subscription here, only a render.
+    //
+    // Set both to 0 to restore Next's default behaviour exactly.
+    staleTimes: {
+      dynamic: 60,
+      // Prefetched-in-full entries (`prefetch`) — the floor Next enforces is
+      // 30, and going much above it would keep a prefetch alive long after the
+      // intent that triggered it.
+      static: 180,
+    },
   },
 
   // Security headers, set at the origin rather than at the edge.

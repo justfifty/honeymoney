@@ -1,7 +1,8 @@
 "use client";
 
 import Link, { useLinkStatus } from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 // The app's five tabs, in the thumb zone: Record · Dashboard · Graph · H-Score · More.
 //
@@ -42,8 +43,78 @@ export interface BottomNavLabels {
   more: string;
 }
 
+/**
+ * The five destinations, in bar order. Also the prefetch list — see below.
+ */
+const TABS = ["/record", "/dashboard", "/graph", "/hscore", "/more"];
+
+/**
+ * Warm the other four tabs once the page has gone quiet.
+ *
+ * ── WHY THE LINK'S OWN PREFETCH IS NOT ENOUGH ─────────────────────────────
+ *
+ * Next prefetches a Link when a pointer lands on it, and next.config.ts turns
+ * on `dynamicOnHover` so that intent fetches the whole page rather than just
+ * the skeleton. On a desktop that is the entire problem solved: the cursor
+ * arrives before the click.
+ *
+ * A THUMB DOES NOT HOVER. On a phone the same signal is `touchstart`, which
+ * buys the 70-120ms between finger down and finger up — real, and not enough
+ * when the round trip is to Singapore. These five routes ARE the app; there is
+ * no sixth place a tab can go. So the quiet moment after a page settles is
+ * spent fetching the four it might go to next.
+ *
+ * ── WHY THIS IS NOT EXPENSIVE ─────────────────────────────────────────────
+ *
+ * `router.prefetch` is a no-op when the router cache already holds a fresh
+ * entry, and a manual prefetch is held for `staleTimes.static` — 180s, set in
+ * next.config.ts — not for the 60s a passive Link entry gets. So a reader
+ * moving around the app costs the origin at most four renders every three
+ * minutes, not four per navigation. Passenger runs ONE process on DOM Cloud
+ * Lite, which is exactly why that bound matters, and why this list is the five
+ * tabs rather than every link in the viewport.
+ *
+ * It is also skipped entirely for anyone who has said they are paying for their
+ * bytes: Save-Data, or a connection the browser calls 2g. Speculative work is
+ * the first thing that should go when someone is on a metered phone.
+ */
+function useWarmTabs(pathname: string) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const conn = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    if (conn?.saveData) return;
+    if (conn?.effectiveType && /(^|-)2g$/.test(conn.effectiveType)) return;
+
+    // requestIdleCallback where it exists, a timeout where it does not (Safari
+    // shipped it in 17; older iPhones are exactly the devices this helps most).
+    const schedule =
+      typeof window.requestIdleCallback === "function"
+        ? (fn: () => void) => window.requestIdleCallback(fn, { timeout: 2000 })
+        : (fn: () => void) => window.setTimeout(fn, 800);
+
+    let cancelled = false;
+    const handle = schedule(() => {
+      if (cancelled) return;
+      for (const href of TABS) {
+        if (href === pathname) continue;
+        router.prefetch(href);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [pathname, router]);
+}
+
 export default function BottomNav({ labels }: { labels: BottomNavLabels }) {
   const pathname = usePathname();
+  useWarmTabs(pathname);
 
   const active = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
