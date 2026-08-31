@@ -136,10 +136,26 @@ function SignupForm() {
           <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
             Your records
           </legend>
+          {/* WHERE, not just WHAT.
+              The privacy notice has always named Singapore — "the database that
+              holds your records is run for us by DOM Cloud, on Oracle Cloud
+              infrastructure in SINGAPORE… that is a cross-border transfer and we
+              say so plainly" — and the storage switch repeats it at the moment
+              somebody chooses cloud. But at SIGN-UP, the one moment consent is
+              actually given, you were told what we record and not where it goes,
+              and could only learn by following a link.
+              Linking the notice is what the Notice and Choice Principle asks
+              for, so this is not a fix for a gap. It is the same sentence the
+              notice already commits to, said at the point of decision rather
+              than one click away — which is the difference between disclosed
+              and known. */}
           <p className="text-xs leading-relaxed text-zinc-500">
             To run the app we record and score the money you enter. That is what
             HoneyMoney is, so it comes with the account — you can end it at any
-            time by closing the account, and export everything first.{" "}
+            time by closing the account, and export everything first. Your records
+            are stored on our server in <strong className="font-medium">Singapore</strong>,
+            which is a transfer outside Malaysia; you can move them onto your own
+            devices at any time from Your copy.{" "}
             <Link href="/privacy" className="font-medium text-amber-600 hover:underline">
               What we collect, and why
             </Link>
