@@ -308,6 +308,91 @@ a,
   }
 }
 
+/* ── Honey elsewhere: the Dashboard band and the H-Score ────────────────────
+
+   Two more screens have a cat on them now (app/pet/useHoneyPet.ts). Everything
+   below is CSS on purpose, and it is the same argument as the breathing above:
+   an idle animation that runs on the compositor never wakes the main thread, so
+   a Dashboard or an H-Score nobody has touched costs exactly what it cost
+   before. The rAF loop in useHoneyPet starts on a pointer and cancels itself.
+
+   THE YAWN IS A LONG ANIMATION THAT IS MOSTLY NOTHING. 26 seconds, of which
+   about one and a half do anything — the rest is a held neutral frame. That is
+   what makes it read as an occasional yawn rather than a twitch on a loop, and
+   it costs one compositor animation either way. Staggering the delays per mood
+   is why two cats on one screen would not yawn in unison. */
+
+/* Which way she is walking. The transform on the wrapper belongs to the JS
+   loop, so the flip has to live on a child or the two would overwrite each
+   other every frame. */
+[data-facing="left"] .hm-cat-face {
+  transform: scaleX(-1);
+}
+
+/* A stretch and a yawn. Bottom-anchored like the breathing, so she stretches
+   UP out of a sit instead of growing in both directions from her middle. */
+@keyframes hm-cat-yawn {
+  0%, 92%, 100% { transform: scale(1, 1) rotate(0deg); }
+  94%           { transform: scale(0.94, 1.1) rotate(-2deg); }
+  96%           { transform: scale(1.08, 0.93) rotate(1.5deg); }
+  98%           { transform: scale(0.99, 1.02) rotate(0deg); }
+}
+.hm-cat-yawn {
+  animation: hm-cat-yawn 26s ease-in-out infinite;
+  transform-origin: 50% 92%;
+  will-change: transform;
+}
+
+/* Asleep. Slower and shallower than the waking breath — the difference between
+   the two is the whole reason a provisional score reads as "resting", not
+   "broken". */
+@keyframes hm-cat-doze {
+  0%, 100% { transform: scale(1, 1) translateY(0); }
+  50%      { transform: scale(1.012, 0.99) translateY(1px); }
+}
+.hm-cat-doze {
+  animation: hm-cat-doze 6.4s ease-in-out infinite;
+  transform-origin: 50% 92%;
+}
+
+/* The z's. Three of them, offset by animation-delay in the markup. */
+@keyframes hm-cat-zzz {
+  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(0.7); }
+  22%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translate3d(10px, -22px, 0) scale(1.15); }
+}
+.hm-cat-zzz {
+  animation: hm-cat-zzz 3.4s ease-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Awake and interested: a small, irregular ear/tail twitch. Same shape as the
+   yawn — a long timeline that is nearly all neutral. */
+@keyframes hm-cat-flick {
+  0%, 88%, 100% { transform: rotate(0deg); }
+  90%           { transform: rotate(-3deg); }
+  93%           { transform: rotate(2.5deg); }
+  96%           { transform: rotate(-1deg); }
+}
+.hm-cat-flick {
+  animation: hm-cat-flick 11s ease-in-out infinite;
+  transform-origin: 50% 92%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Same rule as above, and the same reason: the cat goes still, and the words
+     next to her keep saying what the score is doing. The z's are removed
+     rather than frozen — a stopped z is a smudge, not a sleeping cat. */
+  .hm-cat-yawn,
+  .hm-cat-doze,
+  .hm-cat-flick {
+    animation: none;
+  }
+  .hm-cat-zzz {
+    display: none;
+  }
+}
+
 /* ── Money moving, on the Sankey ────────────────────────────────────────────
    A dashed stroke travelling along each ribbon. The ribbon underneath is
    untouched — see the note in graph/SankeyFlow.tsx for why the flow is a

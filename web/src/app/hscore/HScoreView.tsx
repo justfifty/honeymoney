@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import MoodCat from "./MoodCat";
 import {
   pointsToNextBand,
   BANDS,
@@ -628,6 +629,12 @@ export default function HScoreView({
     <div className="pb-4">
       <ScoreRing hscore={hscore} tr={tr} />
       <ProvisionalNotice hscore={hscore} tr={tr} />
+
+      {/* Directly under the ring and the notice, because her mood is a RESTATEMENT
+          of both — asleep while the score is provisional, awake once it is not.
+          Below the bars she would be decoration; here she is the same sentence
+          the ring just said, in a form you can prod. See MoodCat.tsx. */}
+      <MoodCat band={hscore.band} confident={hscore.confidence.ok} tr={tr} />
 
       {/* Records the score could not see. The brief: uncategorised and Others
           must not silently vanish — a household that logged forty spends and

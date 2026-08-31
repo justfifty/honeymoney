@@ -28,7 +28,20 @@ import { join } from "node:path";
 const BASES = process.argv.slice(2).filter((a) => a.startsWith("http"));
 if (!BASES.length) BASES.push("http://127.0.0.1:3000");
 
-const ROUTE = "/record";
+// Which routes to measure. /record is the default because it is the daily
+// landing and the one this check was written for, but it stopped being the only
+// route with a moving thing on it: /dashboard walks a cat along the Honey band
+// and /hscore idles one under the ring (app/pet/useHoneyPet.ts). A frame budget
+// that is only enforced on one of the three screens that spend it is not a
+// budget, so the route list is an argument now:
+//
+//   node scripts/check-tap.mjs http://127.0.0.1:3000 --routes=/record,/dashboard,/hscore
+//
+// Comma-separated, and each is measured against every BASE.
+const ROUTES = (process.argv.find((a) => a.startsWith("--routes="))?.slice(9) || "/record")
+  .split(",")
+  .map((r) => r.trim())
+  .filter(Boolean);
 const TABS = ["/record", "/dashboard", "/graph", "/hscore", "/more"];
 const PORT = Number(process.env.CDP_PORT || 9334);
 const CPU_THROTTLE = 4;
@@ -109,6 +122,7 @@ await new Promise((r) => ws.addEventListener("open", r, { once: true }));
 let failed = false;
 try {
   for (const BASE of BASES) {
+  for (const ROUTE of ROUTES) {
     const { targetId } = await rpc(ws, "Target.createTarget", { url: "about:blank" });
     const { sessionId } = await rpc(ws, "Target.attachToTarget", { targetId, flatten: true });
     await rpc(ws, "Page.enable", {}, sessionId);
@@ -162,6 +176,7 @@ ${BASE}${ROUTE}  no fixed primary nav after 25s`);
       if (fps < 40) { console.log(`  frames/s ${fps} is below 40 — taps and scrolls will be dropped`); failed = true; }
     }
     await rpc(ws, "Target.closeTarget", { targetId });
+  }
   }
 } finally {
   ws.close();

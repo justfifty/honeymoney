@@ -975,6 +975,29 @@ const en: Dict = {
   "pet.say.pet3": "More. I am a very expensive cat.",
   "pet.say.happy": "Purrfect. Now tell me what you spent 👇",
   "pet.say.again": "…again? Go on then.",
+
+  // Honey on the Dashboard — dashboard/ChaseCat.tsx. She walks the floor of the
+  // Honey band; these are the only two things she ever says there, because the
+  // card's real job is the insight underneath her.
+  "pet.dash.aria": "Honey the cat — she follows where you point",
+  "pet.dash.boop": "Mrrp!",
+  "pet.dash.purr": "Purrrr…",
+
+  // Honey on the H-Score — hscore/MoodCat.tsx. The CAPTION is the one that has
+  // to earn its place: it says something about the band even if nobody ever
+  // touches her. The SAY lines are what a boop gets, and are allowed to be
+  // nothing but a cat.
+  "pet.hs.aria": "Honey the cat — tap her",
+  "pet.hs.cap.asleep": "Honey's having a nap until there's enough here to score honestly.",
+  "pet.hs.cap.building": "Honey's watching this one closely. Every logged spend moves it.",
+  "pet.hs.cap.steady": "Honey's settled. Steady is a real place to be.",
+  "pet.hs.cap.strong": "Honey approves. This is a comfortable set of numbers.",
+  "pet.hs.cap.thriving": "Honey has nothing left to worry at, and is yawning about it.",
+  "pet.hs.say.asleep": "…five more minutes.",
+  "pet.hs.say.building": "We're getting there. Keep logging.",
+  "pet.hs.say.steady": "Mrrp. Solid.",
+  "pet.hs.say.strong": "Very handsome numbers.",
+  "pet.hs.say.thriving": "Purrfect. I shall nap in celebration.",
   "cap.title": "Record a spend",
   "cap.subtitle": "Type it, or point a camera at it.",
   "cap.placeholder": "kopi 6.50",
@@ -1856,6 +1879,22 @@ const ms: Dict = {
   "pet.say.pet3": "Lagi. Saya kucing yang sangat mahal.",
   "pet.say.happy": "Sempurna. Sekarang beritahu saya perbelanjaan anda 👇",
   "pet.say.again": "…sekali lagi? Baiklah.",
+
+  "pet.dash.aria": "Honey si kucing — dia mengikut ke mana anda tuding",
+  "pet.dash.boop": "Mrrp!",
+  "pet.dash.purr": "Purrrr…",
+
+  "pet.hs.aria": "Honey si kucing — ketik dia",
+  "pet.hs.cap.asleep": "Honey tidur dulu sehingga ada cukup data untuk skor yang jujur.",
+  "pet.hs.cap.building": "Honey memerhati rapat. Setiap perbelanjaan yang direkod menggerakkannya.",
+  "pet.hs.cap.steady": "Honey sudah tenang. Stabil itu tempat yang baik.",
+  "pet.hs.cap.strong": "Honey setuju. Ini set nombor yang selesa.",
+  "pet.hs.cap.thriving": "Honey tiada apa lagi nak dirisaukan, dan menguap kerananya.",
+  "pet.hs.say.asleep": "…lima minit lagi.",
+  "pet.hs.say.building": "Kita hampir sampai. Teruskan merekod.",
+  "pet.hs.say.steady": "Mrrp. Mantap.",
+  "pet.hs.say.strong": "Nombor yang sangat kemas.",
+  "pet.hs.say.thriving": "Sempurna. Saya nak tidur meraikannya.",
   "g.sankey.transferNote": "Wang yang anda pindahkan ke simpanan atau matlamat berakhir pada matlamat itu di sini — ia tidak meninggalkan isi rumah, jadi ia tidak dilukis sebagai perbelanjaan.",
 };
 

@@ -17,6 +17,7 @@ import RecordRow from "../records/RecordRow";
 import PrivacyToggle from "./PrivacyToggle";
 import ChartSchemePicker from "../ChartSchemePicker";
 import HoneyAsk from "./HoneyAsk";
+import ChaseCat from "./ChaseCat";
 import LocalOverlay from "../LocalOverlay";
 
 export const dynamic = "force-dynamic";
@@ -554,12 +555,15 @@ export default async function Dashboard() {
             came to check their buckets read an opinion about figures they had
             not seen yet, and scrolled past both to reach the data. Summary ->
             buckets -> subscriptions -> recent, THEN what Honey makes of it. */}
-        {/* Honey insight */}
-        <section className="mt-8 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg">
+        {/* Honey insight. ChaseCat IS the <section> — it renders the same
+            gradient band and puts Honey on the floor of it. See ChaseCat.tsx
+            for why this card and not another one: it is the only block on the
+            page with no figure in it, and the only one with a wait to fill. */}
+        <ChaseCat lang={locale}>
           <Suspense fallback={<HoneyInsightSkeleton locale={locale} />}>
             <HoneyInsight projection={projection} locale={locale} userId={ctx?.user?.id ?? null} />
           </Suspense>
-        </section>
+        </ChaseCat>
 
         {/* What-if co-pilot */}
         <HoneyAsk
