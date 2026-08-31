@@ -181,7 +181,18 @@ function Tab({
       className={
         // min-h-14 is 56px: comfortably past the 44px minimum touch target, and
         // it survives the label being hidden at 320px without the row collapsing.
-        "hm-tap relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-[10px] " +
+        // px-0.5 and 9px type below 400px, and this is a MEASUREMENT rather
+        // than a nicety. The label span carries `truncate`, so a label that
+        // does not fit is not clipped visibly — it silently becomes an
+        // ellipsis, which reads as intentional. Probed at 360px: Malay
+        // "Papan Pemuka" needed 70px against 64 available, and Tamil
+        // "டாஷ்போர்டு" needed 69. Both were being cut, in the two languages
+        // this product is actually for.
+        // Fixing it in CSS rather than by shortening the words: the
+        // translations are correct, the box was too small, and every language
+        // benefits from the extra room rather than just the two that were
+        // caught.
+        "hm-tap relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-[10px] max-[400px]:text-[9px] sm:px-1 " +
         "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-amber-500"
       }
     >

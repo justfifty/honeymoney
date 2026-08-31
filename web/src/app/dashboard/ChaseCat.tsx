@@ -124,18 +124,41 @@ export default function ChaseCat({
         className="hm-tap absolute bottom-2 left-5 touch-pan-y rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-orange-500"
       >
         <span ref={catRef} data-facing="right" className="block will-change-transform">
-          <span className="hm-cat-breathe block overflow-hidden rounded-[26%] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.6)]">
-            {/* NOT `priority`. On /record she is the largest thing above the
+          {/* ── WHY THE RING AND THE WHITE BACKING ──────────────────────────
+              honey-cat.jpg is not a photograph of a cat, it is the APP ICON:
+              a white cat on an ORANGE rounded tile. On /record that sits on a
+              pale amber panel and reads perfectly. Here it was placed on the
+              amber-400 → orange-500 band — orange artwork on an orange ground,
+              at 44px — and it stopped reading as anything. Screenshotted at
+              390px to be sure rather than argued about: a smear with a bit of
+              white in it.
+              Nothing is wrong with the artwork; it was given a background it
+              cannot survive. So it gets its own: a white plate the icon sits
+              ON, which is how an app icon is presented against a coloured
+              surface everywhere else in the world, plus a ring to cut the edge.
+              Bumped 44px → 48px, because the mark carries a heart and a dollar
+              sign for eyes and below about 44 they are mud. */}
+          <span className="hm-cat-breathe block rounded-[30%] bg-white/95 p-[3px] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
+            {/* The inner crop is the same one /record uses and for the same
+                reason: the file carries a white margin outside the tile, and
+                `scale-[1.08]` inside `overflow-hidden` trims it so the ORANGE
+                fills its frame. Without it the margin eats the plate from the
+                inside and the cat — whose eyes are a heart and a dollar sign —
+                ends up too small to read. With it, the plate becomes a crisp
+                white ring around a full-bleed tile.
+                NOT `priority`. On /record she is the largest thing above the
                 fold and is the LCP; here the figures are, and preloading a cat
                 would make her compete with them for the same first bytes. */}
-            <Image
-              src="/honey-cat.jpg"
-              alt=""
-              width={1021}
-              height={1024}
-              draggable={false}
-              className="hm-cat-face block h-11 w-11 scale-[1.08] select-none"
-            />
+            <span className="block overflow-hidden rounded-[26%]">
+              <Image
+                src="/honey-cat.jpg"
+                alt=""
+                width={1021}
+                height={1024}
+                draggable={false}
+                className="hm-cat-face block h-12 w-12 scale-[1.08] select-none"
+              />
+            </span>
           </span>
         </span>
       </button>
