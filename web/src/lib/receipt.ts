@@ -58,12 +58,45 @@ export interface ReceiptResult {
   degraded?: string; // set when a step failed and we returned less than we'd like
 }
 
-const EXTRACT_SYSTEM = `You read Malaysian payment receipts and e-wallet screenshots:
-Touch 'n Go eWallet, MAE by Maybank, GrabPay, ShopeePay, Boost, DuitNow QR, and
-bank apps, plus ordinary printed shop receipts (mamak, kedai runcit, 99 Speedmart,
-Tesco/Lotus's, AEON, Mydin, Tealive, ZUS Coffee, Shell/Petronas).
+// ⚠️ NO NAMED MERCHANTS, NO SPECIMEN DATES, AND THAT IS THE WHOLE POINT.
+//
+// This prompt used to open by listing real merchants — "mamak, kedai runcit,
+// 99 Speedmart, Tesco/Lotus's, AEON, Mydin, Tealive, ZUS Coffee,
+// Shell/Petronas" — and to illustrate the date rule with the literal string
+// "03/07/2026". Reported 2026-09-01 with a photograph of a SWISS restaurant
+// bill (Berghotel Grosse Scheidegg, CHF 54.50, 30.07.2007). What came back:
+//
+//     vendor    "Mamak"        <- first item of the merchant list above
+//     currency  "MYR"          <- the default this file asked for, twice
+//     date      2026-03-07     <- the specimen date, read back wrong way round
+//     amount    8.90           <- invented to match
+//
+// Not one field came off the receipt. The model could not read the image and
+// answered from its own instructions, at a confidence high enough to prefill
+// the form — so the user was shown a complete, plausible, entirely fictional
+// transaction, in the app whose promise is that the parser proposes and the
+// human commits. A blank is a request for help. A fabrication is a lie the
+// household may well confirm without looking.
+//
+// So: describe the KINDS of document, never name one. Describe the date rule,
+// never write a specimen date. Anything concrete in here is something the model
+// can hand back when it cannot see, and it will.
+const EXTRACT_SYSTEM = `You read payment receipts and e-wallet screenshots. Most
+are Malaysian — e-wallet and bank app confirmations, and printed receipts from
+food stalls, grocers, convenience chains, supermarkets, cafés and petrol
+stations — but you will also be given receipts from other countries, in other
+languages and other currencies, and you must read those as they are rather than
+as though they were Malaysian.
 
 Rules you must follow:
+- READ, DO NOT RECOGNISE. Every value you return must be visibly present in this
+  image. You are never to supply a merchant, a currency, a date or an amount
+  because it is typical, expected, or mentioned anywhere in these instructions.
+  If you cannot actually see a field in the picture, that field is empty.
+- If the image is unreadable, not a receipt, or too blurred to be sure, return
+  empty strings and zeros with confidence 0. That is a correct and useful
+  answer. Returning a plausible receipt you did not read is the single worst
+  thing you can do here, because the person will believe you.
 - The MERCHANT is who was paid. It is never the wallet app itself: "Touch 'n Go",
   "TNG eWallet", "DuitNow", "Maybank", "MAE", "GrabPay" are payment rails, not
   merchants. If the screenshot shows a transfer to a person, the merchant is that
@@ -77,8 +110,17 @@ Rules you must follow:
   Capture subtotal, serviceCharge, tax and total separately when they are
   printed; put 0 for any that the receipt does not show. "amount" and "total"
   are the SAME final figure paid, after service charge and tax.
-- Malaysian receipts write dates as DD/MM/YYYY, never MM/DD. "03/07/2026" is
-  3 July, not 3 March.
+- DATES ARE DAY-FIRST unless the receipt itself proves otherwise. Malaysian,
+  European and most other receipts print day before month; a day number above 12
+  settles it. Where the order is genuinely ambiguous and nothing on the receipt
+  resolves it, prefer day-first, and lower your confidence to say so. Return the
+  date PRINTED ON THE RECEIPT — an old receipt has an old date, and today's date
+  is never the answer unless the receipt shows today.
+- CURRENCY IS WHATEVER THE RECEIPT SHOWS. Read the symbol or code actually
+  printed — RM, CHF, SGD, EUR, USD, IDR, THB and so on — and return that. Do not
+  assume Malaysian ringgit because most receipts here are; a foreign receipt
+  recorded in the wrong currency is a wrong number in somebody's ledger. If no
+  currency is visible anywhere, return an empty string rather than a guess.
 - If the image genuinely does not show a field, leave it empty and lower your
   confidence. Do not guess. A wrong number a user trusts is worse than a blank
   one they fill in.`;
@@ -87,7 +129,7 @@ const EXTRACT_PROMPT = `Extract the payment from this image. Return ONLY strict 
 {
   "vendor": string,          // the merchant paid; "" if truly unreadable
   "amount": number,          // final total paid, as a number; 0 if unreadable
-  "currency": string,        // ISO code, default "MYR"
+  "currency": string,        // ISO code AS PRINTED on the receipt; "" if none is shown
   "occurredAt": string,      // ISO 8601 datetime, or "" if absent
   "paymentMethod": string,   // wallet/app/card/cash used, or ""
   "subtotal": number,        // before service charge & tax; 0 if not shown
@@ -108,12 +150,52 @@ function parseJson<T>(raw: string): T {
   return JSON.parse(body.slice(start, end + 1)) as T;
 }
 
-function coerceExtraction(raw: Partial<ReceiptExtraction>): ReceiptExtraction {
+// Exported for scripts/check-receipt.mts. This function is where the two
+// guards that matter actually live — the confidence floor and the absence of a
+// currency default — so it is the thing worth testing directly, without an API
+// key or a network round trip.
+export function coerceExtraction(raw: Partial<ReceiptExtraction>): ReceiptExtraction {
   // Non-negative money coercion, rounded to sen; 0 when absent/invalid.
   const money = (v: unknown) => {
     const x = Number(v);
     return Number.isFinite(x) && x > 0 ? Math.round(x * 100) / 100 : 0;
   };
+  // ── THE FLOOR, ENFORCED IN CODE RATHER THAN ASKED FOR IN A PROMPT ────────
+  //
+  // The prompt now forbids answering from its own examples, and that is worth
+  // doing, but a prompt is a request and this is a guarantee. A model that
+  // cannot read an image and invents a whole receipt does not announce it — the
+  // 2026-09-01 report came back with a merchant, a currency, a date and an
+  // amount, none of which were on the paper, and nothing downstream could tell.
+  //
+  // A model that is honest about its own uncertainty is the one case we CAN
+  // catch cheaply, so a confidence below this floor is treated as "not read"
+  // rather than as a weak reading: the fields are dropped and the caller shows
+  // the photo with an empty form instead of a filled one. Typing four
+  // characters is a small cost. Confirming a fabricated merchant and amount
+  // into a household ledger is not.
+  //
+  // 0.35 rather than 0.6: this only has to catch the model saying it is
+  // guessing. AddTransaction already warns between here and 0.6, which is the
+  // band where a reading is worth showing but worth checking.
+  const MIN_TRUSTED_CONFIDENCE = 0.35;
+  const confidence = Number.isFinite(Number(raw.confidence)) ? Number(raw.confidence) : 0;
+  if (confidence > 0 && confidence < MIN_TRUSTED_CONFIDENCE) {
+    return {
+      vendor: "",
+      amount: 0,
+      currency: "",
+      occurredAt: "",
+      paymentMethod: "",
+      subtotal: 0,
+      serviceCharge: 0,
+      tax: 0,
+      total: 0,
+      lineItems: [],
+      confidence,
+    };
+  }
+
   const total = money(raw.total);
   // The canonical amount is the final total; if the model only filled one of the
   // two, borrow from the other so the recorded figure is never lost.
@@ -121,7 +203,14 @@ function coerceExtraction(raw: Partial<ReceiptExtraction>): ReceiptExtraction {
   return {
     vendor: typeof raw.vendor === "string" ? raw.vendor.trim().slice(0, 80) : "",
     amount,
-    currency: (typeof raw.currency === "string" && raw.currency.trim().toUpperCase()) || "MYR",
+    // ⚠️ NOT `|| "MYR"`. This was the second place the ringgit was forced — the
+    // prompt asked for it as a default and then this line applied it again to
+    // anything falsy, so a Swiss receipt reading CHF 54.50 could not have come
+    // back as CHF even if the model had read it correctly. An unknown currency
+    // is empty here and resolved by the caller against the household's own
+    // currency, which is a decision with a reason behind it rather than a
+    // constant standing in for one.
+    currency: (typeof raw.currency === "string" && raw.currency.trim().toUpperCase()) || "",
     occurredAt: typeof raw.occurredAt === "string" ? raw.occurredAt : "",
     paymentMethod: typeof raw.paymentMethod === "string" ? raw.paymentMethod.slice(0, 40) : "",
     subtotal: money(raw.subtotal),

@@ -162,7 +162,9 @@ export default function SpendCapture({
         parsed.amount || parsed.vendor
           ? tr("g.cap.readResult", {
               vendor: parsed.vendor ? ` “${parsed.vendor}”` : "",
-              amount: parsed.amount ? ` · ${parsed.currency ?? "MYR"} ${parsed.amount}` : "",
+              amount: parsed.amount
+                ? ` · ${parsed.currency ? `${parsed.currency} ` : ""}${parsed.amount}`
+                : "",
             })
           : tr("g.cap.readFail"),
       );
@@ -232,9 +234,16 @@ export default function SpendCapture({
             onAnalysis?.(data.analysis ?? null);
             // When the receipt printed a breakdown, show it so the user can see
             // the subtotal/service/tax behind the total, not just the total.
-            const cur = e.currency ?? "MYR";
+            // NOT `?? "MYR"`. An unknown currency is now an empty string
+            // (lib/receipt.ts stopped defaulting it), and printing "MYR" beside
+            // a figure we did not read a currency for is the same small lie
+            // that put CHF 54.50 into a ledger as RM 8.90. Say the number
+            // without a unit instead; the form falls back to the household's
+            // own currency, which is a stated default rather than a claim
+            // about this receipt.
+            const cur = e.currency || "";
             const parts: string[] = [];
-            if (e.subtotal) parts.push(`${tr("cap.subtotal")} ${cur} ${e.subtotal}`);
+            if (e.subtotal) parts.push(`${tr("cap.subtotal")} ${cur} ${e.subtotal}`.replace("  ", " "));
             if (e.serviceCharge) parts.push(`${tr("cap.service")} ${cur} ${e.serviceCharge}`);
             if (e.tax) parts.push(`${tr("cap.tax")} ${cur} ${e.tax}`);
             const breakdown = parts.length ? `  ·  ${parts.join(" · ")}` : "";
@@ -242,7 +251,7 @@ export default function SpendCapture({
               (e.amount || e.vendor
                 ? tr("g.cap.readResult", {
                     vendor: e.vendor ? ` “${e.vendor}”` : "",
-                    amount: e.amount ? ` · ${cur} ${e.amount}` : "",
+                    amount: e.amount ? ` · ${cur ? `${cur} ` : ""}${e.amount}` : "",
                   })
                 : tr("g.cap.readFail")) + breakdown,
             );
