@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { record as recordEvent } from "@/lib/productEvents";
 import { signupUser, loginUser, AUTH_COOKIE, SESSION_MAX_AGE } from "@/lib/auth";
 import { acceptInvite, createHouseholdFor, AuthError } from "@/lib/household";
 import { recordSignupConsents, type Purpose } from "@/lib/consent";
@@ -67,10 +68,14 @@ export async function POST(request: Request) {
     };
 
     let joined: string | null = null;
+    // Whichever household this account ended up in — recorded with the signup
+    // so a pilot cohort can be counted by household, not only by person.
+    let tenantForEvents: string | null = null;
     if (body.inviteCode?.trim()) {
       try {
         const tenant = await acceptInvite(user, body.inviteCode);
         joined = tenant.name;
+        tenantForEvents = tenant.id;
         await consent(tenant.id);
       } catch (err) {
         // The account exists now — refusing the whole sign-up over a bad code
@@ -89,8 +94,15 @@ export async function POST(request: Request) {
       }
     } else {
       const own = await createHouseholdFor(user);
+      tenantForEvents = own.tenant.id;
       await consent(own.tenant.id);
     }
+
+    // The denominator for every activation and retention figure on /admin.
+    // Recorded here rather than on first page view because "an account exists"
+    // is the event; whether they ever came back is precisely what we are
+    // measuring and must not be assumed by the act of measuring it.
+    recordEvent("signup", user.id, tenantForEvents);
 
     const res = NextResponse.json({ ok: true, role: user.role, joined });
     setAuthCookie(res, token);

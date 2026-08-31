@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/config";
 import { addManualTransaction } from "@/lib/graph";
+import { record as recordEvent, recordFirstExpense } from "@/lib/productEvents";
 import { AuthError, requirePermission } from "@/lib/household";
 import { isLocalOnly } from "@/lib/storageModeStore";
 import { apiError } from "@/lib/apiError";
@@ -135,6 +136,12 @@ export async function POST(request: Request) {
       },
       { id: ctx.user.id, email: ctx.user.email },
     );
+    // Frequency, and — the first time only — activation. `firstExpense` is
+    // idempotent by unique index rather than by a lookup, so this costs one
+    // write that usually fails harmlessly instead of a read on every save.
+    recordEvent("expense_logged", ctx.user.id, ctx.tenant.id);
+    recordFirstExpense(ctx.user.id, ctx.tenant.id);
+
     return NextResponse.json({ ok: true, stored });
   } catch (err) {
     if (err instanceof AuthError) return apiError(err);

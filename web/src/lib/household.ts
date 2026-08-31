@@ -12,6 +12,7 @@
 // records. That is the whole answer to "how does family login work".
 //
 // Server-only. Never import from a "use client" module.
+import { recordOncePerDay } from "./productEvents";
 
 import { randomBytes } from "node:crypto";
 import { cache } from "react";
@@ -182,7 +183,19 @@ export const resolveViewTenant = cache(async function resolveViewTenant(): Promi
   isDemo: boolean;
 }> {
   const ctx = await getContext();
-  if (ctx) return { tenantId: ctx.tenant.id, ctx, isDemo: false };
+  if (ctx) {
+    // RETENTION'S ONLY SIGNAL, and this is the right place for it: every
+    // authenticated page in the app resolves its tenant through here, so
+    // "somebody came back today" is recorded whether they logged a spend, read
+    // their H-Score or just looked at the dashboard. Retention is "did they
+    // return", not "did they return AND transact" — a household that opened
+    // the app to check a bucket was retained.
+    //
+    // Free at the point of use: deduplicated in-process, written after the
+    // response, and bounded to one row per user per day by a unique index.
+    recordOncePerDay("session_open", ctx.user.id, ctx.tenant.id);
+    return { tenantId: ctx.tenant.id, ctx, isDemo: false };
+  }
   return { tenantId: config.demoTenantId, ctx: null, isDemo: true };
 });
 

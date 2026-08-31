@@ -2,6 +2,7 @@ import Link from "next/link";
 import { isDatabaseConfigured } from "@/lib/config";
 import { getSessionUser } from "@/lib/auth";
 import { getAnalytics } from "@/lib/analytics";
+import { getFunnel } from "@/lib/productEvents";
 import LogoutButton from "./LogoutButton";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,8 @@ export default async function AdminPage() {
   if (!user) return <Gate msg="Please log in to view site performance." login />;
   if (user.role !== "admin") return <Gate msg="This area is for administrators only." />;
 
-  const a = await getAnalytics();
+  // Together: they read different collections and neither needs the other.
+  const [a, funnel] = await Promise.all([getAnalytics(), getFunnel()]);
   const usd = (n: number) => `$${n.toFixed(2)}`;
 
   return (
@@ -69,6 +71,13 @@ export default async function AdminPage() {
           <LogoutButton />
         </nav>
       </header>
+
+      {/* ── PRODUCT: did the thing we built get used ─────────────────────
+          Placed ABOVE traffic deliberately. Visits and countries are a
+          marketing question; the four figures below are the ones a judge asks
+          about and the ones the deck's traction slide cannot currently answer.
+          Reading order should match what matters. */}
+      <Funnel funnel={funnel} />
 
       {/* overview */}
       <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -179,6 +188,64 @@ export default async function AdminPage() {
         IP + country come from Cloudflare edge headers on live visits.
       </p>
     </main>
+  );
+}
+
+/**
+ * Activation and retention — the four numbers that go on a traction slide.
+ *
+ * EMPTY IS THE NORMAL STATE TODAY and the panel says so in words rather than
+ * printing four zeroes. A dashboard of zeroes reads as "broken"; "no signups
+ * recorded yet" reads as "nothing has happened", which is the truth and is a
+ * different message entirely.
+ *
+ * Every rate shows its DENOMINATOR next to it. "80%" from a cohort of five is
+ * not a retention rate, it is four people, and a slide that hides the five is
+ * the kind a judge catches. See lib/aggregateDisclosure.ts — nothing here may
+ * reach an employer without passing MIN_COHORT first.
+ */
+function Funnel({ funnel }: { funnel: Awaited<ReturnType<typeof getFunnel>> }) {
+  if (!funnel) return null;
+  const pct = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
+  const mins = (m: number | null) => {
+    if (m === null) return "—";
+    const total = Math.round(m * 60);
+    return `${Math.floor(total / 60)}m ${String(total % 60).padStart(2, "0")}s`;
+  };
+
+  return (
+    <Section title="Product · activation & retention">
+      {funnel.signups === 0 ? (
+        <p className="rounded-xl border border-dashed border-zinc-300 p-4 text-xs text-zinc-500 dark:border-zinc-700">
+          No signups recorded yet. These figures start the moment the first
+          household creates an account — retention is measured forward, so a
+          week that was not instrumented cannot be recovered.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Stat label="Signups" value={String(funnel.signups)} />
+            <Stat
+              label="Activated (24h)"
+              value={`${pct(funnel.activationRate)} · ${funnel.activated}/${funnel.signups}`}
+            />
+            <Stat
+              label="Time to 1st expense"
+              value={mins(funnel.medianMinutesToFirstExpense)}
+            />
+            <Stat label="D7 retained" value={`${pct(funnel.d7Rate)} · ${funnel.d7}/${funnel.d7Cohort}`} />
+            <Stat label="D30 retained" value={`${pct(funnel.d30Rate)} · ${funnel.d30}/${funnel.d30Cohort}`} />
+            <Stat label="Used private bucket" value={String(funnel.privateBucketUsers)} />
+          </div>
+          <p className="mt-2 text-xs text-zinc-500">
+            {funnel.expensesLogged.toLocaleString()} records logged across{" "}
+            {funnel.activeDays} active day{funnel.activeDays === 1 ? "" : "s"}.
+            {funnel.d7Cohort === 0 && " D7 waits until the first cohort is seven days old."}
+            {" "}Median time to first expense tests the 3-minute claim in the deck.
+          </p>
+        </>
+      )}
+    </Section>
   );
 }
 
