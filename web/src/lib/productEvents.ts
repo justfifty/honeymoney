@@ -228,7 +228,24 @@ const rate = (n: number, d: number): number | null => (d > 0 ? n / d : null);
 export async function getFunnel(): Promise<Funnel | null> {
   if (!isDatabaseConfigured()) return null;
 
-  const rows = await pbListAll<EventRow>("product_events", { sort: "created" });
+  // ⚠️ THE COLLECTION MAY NOT EXIST, and that is a normal state rather than a
+  // bug. `pb_migrations` are NOT shipped by deploy/domcloud/push-build.ps1 —
+  // they have to be copied to the PocketBase site separately — so the app can
+  // legitimately be running a build that knows about `product_events` against a
+  // database that has never heard of it. PocketBase answers 404 and pbListAll
+  // throws.
+  //
+  // Unhandled, that throw does not break this panel, it breaks /admin: the
+  // caller runs this inside a Promise.all with getAnalytics, so one missing
+  // collection would take down the traffic figures, the cost table and the AI
+  // usage rollup as well. A measurement that has not been installed yet must
+  // degrade to "no measurement", never to "no admin page".
+  let rows: EventRow[];
+  try {
+    rows = await pbListAll<EventRow>("product_events", { sort: "created" });
+  } catch {
+    return null;
+  }
 
   const firstAt = new Map<string, number>();   // user -> signup time
   const firstExpAt = new Map<string, number>(); // user -> first expense time
