@@ -1297,7 +1297,7 @@ const ms: Dict = {
   "home.personas.family": "Sebuah keluarga",
   "home.finalCta.title": "Lihat ia berfungsi — sedang langsung",
   "home.finalCta.body": "Terokai demo yang disediakan, atau baca panduan bahasa mudah dahulu.",
-  "home.outcome": "Imbas atau taip. Ketahui perbelanjaan anda.",
+  "home.outcome": "Imbas atau taip.\nKetahui perbelanjaan anda.",
   "home.path.kicker": "Kali pertama",
   "home.path.title": "Tiga minit daripada orang asing kepada cerapan pertama anda",
   "home.path.s1.title": "Cuba tanpa log masuk",

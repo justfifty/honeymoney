@@ -82,7 +82,16 @@ export default async function Home() {
               the widest screens, which is exactly where a first-time visitor is
               deciding whether this is a real product. max-w grows with it, or
               the bigger type just wraps into more lines. */}
-          <h1 className="hm-animate hm-delay-1 mx-auto mt-2 max-w-2xl text-[1.7rem] font-extrabold leading-[1.12] tracking-tight text-balance text-zinc-900 sm:text-4xl md:max-w-3xl md:text-5xl lg:text-6xl dark:text-white">
+          {/* `whitespace-pre-line` so a TRANSLATION can decide its own line
+              break. The headline is two sentences — a method and an outcome —
+              and where they should divide is a per-language question, not a
+              layout constant: English balances into two lines on its own, while
+              Malay reads better with the outcome given its own line rather than
+              wherever the measured width happens to fold it.
+              Only strings that actually contain a newline are affected, so
+              every other locale wraps exactly as it did. text-balance still
+              distributes whatever is left inside each forced line. */}
+          <h1 className="hm-animate hm-delay-1 mx-auto mt-2 max-w-2xl whitespace-pre-line text-[1.7rem] font-extrabold leading-[1.12] tracking-tight text-balance text-zinc-900 sm:text-4xl md:max-w-3xl md:text-5xl lg:text-6xl dark:text-white">
             {tr("home.outcome")}
           </h1>
           {/* Hidden on a phone: three lines of positioning between the headline
