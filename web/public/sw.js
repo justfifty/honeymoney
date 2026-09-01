@@ -35,7 +35,10 @@
 // and every scan after that is offline. Settings offers a button to do it
 // deliberately for someone who knows they are about to lose signal.
 
-const VERSION = "hm-v4";
+// Bumped whenever the caching RULES change. Changing these bytes is also what
+// makes a browser install this worker at all, so a bump is how an existing
+// client is rescued from a cache written by an older set of rules.
+const VERSION = "hm-v5";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 const OCR = `${VERSION}-ocr`;
@@ -130,7 +133,55 @@ async function cacheFirst(request, cacheName) {
   // Only 200s. Caching an opaque or error response means the next offline load
   // gets the error back instead of trying again.
   if (res && res.status === 200) cache.put(request, res.clone());
+  // A 404 on a content-hashed build asset is not an ordinary miss. See below.
+  if (res && res.status === 404 && request.url.includes("/_next/static/")) {
+    await onDeadBuildAsset();
+  }
   return res;
+}
+
+// ── THE UNSTYLED-SITE FAILURE, ARRIVING FROM THIS CACHE ────────────────────
+//
+// `/_next/static/*` filenames are content-hashed, and the header above argues
+// that this makes a stale copy "impossible by construction". True — and it is
+// answering the wrong question. The danger was never a stale ASSET. It is a
+// stale DOCUMENT: an HTML page from build A, asking for build A's chunks, at a
+// moment when only build B exists.
+//
+// This worker can produce exactly that on its own. Navigations are cached in
+// SHELL and assets in ASSETS, in two independent caches with no shared notion
+// of which build either came from. `networkFirst` hands over the cached page
+// after NAV_TIMEOUT_MS — three seconds, which the comment there notes is about
+// what a Passenger cold start costs — so a slow origin serves yesterday's HTML,
+// and if the matching chunks have since been redeployed away, they 404. The
+// page renders as unstyled HTML with giant unsized icons and never hydrates:
+// no working login form, no hamburger menu, because there is no React on it.
+//
+// deploy/pages/README.md records the same failure arriving four other ways,
+// "each time by a route nobody had considered". This is a fifth, and the only
+// one that lives on the user's device — which also makes it the only one that
+// cannot be fixed by redeploying, because the broken page is coming out of
+// their own cache. It has to fix itself.
+//
+// So: a 404 on a hashed asset is treated as proof that the document asking for
+// it is dead. Drop the cached HTML — never the assets, which are keyed by URL
+// and are not the thing that went wrong — and tell the page to reload once.
+//
+// ONCE. The client guards the reload with sessionStorage, and this guards the
+// purge with a flag, because the other cause of a 404 here is a genuinely
+// broken deploy at the edge, where reloading gets the same broken page back.
+// A recovery that loops is worse than the fault it is recovering from.
+let deadBuildHandled = false;
+async function onDeadBuildAsset() {
+  if (deadBuildHandled) return;
+  deadBuildHandled = true;
+  try {
+    await caches.delete(SHELL);
+    const clients = await self.clients.matchAll({ type: "window" });
+    for (const client of clients) client.postMessage({ type: "hm-stale-build" });
+  } catch {
+    /* best effort — a failed recovery must not also break the response */
+  }
 }
 
 /**

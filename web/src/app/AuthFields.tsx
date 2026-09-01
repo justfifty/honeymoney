@@ -7,8 +7,25 @@ import { useState } from "react";
 // on the one screen where you can't verify it, and the 8-character rule was only
 // enforced on the server, after the round-trip.
 
+// ⚠️ AN OPAQUE BACKGROUND, NOT `bg-transparent`.
+//
+// This was transparent, which is the right default for an input INSIDE a card:
+// everywhere else in the app these sit on a `bg-white dark:bg-zinc-900` panel,
+// so transparency just inherits that panel and one less colour is declared.
+//
+// The auth pages have no panel. The form floats directly on the body — and
+// `<HoneyField>` is a `fixed inset-0 -z-10` layer of 2 600 orange particles
+// behind every page on desktop. With nothing between them, the decoration
+// rendered THROUGH the email and password boxes: a login form with orange
+// confetti scattered inside its input fields, which reads as a broken page
+// rather than as a flourish. It is the one screen where a stranger decides
+// whether this app looks like somewhere to type a password.
+//
+// Fixed here rather than on each page so the three auth screens (login, signup,
+// join) cannot drift apart, and so any future form dropped onto a bare
+// background inherits the fix instead of rediscovering the bug.
 const INPUT =
-  "w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-sm outline-none transition-colors focus:border-amber-500 dark:border-zinc-700";
+  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-amber-500 dark:border-zinc-700 dark:bg-zinc-900";
 
 export function Field({
   label,

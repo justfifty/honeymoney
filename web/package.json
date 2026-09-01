@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "//verify": "Compile-check WITHOUT touching the live build. A plain `next build` renames every content-hashed chunk in .next/, and the Cloudflare Pages snapshot still holds the old names - which takes the whole site down until site:publish runs. See deploy/pages/README.md.",
+    "verify": "node scripts/verify-build.mjs",
     "start": "next start",
     "lint": "eslint",
     "icons": "node scripts/generate-icons.mjs",
@@ -14,6 +16,8 @@
     "check:nav": "node scripts/check-nav.mjs",
     "check:tap": "node scripts/check-tap.mjs --routes=/record,/dashboard,/hscore",
     "check:receipt": "npx --yes tsx scripts/check-receipt.mts",
+    "check:edge": "node scripts/check-edge.mjs",
+    "check:ocr": "npx --yes tsx scripts/check-ocr.mts",
     "check:mic": "node scripts/check-no-mic.mjs",
     "check:attachments": "node scripts/check-attachments.mjs",
     "check:csv": "npx --yes tsx scripts/check-csv.mts",
