@@ -48,6 +48,21 @@ export interface SpendRecord {
    * still theirs and still real; it simply does not move the shared number.
    */
   excludeFromTotals: boolean;
+  /**
+   * What was on the receipt, as the household confirmed it at capture.
+   *
+   * Surfaced here because storing it and not showing it would recreate the
+   * problem the 1756600001 migration was written to fix, one layer further in:
+   * the app would once again know what was in the RM148 Tesco run and have
+   * nowhere to say so.
+   *
+   * Empty on a redacted row. The itemisation is the most identifying detail a
+   * transaction carries -- it is a list of what somebody actually bought -- so
+   * it follows the attachments rather than the amount.
+   */
+  items: { label: string; amount: number; qty?: number; unitPrice?: number; discount?: boolean }[];
+  /** Subtotal / service charge / tax / rounding / total, as printed. */
+  breakdown: { subtotal: number; serviceCharge: number; tax: number; rounding: number; total: number } | null;
 }
 
 export type Period = "day" | "week" | "month";
@@ -79,6 +94,8 @@ interface PBTxn {
   exclude_from_totals?: boolean;
   attachments?: string[] | string | null;
   raw?: { entered?: { amount: number; currency: string; perMYR: number; rateSource: string } } | null;
+  items?: { label: string; amount: number; qty?: number; unitPrice?: number; discount?: boolean }[] | null;
+  breakdown?: { subtotal: number; serviceCharge: number; tax: number; rounding: number; total: number } | null;
   expand?: { vendor_node?: { label: string }; wallet_node?: { id: string; label: string } };
 }
 
@@ -192,6 +209,10 @@ export async function getSpendRecords(
         ? [t.attachments]
         : [],
     excludeFromTotals: Boolean(t.exclude_from_totals),
+    // A json field is whatever was written into it, and rows predating the
+    // migration read back null. Normalised here so no consumer has to guess.
+    items: Array.isArray(t.items) ? t.items : [],
+    breakdown: t.breakdown ?? null,
   }));
 
   const tierRedacted = redactPrivate(rows, {

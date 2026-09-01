@@ -42,6 +42,8 @@ export interface ShareRedactable {
   note?: string;
   bucketLabel?: string | null;
   attachments?: string[];
+  /** The receipt's line items — a list of what was bought. See below. */
+  items?: { label: string; amount: number }[];
   excludeFromTotals?: boolean;
 }
 
@@ -102,7 +104,11 @@ export function redactUnshared<T extends ShareRedactable>(
 
     let out = r;
     if (!sharesWith(opts, payer, "transactions")) {
-      out = { ...out, vendor: PRIVATE_LABEL, note: "", attachments: [] };
+      // `items` clears with the vendor and the note, not with the documents
+      // below: it is the transaction's own detail now that receipts are stored
+      // as text, and a partner who has not been given transaction detail must
+      // not read a shopping list under the word "Personal".
+      out = { ...out, vendor: PRIVATE_LABEL, note: "", attachments: [], items: [] };
     }
     if (!sharesWith(opts, payer, "documents")) {
       out = { ...out, attachments: [] };

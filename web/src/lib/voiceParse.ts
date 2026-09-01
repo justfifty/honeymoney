@@ -20,6 +20,8 @@
 // offline with zero tokens, and the server can use the same code as a fallback
 // when the AI provider is unavailable.
 
+import { verify, type SuspectField } from "./receiptMath";
+
 export interface ParsedVoice {
   vendor?: string;
   amount?: number;
@@ -35,8 +37,32 @@ export interface ParsedVoice {
    * on Tesseract output and costs nothing. Itemisation is now a property of
    * scanning a receipt, not of having paid for an AI provider.
    */
-  lineItems?: { label: string; amount: number }[];
-  /** How confident the *local* parser is. The AI path reports its own. */
+  lineItems?: ParsedLineItem[];
+  /**
+   * Subtotal / service charge / tax / rounding, when the receipt printed them.
+   * Absent for a typed line, which has no such thing.
+   */
+  breakdown?: { subtotal: number; serviceCharge: number; tax: number; rounding: number; total: number };
+  /**
+   * What the receipt's own arithmetic said. Same shape as the AI reader's, so
+   * the UI has one thing to render rather than two — the household should not be
+   * told a different story about its receipt depending on whether an API key
+   * happens to be configured.
+   */
+  checks?: {
+    confirmed: string[];
+    conflicts: { relation: string; expected: number; found: number; suspect: SuspectField }[];
+    suspect: SuspectField | null;
+  };
+  /**
+   * How confident the *local* parser is. The AI path reports its own.
+   *
+   * On a receipt this is no longer a tally of what was FOUND. It used to add
+   * 0.3 for an amount and 0.2 for a vendor and stop, which measures how many
+   * fields came back rather than whether any of them is right — a confidently
+   * wrong total scored exactly as well as a correct one. It is now moved by the
+   * receipt's own arithmetic as well; see lib/receiptMath.ts.
+   */
   confidence: number;
 }
 
@@ -560,43 +586,237 @@ function receiptDate(text: string): string | undefined {
 const NOT_AN_ITEM =
   /\bcash\b|\btunai\b|\bchange\b|\bbaki\b|\bbalance\b|\btendered\b|\bdebit\b|\bcredit\b|\bcard\b|\bqty\b|round(?:ing)?/i;
 
-export function receiptLineItems(text: string, total?: number): { label: string; amount: number }[] | undefined {
-  const items: { label: string; amount: number }[] = [];
+// ── OCR DIGIT CONFUSIONS ────────────────────────────────────────────────────
+//
+// Tesseract reading thermal paper mixes up a small, extremely stable set of
+// glyph pairs: O/0, l and I/1, S/5, B/8, Z/2, G/6. On a price that turns "7.00"
+// into "7.OO", and the strict `\d` in every money pattern here then failed to
+// match the line AT ALL — so a misread of two characters did not produce a
+// slightly wrong item, it silently deleted the item. On a long receipt that is
+// several rows gone with nothing on screen to say so.
+//
+// Applied ONLY to a token already positioned as money — matched in a price
+// column, or beside a currency marker — and NEVER to a label. That constraint is
+// what makes it safe: "SOS" in an item name stays "SOS", while the same three
+// characters in the price column of a line are read as 505. Outside that
+// position the substitution would be vandalism.
+const DIGIT_LOOKALIKES: Record<string, string> = {
+  O: "0", o: "0", D: "0", Q: "0",
+  l: "1", I: "1", i: "1", "|": "1", "!": "1",
+  S: "5", s: "5",
+  B: "8",
+  Z: "2", z: "2",
+  G: "6",
+  T: "7",
+};
+
+/** The character class a money token may contain once lookalikes are allowed. */
+const MONEYISH_CHARS = String.raw`0-9OoDQlIi|!SsBZzGT`;
+
+/** Normalise a token that is already KNOWN to be in a money position. */
+export function fixOcrDigits(token: string): string {
+  return token.replace(/[A-Za-z|!]/g, (c) => DIGIT_LOOKALIKES[c] ?? c);
+}
+
+// Malaysian receipts print a TAX CODE after the price -- "SR" (standard-rated),
+// "ZR" (zero-rated), "S", "Z", "T", "E", "OS", or a bare asterisk or hash. The
+// item regex anchored the price to end-of-line, so every line on a GST/SST-era
+// receipt -- which is most printed receipts in Malaysia -- failed to match
+// because of two trailing characters. This is the single most common reason
+// on-device itemisation came back empty on a receipt that was itemised.
+const TAX_CODE = String.raw`(?:\s*[*#]|\s+(?:SR|ZR|OS|ES|RS|S|Z|T|E|N|X)\b)?`;
+
+// A row that TAKES money off: a discount, a voucher, a member saving, a rebate.
+// Recognised so it can be KEPT as an item rather than dropped, because a receipt
+// whose items sum to more than its total reads as a misread when in fact the
+// discount line is simply missing from the list.
+const DISCOUNT_LINE = /discount|disc\b|diskaun|voucher|baucar|rebate|rebat|promo|saving|potongan/i;
+
+// A till roll really can run past a hundred lines. This used to stop at twenty
+// and return a "summary", which was defensible while the list was decoration:
+// the user can now choose to record every line as its own record, and a list
+// that silently stops is then a ledger that is silently short.
+const MAX_LOCAL_ITEMS = 150;
+
+export interface ParsedLineItem {
+  label: string;
+  amount: number;
+  qty?: number;
+  unitPrice?: number;
+  discount?: boolean;
+}
+
+export function receiptLineItems(text: string, total?: number): ParsedLineItem[] | undefined {
+  const items: ParsedLineItem[] = [];
 
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (line.length < 4 || RECEIPT_CHROME.test(line) || NOT_AN_ITEM.test(line)) continue;
 
-    // Label, then optionally a "2 x 3.50" quantity clause, then the price.
+    // Label, then optionally a "2 x 3.50" quantity clause, then the price. The
+    // quantity clause was matched and DISCARDED here for as long as this
+    // function has existed: the user saw "Nasi lemak  7.00" with no way to tell
+    // whether that was one at 7.00 or two at 3.50 — exactly the kind of misread
+    // an itemised view exists to make visible. It is captured now.
     const m = line.match(
-      /^(.{2,40}?)\s+(?:\d+\s*[x×]\s*[\d.,]+\s+)?(?:RM\s*)?(\d{1,3}(?:,\d{3})*(?:\.\d{2}))$/i,
+      new RegExp(
+        // label
+        String.raw`^(.{2,40}?)\s+` +
+          // optional "2 x 3.50" quantity clause
+          String.raw`(?:(\d+(?:\.\d+)?)\s*[x×]\s*([${MONEYISH_CHARS}.,]+)\s+)?` +
+          // optional currency marker, then the price — lookalike glyphs allowed
+          String.raw`(?:RM\s*)?(-?[${MONEYISH_CHARS}]{1,3}(?:,[${MONEYISH_CHARS}]{3})*(?:\.[${MONEYISH_CHARS}]{2}))` +
+          // …and the tax code Malaysian tills print after it
+          TAX_CODE +
+          String.raw`$`,
+        "i",
+      ),
     );
     if (!m) continue;
 
     const label = m[1].replace(/[.•*_-]+$/, "").trim();
     if ((label.match(/\p{L}/gu)?.length ?? 0) < 2) continue;
 
-    const amount = Number(m[2].replace(/,/g, ""));
-    if (!Number.isFinite(amount) || amount <= 0) continue;
-    items.push({ label, amount });
-    // A till roll can be long; past twenty lines this stops being a summary.
-    if (items.length >= 20) break;
+    // The price is in a price POSITION, which is what licenses the substitution
+    // — see fixOcrDigits. A token that is still not a number after it (a label
+    // that happened to end in letters) is rejected below rather than coerced.
+    const signed = Number(fixOcrDigits(m[4]).replace(/,/g, ""));
+    if (!Number.isFinite(signed) || signed === 0) continue;
+    // Positive amount plus a flag, matching lib/receipt.ts and the statement
+    // importer. A minus sign on the paper and the word "discount" say the same
+    // thing here, and either one alone is enough.
+    const discount = signed < 0 || DISCOUNT_LINE.test(label);
+    const amount = Math.abs(signed);
+
+    const qty = m[2] ? Number(m[2]) : undefined;
+    const unitPrice = m[3] ? Number(fixOcrDigits(m[3]).replace(/,/g, "")) : undefined;
+
+    items.push({
+      label,
+      amount,
+      ...(qty !== undefined && Number.isFinite(qty) && qty > 0 ? { qty } : {}),
+      ...(unitPrice !== undefined && Number.isFinite(unitPrice) && unitPrice > 0 ? { unitPrice } : {}),
+      ...(discount ? { discount: true } : {}),
+    });
+    if (items.length >= MAX_LOCAL_ITEMS) break;
   }
 
   // Apply the ceiling only if the total is credible — i.e. at least as large as
   // the biggest line. A total smaller than one of its own items is a misread,
   // and filtering by it would delete the real lines instead of the fake one.
-  const max = Math.max(...items.map((i) => i.amount), 0);
-  const kept = total !== undefined && total >= max ? items.filter((i) => i.amount <= total) : items;
+  //
+  // Discounts are exempt in both directions: they do not add to the bill, so
+  // they cannot be the line that exceeds it, and a large discount against a
+  // small final total is ordinary rather than suspicious.
+  const max = Math.max(...items.filter((i) => !i.discount).map((i) => i.amount), 0);
+  const kept =
+    total !== undefined && total >= max ? items.filter((i) => i.discount || i.amount <= total) : items;
 
   return kept.length ? kept : undefined;
+}
+
+/**
+ * The total, allowing for OCR lookalike glyphs — the LAST resort, after the
+ * strict reader has found nothing.
+ *
+ * Ordered this way deliberately. `extractAmount` is shared with the landing
+ * page's try-it box, where a person is TYPING and "S" is a letter; widening its
+ * money pattern would make "spent SOS money" parse as 505. Here the text came
+ * out of Tesseract, "TOTAL" has already been matched immediately before the
+ * token, and a total of "2I.73" is a misread of 21.73 rather than a word.
+ *
+ * So the tolerance is scoped to the one place it is safe: OCR output, in a
+ * price position, anchored to the word that says it is the total.
+ *
+ * ⚠️ THIS RUNS BEFORE `extractAmount`, NOT AS ITS FALLBACK, and the first draft
+ * had that backwards. A fallback only fires when the strict pass finds NOTHING,
+ * and the strict pass does not fail cleanly on a mangled total — it fails
+ * PARTIALLY. Given "TOTAL   2O.40" its money pattern matches the leading "2",
+ * because 2 is a digit and O is where it stops, so it returns a confident
+ * RM 2.00 for a receipt that says RM 20.40 and never yields to any fallback.
+ * A truncated number is far worse than a missing one: it prefills the form, it
+ * looks ordinary, and the household has no reason to check it.
+ *
+ * On receipt text this is also simply the better reader. It requires a total
+ * keyword AND a full two-decimal figure, where `extractAmount` ends in a cascade
+ * of guesses ending at "any bare number on the page" — the fallbacks that make
+ * it right for a line somebody TYPED are what make it weak on a page of OCR.
+ * `\btotal\b` also cannot match inside "SUBTOTAL", so the subtotal trap is
+ * closed by construction here rather than by filtering afterwards.
+ */
+function ocrTotal(text: string): number | undefined {
+  const m = [
+    ...text.matchAll(
+      new RegExp(
+        String.raw`(?:^|\n)[^\n]*?\b(?:total|jumlah|amount\s*(?:paid|due)?|bayaran)\b[^\n\d${MONEYISH_CHARS}]{0,40}` +
+          String.raw`(?:RM\s*)?([${MONEYISH_CHARS}]{1,3}(?:,[${MONEYISH_CHARS}]{3})*\.[${MONEYISH_CHARS}]{2})`,
+        "giu",
+      ),
+    ),
+  ]
+    // Running totals are printed as you go; the last one is what was paid.
+    .at(-1);
+  if (!m) return undefined;
+  const value = Number(fixOcrDigits(m[1]).replace(/,/g, ""));
+  return Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+/**
+ * Subtotal, service charge, tax and rounding — the figures BETWEEN the items and
+ * the total.
+ *
+ * The on-device reader did not look for these at all, so a household with no AI
+ * key got line items and a total and no way to reconcile the two. That is the
+ * household this product is designed around: the AI route 501s without a key,
+ * and the zero-token path is the default rather than the consolation prize. The
+ * arithmetic check in lib/receiptMath.ts is worth most precisely when nobody is
+ * paying for a second opinion, and it needs these to run.
+ *
+ * Each label is matched with its own alternatives across English and Malay,
+ * anchored to the line, and read with the same OCR tolerance as a price. A
+ * figure that is not printed stays 0, which is what `verify` reads as "not
+ * checkable" rather than as "zero ringgit".
+ */
+export function receiptBreakdown(text: string): {
+  subtotal: number;
+  serviceCharge: number;
+  tax: number;
+  rounding: number;
+} {
+  const find = (labels: string, allowNegative = false): number => {
+    const m = [
+      ...text.matchAll(
+        new RegExp(
+          String.raw`(?:^|\n)[^\n]*?\b(?:${labels})\b[^\n\d${MONEYISH_CHARS}]{0,40}` +
+            String.raw`(?:RM\s*)?(-?[${MONEYISH_CHARS}]{1,3}(?:,[${MONEYISH_CHARS}]{3})*\.[${MONEYISH_CHARS}]{2})`,
+          "giu",
+        ),
+      ),
+    ].at(-1);
+    if (!m) return 0;
+    const v = Number(fixOcrDigits(m[1]).replace(/,/g, ""));
+    if (!Number.isFinite(v)) return 0;
+    return allowNegative ? Math.round(v * 100) / 100 : Math.max(0, Math.round(v * 100) / 100);
+  };
+
+  return {
+    subtotal: find("sub\s*-?\s*total|subjumlah|jumlah\s+kecil"),
+    // "svc" and "service charge", but NOT "service tax" — those are different
+    // lines on the same Malaysian receipt and adding one to the other would
+    // double-count the bill by ten percent.
+    serviceCharge: find("service\s*charge|svc\s*charge|caj\s*perkhidmatan|caj\s*servis"),
+    tax: find("sst|gst|service\s*tax|sales\s*tax|cukai|tax"),
+    // The 5-sen adjustment, which is usually NEGATIVE — the one figure here that
+    // must keep its sign.
+    rounding: find("rounding(?:\s*adj(?:ustment)?)?|pembundaran|adjustment", true),
+  };
 }
 
 export function parseReceiptText(text: string, knownVendors: string[] = []): ParsedVoice {
   // Amount comes from the WHOLE text — the total is usually on a line labelled
   // "Total" / "Jumlah" / "Amount Paid", and extractAmount specifically looks for
   // those keywords.
-  const amount = extractAmount(text);
+  const amount = ocrTotal(text) ?? extractAmount(text);
   const currency = detectCurrency(text);
   const occurredAt = receiptDate(text) ?? extractDate(text);
 
@@ -623,6 +843,41 @@ export function parseReceiptText(text: string, knownVendors: string[] = []): Par
   if (occurredAt) confidence += 0.1;
 
   const lineItems = receiptLineItems(text, amount);
+  const printed = receiptBreakdown(text);
+  const hasBreakdown = Boolean(printed.subtotal || printed.serviceCharge || printed.tax || printed.rounding);
+  const breakdown = hasBreakdown ? { ...printed, total: amount ?? 0 } : undefined;
 
-  return { vendor, amount, currency, occurredAt, lineItems, confidence: Math.min(1, confidence) };
+  // ── THE RECEIPT'S OWN ARITHMETIC ─────────────────────────────────────────
+  //
+  // Evidence from somewhere other than the parser's opinion of itself. Items
+  // that add to the printed subtotal, and a subtotal that plus the charges
+  // makes the total, corroborate a read in a way "I found a vendor" never can —
+  // and figures that contradict each other prove something on screen is wrong
+  // whatever the tally above says.
+  const checked = verify({
+    amount: amount ?? 0,
+    subtotal: printed.subtotal,
+    serviceCharge: printed.serviceCharge,
+    tax: printed.tax,
+    rounding: printed.rounding,
+    total: amount ?? 0,
+    lineItems: lineItems ?? [],
+  });
+
+  return {
+    vendor,
+    amount,
+    currency,
+    occurredAt,
+    lineItems,
+    // The repaired subtotal, so an unprinted one recovered from the items is
+    // still shown to the user rather than left as a blank they cannot explain.
+    breakdown: breakdown ?? (checked.repaired.subtotal ? { ...printed, subtotal: checked.repaired.subtotal, total: amount ?? 0 } : undefined),
+    checks: {
+      confirmed: checked.confirmed,
+      conflicts: checked.conflicts,
+      suspect: checked.conflicts[0]?.suspect ?? null,
+    },
+    confidence: Math.min(1, Math.max(0, confidence * checked.factor)),
+  };
 }

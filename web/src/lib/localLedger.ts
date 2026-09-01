@@ -55,6 +55,24 @@ export interface LocalRecord {
   visibility: "private" | "shared";
   exclude_from_totals: boolean;
   /**
+   * The receipt's confirmed line items and printed breakdown.
+   *
+   * Modelled here as well as carried in `payload`, and that is not redundancy.
+   * `payload` exists to be replayed at the server verbatim; a household that
+   * chose local-only never replays it anywhere, so anything that lives only in
+   * `payload` is invisible to every local view. The itemisation is exactly the
+   * detail those households would notice missing -- they are the ones with no
+   * server-side copy to fall back on.
+   */
+  items?: { label: string; amount: number; qty?: number; unitPrice?: number; discount?: boolean }[];
+  breakdown?: {
+    subtotal: number;
+    serviceCharge: number;
+    tax: number;
+    rounding: number;
+    total: number;
+  };
+  /**
    * Where this record was born. "local_only" for a household that keeps
    * records off the server; "local_first" for the ordinary path, which now
    * also writes here before anything is sent.
@@ -162,6 +180,10 @@ export async function appendLocalRecord(
     paid_by: typeof payload.paidBy === "string" ? payload.paidBy : null,
     visibility: payload.visibility === "private" ? "private" : "shared",
     exclude_from_totals: payload.excludeFromTotals === true,
+    ...(Array.isArray(payload.items) && payload.items.length
+      ? { items: payload.items as LocalRecord["items"] }
+      : {}),
+    ...(payload.breakdown ? { breakdown: payload.breakdown as LocalRecord["breakdown"] } : {}),
     origin,
     createdAt: now,
     syncedAt: null,

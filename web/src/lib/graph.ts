@@ -307,6 +307,69 @@ export class LocalOnlyRefused extends Error {
   }
 }
 
+/** One confirmed row off a receipt, as stored on the transaction. */
+export interface ReceiptItemRow {
+  label: string;
+  amount: number;
+  qty?: number;
+  unitPrice?: number;
+  discount?: boolean;
+  bucketId?: string;
+}
+
+/** What a receipt printed between its items and its total, as stored. */
+export interface ReceiptBreakdownRow {
+  subtotal: number;
+  serviceCharge: number;
+  tax: number;
+  rounding: number;
+  total: number;
+}
+
+// The stored itemisation is capped and cleaned at the FLOOR, for the same
+// reason the storage mode is checked here: every write path reaches this
+// function, and a rule enforced in the route is a rule enforced by whoever
+// remembered. The cap matches lib/receipt.ts's reader cap, so a receipt that
+// was read in full is stored in full.
+const MAX_STORED_ITEMS = 150;
+
+function coerceItems(items: ReceiptItemRow[]): ReceiptItemRow[] {
+  const money = (v: unknown) => {
+    const x = Number(v);
+    return Number.isFinite(x) && x > 0 ? Math.round(x * 100) / 100 : 0;
+  };
+  return items
+    .filter((i) => i && typeof i.label === "string")
+    .slice(0, MAX_STORED_ITEMS)
+    .map((i) => ({
+      label: i.label.trim().slice(0, 80),
+      amount: money(i.amount),
+      ...(money(i.qty) ? { qty: Math.round(Number(i.qty) * 1000) / 1000 } : {}),
+      ...(money(i.unitPrice) ? { unitPrice: money(i.unitPrice) } : {}),
+      ...(i.discount === true ? { discount: true } : {}),
+      ...(typeof i.bucketId === "string" && i.bucketId ? { bucketId: i.bucketId.slice(0, 20) } : {}),
+    }))
+    .filter((i) => i.label.length > 0 && i.amount > 0);
+}
+
+function coerceBreakdown(b: ReceiptBreakdownRow): ReceiptBreakdownRow {
+  // Rounding is the one figure here that is legitimately negative -- the
+  // Malaysian 5-sen adjustment usually takes money off -- so it is not floored
+  // at zero the way the others are.
+  const n = (v: unknown, signed = false) => {
+    const x = Number(v);
+    if (!Number.isFinite(x)) return 0;
+    return signed ? Math.round(x * 100) / 100 : Math.max(0, Math.round(x * 100) / 100);
+  };
+  return {
+    subtotal: n(b.subtotal),
+    serviceCharge: n(b.serviceCharge),
+    tax: n(b.tax),
+    rounding: n(b.rounding, true),
+    total: n(b.total),
+  };
+}
+
 export async function addManualTransaction(
   tenantId: string,
   input: {
@@ -349,6 +412,19 @@ export async function addManualTransaction(
     excludeFromTotals?: boolean;
     /** True when a human chose the attribution, false when we defaulted it. */
     attributionAsserted?: boolean;
+    /**
+     * The receipt's line items, AS THE USER CONFIRMED THEM.
+     *
+     * Not as the reader proposed them: the itemised editor lets a household fix
+     * a misread label or amount, untick a row the model invented and add one it
+     * missed, and what arrives here is the corrected set. Stored with the
+     * record so "what was in that RM148 Tesco run" is still answerable next
+     * year — it used to be unanswerable ten seconds after the scan, because
+     * nothing ever wrote these down. See the 1756600001 migration.
+     */
+    items?: ReceiptItemRow[];
+    /** Subtotal / service charge / tax / rounding / total, as printed. */
+    breakdown?: ReceiptBreakdownRow;
   },
   actor?: Actor,
 ): Promise<IngestResult> {
@@ -476,6 +552,12 @@ export async function addManualTransaction(
     voided: false,
     parse_confidence: input.confidence ?? 1,
     ...(input.entered && input.entered.currency !== "MYR" ? { raw: { entered: input.entered } } : {}),
+    // Coerced HERE rather than trusted from the caller. Every write path reaches
+    // this function -- the dashboard form, the API, a replayed offline queue --
+    // and a client that sends a 400-row array of arbitrary objects must not be
+    // able to put it in a household's ledger.
+    ...(input.items?.length ? { items: coerceItems(input.items) } : {}),
+    ...(input.breakdown ? { breakdown: coerceBreakdown(input.breakdown) } : {}),
   };
 
   const tx = await pbCreate<{ id: string }>("transactions", body);

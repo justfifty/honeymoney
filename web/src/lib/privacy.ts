@@ -76,6 +76,8 @@ export interface Redactable {
   note?: string;
   /** Filenames of stored receipt images. Redaction empties this — see below. */
   attachments?: string[];
+  /** The receipt's line items. Redaction empties this too — see below. */
+  items?: { label: string; amount: number }[];
 }
 
 /**
@@ -89,12 +91,20 @@ export interface Redactable {
  * server-side by /api/attachment — emptying the array here is what stops the
  * UI offering a link the user would only be denied on, not the access control
  * itself. Both are required; neither substitutes for the other.
+ *
+ * `items` goes with it, and for the sharper version of the same reason. The
+ * argument above says a receipt image IS the line items; once those items are
+ * STORED (see the 1756600001 migration) they are the line items directly, in
+ * text, with no squinting at a photograph required. A row reading "Personal ·
+ * RM 84.20" beside a list containing a pregnancy test and a bottle of gin
+ * discloses more than the vendor name this function exists to remove. Anything
+ * added to a transaction that describes WHAT was bought belongs on this list.
  */
 export function redactPrivate<T extends Redactable>(rows: T[], opts: RedactOpts): T[] {
   if (!opts.enabled) return rows;
   return rows.map((r) =>
     isRedacted(r, opts)
-      ? { ...r, vendor: PRIVATE_LABEL, note: "", memberId: null, attachments: [] }
+      ? { ...r, vendor: PRIVATE_LABEL, note: "", memberId: null, attachments: [], items: [] }
       : r,
   );
 }

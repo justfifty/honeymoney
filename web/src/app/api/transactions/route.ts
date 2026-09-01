@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { isDatabaseConfigured } from "@/lib/config";
-import { addManualTransaction } from "@/lib/graph";
+import {
+  addManualTransaction,
+  type ReceiptBreakdownRow,
+  type ReceiptItemRow,
+} from "@/lib/graph";
 import { record as recordEvent, recordFirstExpense } from "@/lib/productEvents";
 import { AuthError, requirePermission } from "@/lib/household";
 import { isLocalOnly } from "@/lib/storageModeStore";
@@ -71,6 +75,12 @@ export async function POST(request: Request) {
       visibility?: Visibility;
       excludeFromTotals?: boolean;
       attributionAsserted?: boolean;
+      // The receipt's confirmed line items and printed breakdown. Passed
+      // straight through: addManualTransaction cleans and caps them at the
+      // write floor, so every path that stores a transaction gets the same
+      // treatment rather than each route inventing its own.
+      items?: ReceiptItemRow[];
+      breakdown?: ReceiptBreakdownRow;
     };
     try {
       body = await request.json();
@@ -133,6 +143,8 @@ export async function POST(request: Request) {
         visibility: body.visibility,
         excludeFromTotals: body.excludeFromTotals === true,
         attributionAsserted: body.attributionAsserted,
+        items: Array.isArray(body.items) ? body.items : undefined,
+        breakdown: body.breakdown,
       },
       { id: ctx.user.id, email: ctx.user.email },
     );

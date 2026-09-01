@@ -4,7 +4,18 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { t, type Locale } from "@/lib/i18n";
 import { CURRENCIES, rateFor, symbolOf, toMYR } from "@/lib/format";
-import SpendCapture, { type CaptureAnalysis, type Captured } from "../graph/SpendCapture";
+import SpendCapture, {
+  type CaptureAnalysis,
+  type Captured,
+  type ReceiptBreakdown,
+  type ReceiptChecks,
+} from "../graph/SpendCapture";
+import ReceiptItems, {
+  toEditable,
+  type EditableItem,
+  type ItemMode,
+} from "./ReceiptItems";
+import { splitToTotal } from "@/lib/receiptSplit";
 import type { IncomingAttachment } from "@/lib/attachments";
 import AttributionPicker from "../record/AttributionPicker";
 import {
@@ -130,18 +141,34 @@ export default function AddTransaction({
   // worse failure than a visible one — see the migration note on the field.
   const [excludeFromTotals, setExcludeFromTotals] = useState(false);
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
-  // Shown, not stored. The itemised rows are what makes a scan checkable at a
-  // glance -- "did it read my receipt or just guess a number?" -- but the
-  // transaction itself is still one amount against one bucket, so these live in
-  // component state and never reach the API.
-  const [lineItems, setLineItems] = useState<{ label: string; amount: number }[] | null>(null);
+  // ── THE ITEMISED HALF OF A SCAN ─────────────────────────────────────────
+  //
+  // These used to be "shown, not stored": a grey read-only list, dropped on
+  // submit, on the reasoning that "the transaction itself is still one amount
+  // against one bucket". That reasoning is what made the reader unfixable. A
+  // household that could SEE a misread line had no way to correct it, and the
+  // one receipt where the split genuinely matters -- the supermarket run holding
+  // groceries, nappies and a birthday present -- had to be typed in by hand.
+  //
+  // They are now editable, saved with the record, and can optionally become one
+  // record per line. See ReceiptItems.tsx.
+  const [lineItems, setLineItems] = useState<EditableItem[]>([]);
+  const [itemMode, setItemMode] = useState<ItemMode>("total");
+  const [breakdown, setBreakdown] = useState<ReceiptBreakdown | undefined>(undefined);
+  const [itemsTruncated, setItemsTruncated] = useState(false);
+  // What the receipt's own arithmetic made of the read. See lib/receiptMath.ts.
+  const [checks, setChecks] = useState<ReceiptChecks | undefined>(undefined);
   const [analysis, setAnalysis] = useState<CaptureAnalysis | null>(null);
   const [edit, setEdit] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   // Kept so a mis-saved capture can be taken back from where it happened,
   // rather than sending the user to /records to hunt for it.
-  const [lastSaved, setLastSaved] = useState<{ id: string; text: string } | null>(null);
+  // PLURAL, because "record every item" saves a set. Undo has to take back the
+  // whole set or none of it: leaving three of eleven grocery lines behind would
+  // be a worse state than either saving or not saving, and it is the state a
+  // single-id undo would have produced the first time anybody used it.
+  const [lastSaved, setLastSaved] = useState<{ ids: string[]; text: string } | null>(null);
   const [undoing, setUndoing] = useState(false);
 
   const [attachment, setAttachment] = useState<IncomingAttachment | null>(null);
@@ -243,7 +270,13 @@ export default function AddTransaction({
     // Confidence gates the UI, not the data: a shaky parse opens the details and
     // puts the cursor on the amount, because that is the field a bad parse gets
     // wrong most often and the one a wrong value hurts most.
-    if ((c.confidence ?? 1) < 0.6) {
+    //
+    // Unless the arithmetic says otherwise. When the receipt's own subtotal
+    // proves the ITEMS are what disagree, the amount is the one figure we have
+    // corroboration for — selecting it invites the user to retype a number that
+    // is already right, and points them away from the rows that are not. The
+    // item editor below is open by default and is where they need to be.
+    if ((c.confidence ?? 1) < 0.6 && c.checks?.suspect !== "items") {
       setEdit(true);
       // Mounted by `edit` in the same commit, so focus waits a tick for it.
       setTimeout(() => {
@@ -266,7 +299,14 @@ export default function AddTransaction({
       else if (tier === SPENDINGS_TIER) setCategory("spendings");
     }
     if (c.occurredAt) setDateFrom(c.occurredAt);
-    setLineItems(c.lineItems ?? null);
+    setLineItems(c.lineItems?.length ? toEditable(c.lineItems) : []);
+    setBreakdown(c.breakdown);
+    setItemsTruncated(c.itemsTruncated === true);
+    setChecks(c.checks);
+    // Every scan opens on "one record". Itemising is an option the user reaches
+    // for on the receipts that need it, not a change of behaviour sprung on
+    // somebody who only wanted to log a RM6.50 kopi.
+    setItemMode("total");
     setConfidence(c.confidence);
     // The picture rides with the draft until the user commits it. Capture never
     // saves on its own — the AI proposes, the human commits — so an image that
@@ -289,7 +329,11 @@ export default function AddTransaction({
     // Cleared, or the next record silently carries this one's receipt.
     setAttachment(null);
     setConfidence(undefined);
-    setLineItems(null);
+    setLineItems([]);
+    setItemMode("total");
+    setBreakdown(undefined);
+    setItemsTruncated(false);
+    setChecks(undefined);
     setAnalysis(null);
     setWhen(todayLocal());
     setEdit(false);
@@ -318,12 +362,8 @@ export default function AddTransaction({
       const rate = rateFor(ccy);
       const base = toMYR(value, ccy);
 
-      const payload = {
-          // Omitted for income: the API accepts an inflow with no bucket, and
-          // sending buckets[0] is what filed every salary against Must-paid.
-          ...(isIncome ? {} : { walletNodeId: bucket }),
+      const common = {
           vendorLabel: vendor,
-          amount: base,
           direction,
           category,
           paidBy: paidBy ?? undefined,
@@ -333,7 +373,6 @@ export default function AddTransaction({
           // migration. That distinction is what makes "reclassifying is a user
           // action" checkable later.
           attributionAsserted: Boolean(paidBy),
-          ...(attachment ? { attachments: [attachment] } : {}),
           occurredAt: when ? new Date(`${when}T12:00:00`).toISOString() : undefined,
           confidence,
           ...(ccy !== "MYR"
@@ -347,6 +386,70 @@ export default function AddTransaction({
               }
             : {}),
       };
+
+      // The ticked rows, stripped of the bookkeeping the editor needs and the
+      // form does not. `key` and `include` are UI state; sending them would put
+      // a React key in a household's ledger.
+      const kept = lineItems
+        .filter((i) => i.include && i.label.trim() && i.amount > 0)
+        .map(({ label, amount, qty, unitPrice, discount, bucketId }) => ({
+          label: label.trim(),
+          amount,
+          ...(qty !== undefined ? { qty } : {}),
+          ...(unitPrice !== undefined ? { unitPrice } : {}),
+          ...(discount ? { discount: true } : {}),
+          ...(bucketId ? { bucketId } : {}),
+        }));
+
+      // ── ONE RECORD, OR ONE PER ITEM ────────────────────────────────────
+      //
+      // Both are built as a LIST of payloads so there is one save path rather
+      // than two. The single-record case is a list of one, which means the
+      // local-first write, the sync, the undo and the message below cannot
+      // drift apart between the two modes.
+      //
+      // The split is scaled to the total actually being recorded (see
+      // lib/receiptSplit.ts), so `payloads` sums to `base` in either mode. An
+      // itemised save that quietly recorded the subtotal instead of the total
+      // would understate every restaurant bill by its service charge and tax.
+      const shares = itemMode === "each" && !isIncome ? splitToTotal(kept, base) : null;
+
+      const payloads: Record<string, unknown>[] = shares?.length
+        ? shares.map((row) => ({
+            ...common,
+            walletNodeId: row.bucketId || bucket,
+            amount: row.amount,
+            // The MERCHANT stays the merchant. Filing "Nasi lemak" as a vendor
+            // would poison vendor memory, duplicate detection and the graph with
+            // one node per dish -- the shop is who was paid, and the item is
+            // what was bought, which is what `note` is for.
+            note: row.label,
+            // Its own printed figure, so a record can still be checked against
+            // the paper after the charges were spread over it.
+            items: [{ label: row.label, amount: row.printed, ...(row.qty ? { qty: row.qty } : {}) }],
+          }))
+        : [
+            {
+              ...common,
+              // Omitted for income: the API accepts an inflow with no bucket,
+              // and sending buckets[0] is what filed every salary against
+              // Must-paid.
+              ...(isIncome ? {} : { walletNodeId: bucket }),
+              amount: base,
+              // The itemisation rides WITH the total. This is the half that was
+              // missing: the user could see the rows and then the app threw them
+              // away on submit, so "what was in that RM148 Tesco run" was
+              // unanswerable ten seconds after it was on screen.
+              ...(kept.length ? { items: kept } : {}),
+              ...(breakdown ? { breakdown } : {}),
+            },
+          ];
+
+      // The photo goes on the FIRST record only. Attaching the same image to
+      // eleven records would upload it eleven times and show the same picture in
+      // eleven places; the receipt is one document, and the split is one
+      // reading of it.
+      if (attachment) payloads[0] = { ...payloads[0], attachments: [attachment] };
 
       // ── LOCAL FIRST, ALWAYS ────────────────────────────────────────────
       //
@@ -363,23 +466,24 @@ export default function AddTransaction({
       //   • Whether it also reaches the server is a separate, later, invisible
       //     question. Cloud storage is a consented option, not the definition
       //     of a record existing.
-      const local = await appendLocalRecord(payload, "local_first");
+      const ids: string[] = [];
+      for (const p of payloads) ids.push((await appendLocalRecord(p, "local_first")).id);
 
       // Sync in the background. Deliberately not awaited: making the user wait
       // for a round trip would reintroduce exactly the dependency the line
       // above removed.
       void syncLedger();
 
-      const text = tr("dash.add.savedLocalFirst", {
-        amount: base.toFixed(2),
-        vendor,
-      });
+      const text =
+        ids.length > 1
+          ? tr("dash.add.savedItems", { n: ids.length, amount: base.toFixed(2), vendor })
+          : tr("dash.add.savedLocalFirst", { amount: base.toFixed(2), vendor });
       setMsg({ ok: true, text });
-      // Undo now targets the LOCAL id. The record may not have a server id yet
+      // Undo now targets the LOCAL ids. A record may not have a server id yet
       // — it may never get one — so keying undo on the server's response would
       // have made it work only for people with a connection, which is the
       // opposite of the point.
-      setLastSaved({ id: local.id, text });
+      setLastSaved({ ids, text });
       clearDraft();
       lineRef.current?.focus();
       // Still refreshed: the server-rendered buckets and Honey line update for
@@ -400,8 +504,13 @@ export default function AddTransaction({
       // Local first here too, and in this order for a reason: the local copy is
       // the one the user is looking at, so removing it is what makes undo feel
       // like it worked. It also cannot fail.
-      const record = (await listLocalRecords()).find((r) => r.id === lastSaved.id);
-      await deleteLocalRecord(lastSaved.id);
+      //
+      // Read the ledger ONCE and take the whole set out together. An itemised
+      // save can be eleven records; looking each one up in turn would re-read
+      // the store eleven times and, worse, could half-succeed.
+      const all = await listLocalRecords();
+      const undone = all.filter((r) => lastSaved.ids.includes(r.id));
+      for (const id of lastSaved.ids) await deleteLocalRecord(id);
 
       // If it had already reached the server, void it there too. Voided rather
       // than deleted, because the server keeps an append-only ledger and a
@@ -411,10 +520,12 @@ export default function AddTransaction({
       // A failure here is NOT surfaced as an undo failure: the user's copy is
       // gone, which is what they asked for, and the next sync reconciles. Only
       // an unsynced record has nothing to do, which is the common case.
-      if (record?.serverId) {
-        void fetch(`/api/transactions/${record.serverId}?reason=undo`, { method: "DELETE" }).catch(
-          () => undefined,
-        );
+      for (const record of undone) {
+        if (record.serverId) {
+          void fetch(`/api/transactions/${record.serverId}?reason=undo`, { method: "DELETE" }).catch(
+            () => undefined,
+          );
+        }
       }
       setLastSaved(null);
       setMsg({ ok: true, text: tr("dash.add.undone") });
@@ -653,31 +764,30 @@ export default function AddTransaction({
           onAnalysis={setAnalysis}
         />
 
-        {/* The itemised rows the scan found. Collapsed by default because the
-            amount is what the form is for -- but one tap proves the OCR read the
-            receipt rather than guessing a total, which is the question anyone
-            asks the first time they scan one. The sum is shown against the
-            captured amount so a misread is visible instead of merely present. */}
-        {lineItems && lineItems.length > 0 && (
-          <details className="mt-2 rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
-            <summary className="cursor-pointer list-none px-3 py-2 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
-              🧾 {lineItems.length} {lineItems.length === 1 ? "item" : "items"} read from the receipt
-            </summary>
-            <ul className="border-t border-zinc-200 px-3 py-2 dark:border-zinc-800">
-              {lineItems.map((it, i) => (
-                <li key={i} className="flex justify-between gap-3 py-0.5 text-[11px]">
-                  <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">{it.label}</span>
-                  <span className="shrink-0 tabular-nums text-zinc-500">{it.amount.toFixed(2)}</span>
-                </li>
-              ))}
-              <li className="mt-1 flex justify-between gap-3 border-t border-zinc-200 pt-1 text-[11px] font-medium dark:border-zinc-800">
-                <span className="text-zinc-500">Items total</span>
-                <span className="tabular-nums">
-                  {lineItems.reduce((sum, it) => sum + it.amount, 0).toFixed(2)}
-                </span>
-              </li>
-            </ul>
-          </details>
+        {/* Every line the reader found, editable, with the choice of how the
+            receipt enters the ledger underneath it. Not collapsed: a list the
+            user has to go looking for is a list they will not check, and
+            checking it is the entire reason it is on screen. */}
+        {/* `recordKind === "outflow"`, not merely "not income". Itemising is for
+            something that was BOUGHT: a savings deposit is a TRANSFER, and a
+            transfer has no items, no vendor lines and nothing to split. The
+            looser test let a vendor the household happens to file under a
+            savings bucket render an item editor whose per-line records would
+            have said "transfer" and "spending" about the same row. */}
+        {lineItems.length > 0 && recordKind === "outflow" && (
+          <ReceiptItems
+            lang={lang}
+            items={lineItems}
+            onItems={setLineItems}
+            mode={itemMode}
+            onMode={setItemMode}
+            breakdown={breakdown}
+            truncated={itemsTruncated}
+            currency={ccy}
+            total={Number(amount) || 0}
+            buckets={buckets}
+            defaultBucketId={bucket}
+          />
         )}
 
         {analysis?.duplicateOf && (
@@ -696,8 +806,35 @@ export default function AddTransaction({
         {analysis?.insight && (
           <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-300">🍯 {analysis.insight}</p>
         )}
-        {confidence !== undefined && confidence < 0.6 && (
-          <p className="mt-1 text-[11px] text-amber-700">⚠️ {tr("cap.lowConfidence")}</p>
+        {/* ── WHAT IS ACTUALLY WRONG, WHERE THAT IS KNOWN ──────────────────
+            The generic low-confidence line stays for the case it was written
+            for — a blurred photo, where nothing more specific is true. But when
+            the receipt's own arithmetic disagrees with itself we know something
+            much better than "be careful": we know WHICH figure cannot be right,
+            and the person is holding the paper that settles it. Shown INSTEAD of
+            the generic line rather than alongside it, because two warnings about
+            one problem read as two problems. */}
+        {checks?.conflicts.length ? (
+          <p className="mt-1 rounded-lg border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            ⚠️{" "}
+            {tr(`cap.suspect.${checks.suspect ?? "total"}`, {
+              expected: checks.conflicts[0].expected.toFixed(2),
+              found: checks.conflicts[0].found.toFixed(2),
+            })}
+          </p>
+        ) : (
+          confidence !== undefined &&
+          confidence < 0.6 && (
+            <p className="mt-1 text-[11px] text-amber-700">⚠️ {tr("cap.lowConfidence")}</p>
+          )
+        )}
+        {/* Corroboration is worth saying too. A scan the user can see was
+            checked is one they are willing to accept without re-reading every
+            line — which is the entire point of doing the arithmetic. */}
+        {!checks?.conflicts.length && (checks?.confirmed.length ?? 0) >= 2 && (
+          <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">
+            ✓ {tr("cap.checksOut")}
+          </p>
         )}
       </div>
 

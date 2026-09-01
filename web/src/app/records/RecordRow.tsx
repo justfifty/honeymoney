@@ -253,6 +253,47 @@ export default function RecordRow({
               })}
             </span>
           )}
+
+          {/* What was actually on the receipt.
+              Collapsed, and that is the right default HERE even though it was
+              the wrong one at capture: at capture the list is being checked
+              against a piece of paper, and here it is being remembered. One tap
+              answers "what was in that RM148 Tesco run" -- a question the app
+              could not answer at all until these were stored, having read the
+              answer off the receipt and then discarded it.
+              Empty on a redacted row: a shopping list is more identifying than
+              the vendor name, so it is cleared with it (lib/privacy.ts). */}
+          {record.items.length > 0 && (
+            <details className="mt-1">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-[10px] text-zinc-400 hover:text-amber-600">
+                🧾 {tr("rec.items", { n: record.items.length })}
+              </summary>
+              <ul className="mt-1 max-w-sm rounded-lg border border-zinc-200 px-2.5 py-1.5 dark:border-zinc-800">
+                {record.items.map((it, i) => (
+                  <li key={i} className="flex justify-between gap-3 py-0.5 text-[11px]">
+                    <span className="min-w-0 truncate text-zinc-600 dark:text-zinc-300">
+                      {it.qty && it.qty !== 1 ? `${it.qty} × ` : ""}
+                      {it.label}
+                    </span>
+                    <span
+                      className={`shrink-0 tabular-nums ${
+                        it.discount ? "text-emerald-600" : "text-zinc-500"
+                      }`}
+                    >
+                      {it.discount ? "−" : ""}
+                      {it.amount.toFixed(2)}
+                    </span>
+                  </li>
+                ))}
+                {record.breakdown && (
+                  <li className="mt-1 flex justify-between gap-3 border-t border-zinc-200 pt-1 text-[11px] text-zinc-500 dark:border-zinc-800">
+                    <span>{tr("items.receiptTotal")}</span>
+                    <span className="tabular-nums">{record.breakdown.total.toFixed(2)}</span>
+                  </li>
+                )}
+              </ul>
+            </details>
+          )}
         </div>
 
         <div className="flex items-center gap-2">

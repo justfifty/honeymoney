@@ -93,6 +93,21 @@ const TYPE_STYLE: Record<RowType, string> = {
   cashback: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
 };
 
+/**
+ * ISO datetime -> the "YYYY-MM-DD" an <input type="date"> requires.
+ *
+ * Deliberately NOT `new Date(x).toISOString().slice(0,10)`: that converts to
+ * UTC, and a Malaysian row stored at midnight local time (UTC+8) comes back as
+ * the previous day. Editing one row's date would then silently move every OTHER
+ * row's displayed date back a day the moment it re-rendered.
+ */
+function isoDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function StatementImport({
   lang = "en",
   buckets,
@@ -179,6 +194,39 @@ export default function StatementImport({
     setRows((rs) => rs.map((r) => (r.index === i ? { ...r, ...patch } : r)));
   }
 
+  /**
+   * A blank row for something the parser did not find.
+   *
+   * Its index continues past the highest one the parser used rather than being
+   * `rows.length`: rows can be added after others have been edited, and an index
+   * that collides with an existing row would make `setRow` patch two rows at
+   * once. It is a React identity and a patch target, not a position.
+   *
+   * It arrives unticked with no bucket, so it cannot be committed by accident
+   * before the user has said what it is -- the commit already refuses a ticked
+   * row with no bucket.
+   */
+  function addRow() {
+    setRows((rs) => {
+      const index = rs.reduce((max, r) => Math.max(max, r.index), -1) + 1;
+      return [
+        ...rs,
+        {
+          index,
+          date: new Date().toISOString(),
+          description: "",
+          vendor: "",
+          amount: 0,
+          type: "purchase",
+          foreign: null,
+          bucket: null,
+          duplicate: null,
+          include: false,
+        },
+      ];
+    });
+  }
+
   function selectAll(include: boolean) {
     setRows((rs) => rs.map((r) => ({ ...r, include })));
   }
@@ -194,6 +242,15 @@ export default function StatementImport({
 
   async function commit() {
     if (!result || !selected.length) return;
+    // Rows are editable now, and one of them may be a blank the user added and
+    // then ticked before filling in. Checked here rather than left to the API,
+    // which would reject the whole batch on the first bad row and report it as a
+    // failed import rather than as a field to finish.
+    const incomplete = selected.filter((r) => !r.vendor.trim() || !(r.amount > 0));
+    if (incomplete.length) {
+      setError(tr("imp.needRowDetail", { n: incomplete.length }));
+      return;
+    }
     const missing = selected.filter((r) => !r.bucket?.nodeId);
     if (missing.length) {
       setError(tr("imp.needBuckets", { n: missing.length }));
@@ -461,11 +518,23 @@ export default function StatementImport({
                         />
                       </td>
 
-                      <td className="whitespace-nowrap px-3 py-2 text-xs text-zinc-500">
-                        {new Date(r.date).toLocaleDateString("en-MY", {
-                          day: "2-digit",
-                          month: "short",
-                        })}
+                      {/* EDITABLE, like the merchant beside it. A statement
+                          prints "03/07" and the year has to be inferred from the
+                          statement date -- which is a guess, and it is wrong for
+                          exactly the rows that matter most, the December ones on
+                          a January statement. The importer's own rule says so.
+                          Leaving the one field the parser is known to get wrong
+                          as read-only text meant the only fix was to import it
+                          and then go and correct it in /records. */}
+                      <td className="whitespace-nowrap px-2 py-2">
+                        <input
+                          type="date"
+                          value={isoDay(r.date)}
+                          onChange={(e) =>
+                            e.target.value && setRow(r.index, { date: `${e.target.value}T12:00:00.000Z` })
+                          }
+                          className="w-32 rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-zinc-500 outline-none hover:border-zinc-300 focus:border-amber-500 dark:hover:border-zinc-700"
+                        />
                       </td>
 
                       <td className="px-3 py-2">
@@ -503,13 +572,30 @@ export default function StatementImport({
                         </div>
                       </td>
 
-                      <td className="whitespace-nowrap px-3 py-2 text-right">
-                        <span className={moneyIn ? "text-emerald-600" : "font-medium"}>
-                          {moneyIn ? "+" : ""}
-                          {r.amount.toFixed(2)}
-                        </span>
+                      {/* Also editable. A scanned statement -- one with no text
+                          layer -- goes through vision OCR, which the importer is
+                          explicit about, and OCR misreads digits. The figure a
+                          household is least willing to accept on trust was the
+                          one field they could not touch. */}
+                      <td className="whitespace-nowrap px-2 py-2 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          {moneyIn && <span className="text-emerald-600">+</span>}
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step="0.01"
+                            value={r.amount ? String(r.amount) : ""}
+                            onChange={(e) =>
+                              setRow(r.index, { amount: Math.abs(Number(e.target.value)) || 0 })
+                            }
+                            className={`w-24 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums outline-none hover:border-zinc-300 focus:border-amber-500 dark:hover:border-zinc-700 ${
+                              moneyIn ? "text-emerald-600" : "font-medium"
+                            }`}
+                          />
+                        </div>
                         {r.foreign && (
-                          <div className="text-[10px] text-zinc-400">
+                          <div className="pr-1 text-[10px] text-zinc-400">
                             {r.foreign.currency} {r.foreign.amount.toFixed(2)}
                           </div>
                         )}
@@ -553,6 +639,22 @@ export default function StatementImport({
               </tbody>
             </table>
           </div>
+
+          {/* ── THE ROW THE PARSER MISSED ──────────────────────────────────
+              The reconciliation banner above already tells a household when the
+              rows do not add up to the balance the bank itself printed -- which
+              is the importer's best feature and, until now, a dead end. It could
+              say "three rows are missing" and offer no way to put them back
+              except abandoning the import and typing the month in by hand.
+              A statement is evidence the user is holding; if they can see the
+              row, they can enter it. */}
+          <button
+            type="button"
+            onClick={addRow}
+            className="mt-2 rounded-lg border border-dashed border-zinc-300 px-3 py-1.5 text-xs text-zinc-500 hover:border-amber-400 hover:text-amber-700 dark:border-zinc-700"
+          >
+            + {tr("imp.addRow")}
+          </button>
 
           {/* Commit bar */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">

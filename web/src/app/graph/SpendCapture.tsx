@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t as translate, type Locale } from "@/lib/i18n";
 import { parseReceiptText } from "@/lib/voiceParse";
-import { MAX_EDGE, JPEG_QUALITY, safeName, type IncomingAttachment } from "@/lib/attachments";
+import { safeName, type IncomingAttachment } from "@/lib/attachments";
+import { prepareAll } from "@/lib/imagePrep";
 
 // Capture a spend by SCANNING, PHOTOGRAPHING or PASTING.
 //
@@ -59,6 +60,40 @@ const OCR_PATHS = {
 // See the staging script on why 65 MB of models is the wrong trade.
 const LOCAL_LANGS = new Set(["eng", "msa"]);
 
+/** One row off the receipt. Structurally the ReceiptLineItem of lib/receipt.ts. */
+export interface ReceiptLine {
+  label: string;
+  amount: number;
+  qty?: number;
+  unitPrice?: number;
+  discount?: boolean;
+}
+
+/** Which figure the receipt's own arithmetic says is wrong. */
+export type SuspectField = "total" | "subtotal" | "items" | "tax" | "serviceCharge";
+
+/**
+ * What the receipt's own arithmetic said about this reading.
+ *
+ * Produced identically by both readers — see lib/receiptMath.ts — so the user is
+ * told the same thing about their receipt whether or not an API key happens to
+ * be configured.
+ */
+export interface ReceiptChecks {
+  confirmed: string[];
+  conflicts: { relation: string; expected: number; found: number; suspect: SuspectField }[];
+  suspect: SuspectField | null;
+}
+
+/** The figures a receipt prints between its items and its total. */
+export interface ReceiptBreakdown {
+  subtotal: number;
+  serviceCharge: number;
+  tax: number;
+  rounding: number;
+  total: number;
+}
+
 export interface Captured {
   vendor?: string;
   amount?: number;
@@ -73,8 +108,39 @@ export interface Captured {
    * component ever read them, so an itemised receipt looked identical to a bare
    * total. They now also come from the on-device parser, which means itemisation
    * works with no AI key configured -- the AI route 501s without one.
+   *
+   * ⚠️ AND THE AI PATH THEN FORGOT TO SEND THEM. `onResult` below listed its
+   * fields one by one and `lineItems` was not among them, while the on-device
+   * branch spreads `...parsed` and carried them by accident. So the BETTER
+   * reader -- the one that costs a token, reads quantities, and is the only one
+   * that can itemise a photographed till roll properly -- was the one that
+   * arrived with no items at all, and the feature looked broken exactly when it
+   * was working. Anything added to this interface has to be added to BOTH
+   * branches; there is no shared assembly point.
    */
-  lineItems?: { label: string; amount: number }[];
+  lineItems?: ReceiptLine[];
+  /**
+   * What the receipt printed BETWEEN the items and the total.
+   *
+   * Carried rather than merely announced in a status line, because it is what
+   * makes the itemised list add up: items summing to 48.00 under a total of
+   * 54.50 is alarming until you can see the 10% service charge and the 6% tax
+   * that account for the gap. Without these the reconciliation can only say
+   * "these disagree", which trains people to ignore it.
+   */
+  breakdown?: ReceiptBreakdown;
+  /** True when the receipt had more rows than the reader kept. See ReceiptExtraction. */
+  itemsTruncated?: boolean;
+  /**
+   * Corroboration, or contradiction, from the receipt's own arithmetic.
+   *
+   * The reason to carry this rather than fold it entirely into `confidence`: a
+   * number can only say "be careful", while this says WHICH FIELD to be careful
+   * about. "Check the amount and shop before saving" is advice nobody can act
+   * on; "the items add up to 148.20 but the total reads 14.82" points at one
+   * input and is settled in two seconds by the person holding the paper.
+   */
+  checks?: ReceiptChecks;
   confidence?: number;
   /**
    * The image itself, downscaled and ready to store. Until 2026-08-22 this was
@@ -128,10 +194,10 @@ export default function SpendCapture({
 
   // ── Images: file, camera, drag-drop, paste ───────────────────────────────
 
-  async function scanOnDevice(file: File, attachment?: IncomingAttachment) {
+  async function scanOnDevice(file: File, attachment?: IncomingAttachment, prepped?: Blob | null) {
     setStatus(tr("g.cap.scanning", { pct: 0 }));
     try {
-      const { recognize } = await import("tesseract.js");
+      const { createWorker, PSM } = await import("tesseract.js");
       const ocrLang = OCR_LANG[lang] ?? "eng";
       const logger = (m: { status: string; progress: number }) => {
         if (m.status === "recognizing text") {
@@ -146,14 +212,60 @@ export default function SpendCapture({
       const opts = LOCAL_LANGS.has(ocrLang)
         ? { ...OCR_PATHS, logger }
         : { workerPath: OCR_PATHS.workerPath, corePath: OCR_PATHS.corePath, logger };
+
+      // The GRAYSCALE, CONTRAST-STRETCHED, correctly-sized copy — not the raw
+      // File, which is what this used to hand over. See lib/imagePrep.ts for
+      // what each of those does and why a phone photo of thermal paper needs all
+      // three. Null when the browser could not decode the image, and then the
+      // original is still worth a try.
+      const source: File | Blob = prepped ?? file;
+
+      // ── WHY createWorker RATHER THAN recognize() ────────────────────────
+      //
+      // The one-shot `recognize` helper gives no way to set engine parameters,
+      // so this ran on Tesseract's defaults, and two of those are actively wrong
+      // for a receipt:
+      //
+      //   PSM 3 (the default) hunts for a multi-column page layout. A till roll
+      //   is one narrow column, and on a 3:1 receipt the layout analyser
+      //   regularly decides the item names and the prices are SEPARATE COLUMNS
+      //   and emits them as separate blocks — so the text arrives with every
+      //   label on one run of lines and every amount on another. The line-item
+      //   regex needs "label ... amount" on ONE line and matched nothing at all,
+      //   which is a large part of why on-device itemisation was thin.
+      //   SINGLE_BLOCK treats the receipt as the single column it is.
+      //
+      //   preserve_interword_spaces keeps the whitespace column between the
+      //   label and the price. Tesseract collapses runs of spaces by default,
+      //   and that column is the only thing separating "Nasi lemak" from "7.00".
+      const RECEIPT_PARAMS = {
+        tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+        preserve_interword_spaces: "1",
+      };
+
+      async function readWith(language: string, workerOpts: Record<string, unknown>) {
+        const worker = await createWorker(language, undefined, workerOpts);
+        try {
+          await worker.setParameters(RECEIPT_PARAMS);
+          return await worker.recognize(source);
+        } finally {
+          // Terminated in a finally: a worker left running holds its WASM heap
+          // for the life of the tab, and a user scanning five receipts in a row
+          // would be carrying five of them.
+          await worker.terminate().catch(() => undefined);
+        }
+      }
+
       let data;
       try {
-        ({ data } = await recognize(file, ocrLang, opts));
+        ({ data } = await readWith(ocrLang, opts));
       } catch {
         // No model for that language, or no network to fetch one. English is
         // staged locally, so this fallback works offline — which is the whole
-        // point of it and was not true before.
-        ({ data } = await recognize(file, "eng", { ...OCR_PATHS, logger }));
+        // point of it. The four non-staged locales are still ATTEMPTED first, so
+        // a Chinese or Tamil receipt is read in its own script whenever there is
+        // a network to fetch the model with.
+        ({ data } = await readWith("eng", { ...OCR_PATHS, logger }));
       }
 
       const parsed = parseReceiptText(data.text || "", knownVendors);
@@ -193,15 +305,32 @@ export default function SpendCapture({
       setPreview(URL.createObjectURL(file));
       onAnalysis?.(null);
 
-      // Downscale ONCE, up front, and use the same bytes for both jobs: what is
-      // sent to the reader and what is stored. Preparing twice would re-encode
-      // the image a second time for no gain, and preparing only inside the AI
-      // branch — which is what this did — is why the on-device path stored
-      // nothing at all.
+      // ── ONE DECODE, THREE RENDITIONS ────────────────────────────────────
+      //
+      // This used to prepare ONE image and use it for both jobs, on the
+      // reasoning that "preparing twice would re-encode the image for no gain".
+      // The gain turned out to be large, and the sharing was the whole cost: the
+      // storage rendition is 1600px at q0.85 because a ledger should not fill up
+      // with 4MB photographs, and by sharing it the STORAGE limit silently
+      // became the READING limit. A 4000px photo of a receipt was being read at
+      // a 2.5x downscale, and the first thing to go at that size is exactly the
+      // small print the line items are made of.
+      //
+      // lib/imagePrep.ts decodes once and draws three copies from that single
+      // bitmap — so the expensive step still happens once, while each consumer
+      // gets the picture it can actually use.
       let attachment: IncomingAttachment | undefined;
+      let reading: { base64: string; mimeType: string } | undefined;
+      let ocrSource: Blob | null = null;
       try {
-        const { base64, mimeType } = await prepareImage(file);
-        attachment = { name: safeName(file.name, mimeType), type: mimeType, dataBase64: base64 };
+        const { store, read, ocr } = await prepareAll(file);
+        attachment = {
+          name: safeName(file.name, store.mimeType),
+          type: store.mimeType,
+          dataBase64: store.base64,
+        };
+        reading = { base64: read.base64, mimeType: read.mimeType };
+        ocrSource = ocr;
       } catch {
         // An image we cannot re-encode is one we should not store either; the
         // parse below still runs on the original file.
@@ -209,10 +338,12 @@ export default function SpendCapture({
 
       // Try the AI reader first — it's the only path that gets currency, date
       // and a confidence score, and it can reason about the household.
-      if (aiEnabled && attachment) {
+      if (aiEnabled && reading) {
         setStatus(tr("cap.reading"));
         try {
-          const { dataBase64: base64, type: mimeType } = attachment;
+          // The READING copy, not the stored one. This is the line the whole of
+          // imagePrep.ts exists for.
+          const { base64, mimeType } = reading;
           const res = await fetch("/api/receipt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -228,6 +359,24 @@ export default function SpendCapture({
               currency: e.currency || undefined,
               occurredAt: e.occurredAt || undefined,
               bucketNodeId: data.analysis?.bucket?.nodeId,
+              // See the note on Captured.lineItems: this line is the whole bug.
+              lineItems: Array.isArray(e.lineItems) && e.lineItems.length ? e.lineItems : undefined,
+              itemsTruncated: e.itemsTruncated === true,
+              checks: e.checks ?? undefined,
+              // Only when the receipt actually printed a breakdown. An object of
+              // zeroes would draw a "Subtotal 0.00" row for a wallet screenshot
+              // that never had one, which is the reader claiming to have read
+              // something it did not.
+              breakdown:
+                e.subtotal || e.serviceCharge || e.tax || e.rounding
+                  ? {
+                      subtotal: Number(e.subtotal) || 0,
+                      serviceCharge: Number(e.serviceCharge) || 0,
+                      tax: Number(e.tax) || 0,
+                      rounding: Number(e.rounding) || 0,
+                      total: Number(e.total) || Number(e.amount) || 0,
+                    }
+                  : undefined,
               confidence: e.confidence,
               attachment,
             });
@@ -265,7 +414,7 @@ export default function SpendCapture({
         }
       }
 
-      await scanOnDevice(file, attachment);
+      await scanOnDevice(file, attachment, ocrSource);
       setBusy(false);
     },
     [aiEnabled, onAnalysis, onResult, tr],
@@ -374,56 +523,10 @@ export default function SpendCapture({
   );
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// The image work that used to live here — the downscaler, the base64 reader and
+// the note about a 12 MP phone camera against a ~6 MB upload cap — moved to
+// lib/imagePrep.ts, which prepares a rendition per consumer instead of one for
+// everybody. The cap argument still holds; it is simply an argument about what
+// is UPLOADED rather than about what is READ, and conflating the two was
+// costing the reader most of the receipt's small print.
 
-// A modern phone camera shoots 12 MP. Base64 inflates that by a third, and the
-// API caps an upload at ~6 MB — so photographing a receipt with a recent phone
-// could fail outright with a 413, and the ones that squeaked under the limit
-// spent seconds uploading megapixels the vision model never looks at. Receipt
-// text is legible well below 1600px on the long edge; anything more is upload
-// time and tokens spent on nothing.
-// MAX_EDGE and JPEG_QUALITY live in lib/attachments.ts, where the API's size
-// limit and the PocketBase field's maxSize are defined alongside them — three
-// numbers that must agree, and did not when they were spelled out separately.
-const SKIP_RESIZE_BELOW = 1_500_000; // already small — don't re-encode and lose detail
-
-async function prepareImage(file: File): Promise<{ base64: string; mimeType: string }> {
-  try {
-    const bitmap = await createImageBitmap(file);
-    const longest = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.min(1, MAX_EDGE / longest);
-
-    if (scale === 1 && file.size <= SKIP_RESIZE_BELOW) {
-      bitmap.close();
-      return { base64: await toBase64(file), mimeType: file.type };
-    }
-
-    const w = Math.round(bitmap.width * scale);
-    const h = Math.round(bitmap.height * scale);
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("no 2d context");
-    ctx.drawImage(bitmap, 0, 0, w, h);
-    bitmap.close();
-
-    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", JPEG_QUALITY));
-    if (!blob) throw new Error("encode failed");
-    return { base64: await toBase64(blob), mimeType: "image/jpeg" };
-  } catch {
-    // HEIC on a browser that can't decode it, a blocked canvas, an exotic codec.
-    // The original bytes are still worth a try — the server will tell us if
-    // they're too big.
-    return { base64: await toBase64(file), mimeType: file.type };
-  }
-}
-
-function toBase64(file: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).replace(/^data:[^;]+;base64,/, ""));
-    reader.onerror = () => reject(new Error("Could not read that file."));
-    reader.readAsDataURL(file);
-  });
-}
