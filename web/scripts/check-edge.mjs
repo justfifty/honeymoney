@@ -66,6 +66,17 @@ async function html(url) {
   }
 }
 
+// Run straight after a deploy, the edge may not have finished propagating, and
+// a false alarm that fails the publish command is worse than no check at all —
+// people turn those off. So `--after-deploy` waits, and retries once before it
+// is willing to call the deploy broken.
+const AFTER_DEPLOY = args.includes("--after-deploy");
+if (AFTER_DEPLOY) {
+  process.stdout.write("\nwaiting 10s for the edge to settle… ");
+  await new Promise((r) => setTimeout(r, 10000));
+  console.log("checking");
+}
+
 console.log(`\nedge ↔ origin asset check\n   ${BASE}\n`);
 
 let broken = 0;
@@ -110,6 +121,17 @@ for (const route of ROUTES) {
   } else {
     console.log(`  ok   ${route.padEnd(11)} ${assets.length} assets present`);
   }
+}
+
+if (broken && AFTER_DEPLOY && !process.env.HM_EDGE_RETRIED) {
+  console.log("\n…one route came back short. Waiting 20s and checking once more before failing.");
+  await new Promise((r) => setTimeout(r, 20000));
+  const { spawnSync } = await import("node:child_process");
+  const again = spawnSync(process.execPath, [new URL(import.meta.url).pathname.slice(1), ...args], {
+    stdio: "inherit",
+    env: { ...process.env, HM_EDGE_RETRIED: "1" },
+  });
+  process.exit(again.status ?? 1);
 }
 
 if (broken) {
