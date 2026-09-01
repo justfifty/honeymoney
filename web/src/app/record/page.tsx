@@ -3,6 +3,7 @@ import { isDatabaseConfigured } from "@/lib/config";
 import { resolveViewTenant, can, listMembers } from "@/lib/household";
 import type { Composition } from "@/lib/attribution";
 import { getBucketProjection, getRecentSpend } from "@/lib/projection";
+import { suggestPresets, type SpendPreset } from "@/lib/presets";
 import { pbList, pbFirst, pbStr, isUnreachable } from "@/lib/pocketbase";
 import { getLocale } from "@/lib/locale";
 import { t, type Locale } from "@/lib/i18n";
@@ -46,8 +47,13 @@ export default async function RecordPage() {
   let recent: Awaited<ReturnType<typeof getRecentSpend>>;
   let members: Awaited<ReturnType<typeof listMembers>>;
   let tenant: { id: string; composition?: string } | null;
+  // Derived from the household's own ledger, so it costs one more query on a
+  // page that already makes five in parallel. Failure is not worth a degraded
+  // screen: a missing preset row is a row that is not there, and the form
+  // behind it works exactly as it did before the feature existed.
+  let presets: SpendPreset[] = [];
   try {
-    [projection, vendorNodes, recent, members, tenant] = await Promise.all([
+    [projection, vendorNodes, recent, members, tenant, presets] = await Promise.all([
       getBucketProjection(tenantId),
       pbList<{ id: string; label: string }>("nodes", {
         filter: `tenant = ${pbStr(tenantId)} && kind = 'vendor'`,
@@ -56,6 +62,7 @@ export default async function RecordPage() {
       getRecentSpend(tenantId, 6, { viewerMemberId: ctx?.memberId, redact: Boolean(ctx) }),
       listMembers(tenantId),
       pbFirst<{ id: string; composition?: string }>("tenants", `id = ${pbStr(tenantId)}`),
+      suggestPresets(tenantId).catch(() => [] as SpendPreset[]),
     ]);
   } catch (err) {
     if (!isUnreachable(err)) throw err;
@@ -109,6 +116,7 @@ export default async function RecordPage() {
               label: dataLabel(locale, b.bucket_label),
               tier: b.tier,
             }))}
+            presets={presets}
             members={members.map((m) => ({ id: m.id, label: m.display_name }))}
             composition={composition}
           />

@@ -16,6 +16,8 @@ import ReceiptItems, {
   type ItemMode,
 } from "./ReceiptItems";
 import { splitToTotal } from "@/lib/receiptSplit";
+import QuickPresets from "./QuickPresets";
+import type { SpendPreset } from "@/lib/presets";
 import type { IncomingAttachment } from "@/lib/attachments";
 import AttributionPicker from "../record/AttributionPicker";
 import {
@@ -92,10 +94,18 @@ export default function AddTransaction({
   knownVendors = [],
   members = [],
   composition = "individual",
+  presets = [],
   lang,
 }: {
   buckets: BucketOption[];
   knownVendors?: string[];
+  /**
+   * One-tap spends, derived from this household's own repeats. Computed on the
+   * server (lib/presets.ts) rather than here because it needs the ledger, and
+   * an empty array simply renders no row — every caller that has not been
+   * updated keeps working unchanged.
+   */
+  presets?: SpendPreset[];
   /** Household members, for Task 6 attribution. Empty ⇒ no control renders. */
   members?: { id: string; label: string }[];
   /** Household composition — CONTEXT, not a control. See lib/attribution.ts. */
@@ -318,6 +328,53 @@ export default function AddTransaction({
     setLastSaved(null);
   }
 
+  /**
+   * A preset was tapped: fill the form with it.
+   *
+   * Everything a preset knows, and nothing it does not. It carries a vendor, an
+   * amount and the bucket the household actually files that vendor under; it
+   * does NOT carry a date, so `when` is left alone and stays today — which is
+   * the one thing a repeat purchase always has in common with the last one.
+   *
+   * The category follows the bucket's tier, exactly as a scanned receipt's does
+   * (see applyCapture): a bucket and a category that disagree are two answers to
+   * one question, and the user only gave one.
+   */
+  function applyPreset(p: SpendPreset) {
+    const vendorOnly = !(p.amount > 0);
+    setVendor(p.vendor);
+    setAmount(vendorOnly ? "" : String(p.amount));
+    setCcy("MYR");
+    setConfidence(undefined);
+    setParseMs(null);
+    setMsg(null);
+    setLastSaved(null);
+    // The typed line described a different record; leaving it would show the
+    // user one thing and save another.
+    setLine("");
+    setPinnedSign(null);
+
+    if (p.bucketNodeId && buckets.some((b) => b.id === p.bucketNodeId)) {
+      setBucket(p.bucketNodeId);
+      const tier = buckets.find((b) => b.id === p.bucketNodeId)?.tier;
+      if (tier === MUST_PAID_TIER) setCategory("must_paid");
+      else if (tier === SAVINGS_TIER) setCategory("savings");
+      else if (tier === SPENDINGS_TIER) setCategory("spendings");
+    }
+
+    // A vendor-only shortcut has filled the hard half and left the figure. Open
+    // the details and put the cursor in it, so the next thing the user does is
+    // the only thing left to do — the same move applyCapture makes for a shaky
+    // parse, for the same reason.
+    if (vendorOnly) {
+      setEdit(true);
+      setTimeout(() => {
+        amountRef.current?.focus();
+        amountRef.current?.select();
+      }, 0);
+    }
+  }
+
   function clearDraft() {
     setLine("");
     // The pin belongs to the record that was just saved, not to the next one.
@@ -474,10 +531,16 @@ export default function AddTransaction({
       // above removed.
       void syncLedger();
 
+      // The confirmation names the DATE whenever it is not today. "Saved ·
+      // TECHWEV 3.50" is a true sentence about a record filed in March 2022 and
+      // a useless one: the user goes looking for it in this month's list and
+      // finds nothing. Saying where it went is the difference between a record
+      // they can find and a record they think was lost.
+      const dateSuffix = dateNeedsSaying ? " " + tr("dash.add.savedOn", { date: whenLabel }) : "";
       const text =
-        ids.length > 1
+        (ids.length > 1
           ? tr("dash.add.savedItems", { n: ids.length, amount: base.toFixed(2), vendor })
-          : tr("dash.add.savedLocalFirst", { amount: base.toFixed(2), vendor });
+          : tr("dash.add.savedLocalFirst", { amount: base.toFixed(2), vendor })) + dateSuffix;
       setMsg({ ok: true, text });
       // Undo now targets the LOCAL ids. A record may not have a server id yet
       // — it may never get one — so keying undo on the server's response would
@@ -547,6 +610,36 @@ export default function AddTransaction({
     ccy,
     when === todayLocal() ? tr("dash.add.today") : when,
   ].join(" · ");
+
+  // ── A RECORD THAT WOULD LAND OUT OF SIGHT ────────────────────────────────
+  //
+  // Reported as "I add a spend and it goes nowhere". The spend saved perfectly:
+  // a scanned receipt printed 14/03/2022, the reader read that date correctly —
+  // which is the RIGHT behaviour and the whole point of the Swiss-receipt fix,
+  // an old receipt has an old date — and the record was filed in March 2022.
+  // The dashboard and /records both open on a recent window, so it was four
+  // years outside every view the user has. The app said "Saved" and the row was
+  // nowhere, which is indistinguishable from losing it.
+  //
+  // The date lives behind the "Edit details" disclosure, so nothing on screen
+  // said which day was about to be used. That is fine when it is today and
+  // actively misleading when it is not.
+  //
+  // So: say it, at the moment it can still be changed, with the correction one
+  // tap away. Not a block — filing an old receipt at its real date is a
+  // legitimate thing to do, and a household catching up on a shoebox of
+  // receipts is doing exactly that on purpose.
+  const OUT_OF_VIEW_DAYS = 45;
+  const dayMs = 86_400_000;
+  const whenTs = new Date(`${when}T12:00:00`).getTime();
+  const todayTs = new Date(`${todayLocal()}T12:00:00`).getTime();
+  const daysOff = Number.isFinite(whenTs) ? Math.round((todayTs - whenTs) / dayMs) : 0;
+  const dateFarPast = daysOff > OUT_OF_VIEW_DAYS;
+  const dateFuture = daysOff < 0;
+  const dateNeedsSaying = dateFarPast || dateFuture;
+  const whenLabel = Number.isFinite(whenTs)
+    ? new Date(whenTs).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    : when;
 
   const style = CATEGORY_STYLE[category];
   const amountValue = Number(amount);
@@ -625,7 +718,23 @@ export default function AddTransaction({
         />
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      {/* ── ONE TAP, FOR THE THINGS YOU BUY EVERY WEEK ──────────────────
+          The household's OWN repeats, ahead of the worked examples below —
+          which teach the typing syntax and are therefore worth exactly as much
+          as the typing they are teaching. Once somebody has bought the same
+          coffee twice, "kopi 6.50" as an illustration is strictly less useful
+          than "Kopi C · 6.50" as a button, so the examples stand down. */}
+      <QuickPresets
+        lang={lang}
+        suggested={presets}
+        currency={ccy}
+        draft={{ vendor, amount: Number(amount) || 0, bucketNodeId: bucket }}
+        onPick={applyPreset}
+      />
+
+      <div
+        className={`mt-2.5 flex flex-wrap items-center gap-1.5 ${presets.length ? "hidden" : ""}`}
+      >
         <span className="text-[11px] text-zinc-500">{tr("try.tryOne")}</span>
         {EXAMPLES.map((eg) => (
           <button
@@ -1008,6 +1117,28 @@ export default function AddTransaction({
           Keyed on the kind now, so the three cases are three cases: green for a
           transfer (money you still have — the only thing green means in this
           app, see CATEGORY_STYLE), amber for money in, dark grey for a spend. */}
+      {/* The date, said out loud, only when it is not today — see the note on
+          dateNeedsSaying. Directly above the button, because that is where the
+          user's attention is at the moment it still matters. */}
+      {dateNeedsSaying && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+          <span>
+            📅{" "}
+            {tr(dateFuture ? "dash.add.dateFuture" : "dash.add.dateOld", {
+              date: whenLabel,
+              days: Math.abs(daysOff),
+            })}
+          </span>
+          <button
+            type="button"
+            onClick={() => setWhen(todayLocal())}
+            className="shrink-0 rounded-md border border-amber-400 px-2 py-1 font-medium hover:bg-amber-100 dark:hover:bg-amber-900/40"
+          >
+            {tr("dash.add.useToday")}
+          </button>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={busy || (!bucket && !isIncome)}
