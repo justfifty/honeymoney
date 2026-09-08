@@ -121,8 +121,8 @@ export default function MoodCat({
             <Image
               src="/honey-cat.jpg"
               alt=""
-              width={1021}
-              height={1024}
+              width={48}
+              height={48}
               draggable={false}
               className="hm-cat-face block h-12 w-12 scale-[1.08] select-none"
             />

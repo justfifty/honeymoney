@@ -106,10 +106,35 @@ const SNAPSHOT = new Set(/* @snapshot-routes */ ["/", "/guide", "/learn", "/gall
 //   everything   25000 /api/* included. An LLM answer is not a slow origin, and
 //                      cutting it off at 8s turned a working feature into a
 //                      failure that looked like downtime.
-//   asset        2000  A content-hashed file that the edge does not have. The
-//                      page referencing it is already rendering, so this is a
-//                      race against the reader noticing an unstyled screen.
-const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, asset: 2000, other: 25000 };
+//   asset        8000  A content-hashed file that the edge does not have. This
+//                      is the ONLY path with no fallback — see below.
+//
+// ⚠️ THE ASSET BUDGET IS NOT A LATENCY DECISION, AND IT WAS BEING MADE AS ONE.
+//
+// It was 2000, on the reasoning that "the page referencing it is already
+// rendering, so this is a race against the reader noticing an unstyled screen".
+// That reasoning has the trade backwards, in the one place it cannot afford to.
+//
+// Every other budget here is short because there is something else to serve:
+// a nav that runs out gets the snapshot, an RSC prefetch that runs out costs
+// nothing at all. An ASSET that runs out gets `missingAsset()` — a 404 on the
+// stylesheet and the client bundle. The page does not degrade, it dies: raw
+// HTML, giant unsized icons, no React, nothing responds to a tap. There is no
+// cheaper answer being held back. The only question is whether the file
+// arrives, and a stylesheet that lands in four seconds beats one that never
+// lands by an amount no latency figure captures.
+//
+// 2000 also lost to a number documented in this very file. The origin runs
+// under Passenger and pays a ~3s cold start (which is why deploy/warm/ exists;
+// its README measures 3140ms). So on the first request after an idle spell —
+// which for a household app used a few times a day is very nearly every visit
+// — the last-resort rescue timed out BEFORE the origin had finished waking,
+// every single time. The mechanism that exists to prevent the unstyled-site
+// failure was guaranteed to fail in exactly the conditions that cause it.
+//
+// 8000 clears the cold start with room for the transfer, and is still bounded.
+// It is only ever paid on a miss, so the happy path is untouched.
+const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, asset: 8000, other: 25000 };
 
 // ── THE BREAKER ─────────────────────────────────────────────────────────────
 //
@@ -158,12 +183,34 @@ export default {
       // files themselves had been fixed at the edge.
       //
       // 404 makes the same mistake loud and, crucially, not cached as valid.
-      if (pathname.startsWith("/_next/static/") && res.status === 200) {
-        const type = res.headers.get("content-type") || "";
-        if (!/javascript|css|font|image|json|octet-stream|wasm|video|audio/i.test(type)) {
-          return missingAsset();
-        }
-      }
+      //
+      // ⚠️ BUT IT IS A MISS, AND A MISS MUST TAKE THE MISS PATH — NOT RETURN HERE.
+      //
+      // This branch used to `return missingAsset()` on the spot, and doing so
+      // made the origin rescue below UNREACHABLE in the one case it was written
+      // for. Read the two conditions against the fact stated four lines up:
+      // Pages answers an unknown path with the site's HTML AT STATUS 200. So a
+      // missing chunk arrives here as a 200, is caught here, and is answered
+      // with a bare 404 — while the rescue below waits on `res.status !== 200`,
+      // which for a missing /_next/static file on Pages essentially never
+      // happens. The rescue could not run. It had never run.
+      //
+      // That is how honeymoney.app spent 2026-09-08 serving /record and
+      // /dashboard as raw HTML — real household data, correct markup, giant
+      // unsized icons, no stylesheet, no hydration, a tab bar that is only a
+      // list of links. The origin was up the entire time and was holding every
+      // chunk being 404'd at the edge, and nothing in this file ever asked it.
+      //
+      // So the answer is a FLAG, not a return. Everything the comment above
+      // argues for still holds — the fallback HTML must never reach a browser
+      // under a .js URL, and the 404 must stay uncacheable — it just has to
+      // happen AFTER the origin has been given its chance, not instead of it.
+      const servedFallbackHtml =
+        pathname.startsWith("/_next/static/") &&
+        res.status === 200 &&
+        !/javascript|css|font|image|json|octet-stream|wasm|video|audio/i.test(
+          res.headers.get("content-type") || "",
+        );
 
       // ⚠️ A 404 HERE MUST NEVER BE CACHEABLE. _headers matches on PATH, not on
       // status, so the `/_next/static/*` immutable rule is attached to a miss
@@ -186,7 +233,7 @@ export default {
       // no-store costs nothing on the happy path (a present asset is a 200 and
       // keeps its immutable header) and removes the only way this failure
       // outlives the deploy that caused it.
-      if (pathname.startsWith("/_next/static/") && res.status !== 200) {
+      if (pathname.startsWith("/_next/static/") && (res.status !== 200 || servedFallbackHtml)) {
         // ── ASK THE ORIGINS BEFORE GIVING UP ──────────────────────────────
         //
         // Necessary the moment there is more than one origin. The snapshot's
@@ -202,7 +249,10 @@ export default {
         // loud and uncacheable.
         const fromOrigin = await tryOrigin(request, url, "asset");
         if (fromOrigin && fromOrigin.status === 200) return fromOrigin;
-        return missingAsset(res.status);
+        // Never pass a 200 through here. In the fallback-HTML case that IS the
+        // status Pages gave us, and echoing it would hand the browser an empty
+        // 200 under a .js URL — a different way of saying "this file is fine".
+        return missingAsset(servedFallbackHtml ? 404 : res.status);
       }
       return res;
     }
@@ -345,7 +395,30 @@ async function resetBreaker(host) {
  * visitor's dashboard somewhere else.
  */
 async function askOrigin(request, url, host, kind) {
-  if (await breakerOpen(host)) return null;
+  // ⚠️ AN ASSET RESCUE IGNORES THE BREAKER, AND MUST.
+  //
+  // The breaker's own reasoning is that "the blast radius of a wrong answer is
+  // one navigation seeing the snapshot for at most BREAKER_TTL_S". True for a
+  // navigation. For a content-hashed asset the edge does not have, the blast
+  // radius is a page that renders unstyled and never hydrates — there is no
+  // snapshot to fall back to, because the whole reason we are here is that the
+  // snapshot does not have the file.
+  //
+  // The two interlocked to produce exactly that. A COLD origin (~3s, see above)
+  // overruns the 2500ms nav budget; a nav timeout trips the breaker; and for
+  // the next 20 seconds every asset rescue returned null without asking anyone.
+  // So the page's HTML arrived — from the snapshot, or from the other origin —
+  // and every stylesheet and script under it 404'd on a host that was awake by
+  // then and holding all of them. Waking up made it worse, not better.
+  //
+  // The cost of bypassing it is bounded and worth naming. A host that REFUSES
+  // connections fails in milliseconds, so nothing is spent. A host that
+  // BLACKHOLES them — the DOM Cloud out-of-swap case described at the top of
+  // this file — costs the full asset budget per missing file before we give up.
+  // That is the trade taken deliberately: the page being rescued is unusable if
+  // we are wrong, and correct if we are right, so waiting is only ever paid on
+  // a page that has nothing to lose.
+  if (kind !== "asset" && (await breakerOpen(host))) return null;
 
   const target = new URL(url);
   target.protocol = "https:";

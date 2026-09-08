@@ -62,7 +62,7 @@ function ScoreRing({ hscore, tr }: { hscore: HScore; tr: Tr }) {
   return (
     <div className="flex flex-col items-center">
       <div className="relative">
-        <svg viewBox="0 0 160 160" className="h-40 w-40 -rotate-90" role="img" aria-label={`Score ${hscore.score} of 100`}>
+        <svg viewBox="0 0 160 160" width={160} height={160} className="h-40 w-40 -rotate-90" role="img" aria-label={`Score ${hscore.score} of 100`}>
           <circle cx="80" cy="80" r={R} fill="none" strokeWidth="12" className="stroke-zinc-200 dark:stroke-zinc-800" />
           <circle
             cx="80"
@@ -449,7 +449,7 @@ function Radar({ subScores, tr }: { subScores: SubScore[]; tr: Tr }) {
     <section className="mt-6 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
       <h3 className="text-sm font-semibold">{tr("hscore.radar.title")}</h3>
       <div className="overflow-x-auto">
-        <svg viewBox="0 0 220 200" className="mx-auto h-52 w-full max-w-xs" role="img" aria-label={tr("hscore.radar.title")}>
+        <svg viewBox="0 0 220 200" width={220} height={200} className="mx-auto h-52 w-full max-w-xs" role="img" aria-label={tr("hscore.radar.title")}>
           {grid.map((g, i) => (
             <polygon key={i} points={g} fill="none" className="stroke-zinc-200 dark:stroke-zinc-800" strokeWidth="1" />
           ))}

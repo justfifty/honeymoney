@@ -62,6 +62,27 @@ Two details worth knowing:
 
 ## Deploy
 
+### From anywhere — including a phone
+
+`.github/workflows/publish-site.yml` publishes the Pages project on every push
+to `main` that touches `web/`, `scripts/` or `deploy/pages/`, and on demand from
+the Actions tab ("Run workflow"). It renders the snapshot from the DOM Cloud
+origin, ships the worker beside it, and runs `check:edge` afterwards. **Merging
+a pull request is the deploy.**
+
+It exists because on 2026-09-08 the fix for an unstyled site sat on a branch
+for an afternoon: the only publish path was a command on the laptop, and the
+only person available had a phone. It needs two repository secrets, once —
+`CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` —
+under Settings → Secrets and variables → Actions. Both screens work in a
+mobile browser.
+
+It publishes the edge only. Neither origin is rebuilt by it; a laptop page whose
+chunk the snapshot lacks is rescued by the worker from the laptop, which is what
+`check:worker` proves before every run.
+
+### From the laptop
+
 ```bash
 # 0. once per machine — opens a browser
 npx wrangler login
@@ -104,6 +125,31 @@ Observed 2026-08-25: a `npm run build` run only to check that a change compiled
 did exactly this to `/`, `/login`, `/graph`, `/hscore`, `/more` and `/record`.
 `npm run site:publish` restored it in under a minute.
 
+**2026-09-08 — the same failure, with the rescue in place and unable to run.**
+`_worker.js` had grown an origin fallback for exactly this: when the edge lacks
+a chunk, ask the origin, which by definition has it because it rendered the HTML
+asking for it. It had never executed once. Pages answers an unknown path with
+the site's HTML **at status 200**, so a missing chunk was caught by the arm above
+and answered 404, while the rescue waited on `res.status !== 200` — a status that
+never arrives for this failure. The site served `/record` and `/dashboard` with
+live household data, no stylesheet and no hydration; the tab bar was a line of
+underlined links, and "the buttons at the bottom don't work" was the report.
+`check:edge` had been printing *Edge and origin agree* over it, because with the
+origin unreachable it skipped every app route and checked only `/`, which Pages
+answers from the snapshot and which therefore cannot fail.
+
+Both are fixed, and both now have guards that fail loudly: `check:worker` runs
+the worker, and `check:edge` reports INCONCLUSIVE rather than success when it
+could not reach a single origin route.
+
+The structural cause underneath was that there are **two origins running two
+builds** — the laptop's `.next`, DOM Cloud's `.next-dc` — and the snapshot
+carried only one. The laptop is first in the worker's list, so most pages were
+rendered by the build the edge did not hold. `site:build` now ships **both**
+`static/` directories when both exist (content-hashed names make the overlay
+safe), so the edge answers either origin's pages with no rescue and no laptop.
+The rescue stays as the net for a chunk neither copy has.
+
 So:
 
 - To **check a change compiles**, never touch the live build:
@@ -129,9 +175,22 @@ serves the full app on its own, exactly as before.
 
 ## Verify
 
+Before anything is built or uploaded, prove the worker still routes:
+
+```bash
+cd web && npm run check:worker      # ~4s, offline, no wrangler and no credentials
+```
+
+`site:publish` runs it first, so a broken front door cannot be deployed. It
+drives the real `_worker.js` against a stubbed ASSETS binding that behaves the
+way Pages actually behaves — **a miss is the site's HTML at status 200, not a
+404** — which is the single detail the 2026-09-08 failure turned on. See the
+header of `web/scripts/check-worker.mjs`.
+
 ```bash
 curl -sI https://honeymoney.app/gallery | grep -i x-honeymoney-served   # edge-snapshot
 curl -sI https://honeymoney.app/dashboard | grep -i x-honeymoney-served # absent → origin
+curl -s  https://honeymoney.app/snapshot.json                           # builtAt — how old is the edge copy?
 ```
 
 `X-HoneyMoney-Served` is `edge-snapshot` (static), `offline` (the fallback page),

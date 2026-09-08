@@ -38,7 +38,7 @@
 // Bumped whenever the caching RULES change. Changing these bytes is also what
 // makes a browser install this worker at all, so a bump is how an existing
 // client is rescued from a cache written by an older set of rules.
-const VERSION = "hm-v5";
+const VERSION = "hm-v6";
 const SHELL = `${VERSION}-shell`;
 const ASSETS = `${VERSION}-assets`;
 const OCR = `${VERSION}-ocr`;
@@ -171,14 +171,42 @@ async function cacheFirst(request, cacheName) {
 // purge with a flag, because the other cause of a 404 here is a genuinely
 // broken deploy at the edge, where reloading gets the same broken page back.
 // A recovery that loops is worse than the fault it is recovering from.
+//
+// ── THE PAGE THIS FIRES FOR CANNOT HEAR THE MESSAGE ────────────────────────
+//
+// The recovery used to be a postMessage to the page, which OfflineGate.tsx
+// answers with a guarded reload. Read what state the page is in when this
+// fires: its stylesheet and its client bundle have just 404'd. There is no
+// React on it, so OfflineGate never mounted, so the listener does not exist.
+// The one page that needs the reload is the one page that cannot perform it.
+// On 2026-09-08 that left /record and /dashboard sitting as raw HTML with the
+// message posted into the void — the recovery had run, and nothing happened.
+//
+// So the worker reloads the page ITSELF, with WindowClient.navigate(), which
+// needs nothing from the document. The postMessage is kept for the case where
+// the page did hydrate (a late-loaded chunk 404'd after first paint) — its
+// guard is sessionStorage, which survives the reload; ours is per client, in
+// memory, which is what a service worker has. Either way, ONCE: a broken deploy
+// at the edge answers the reload with the same broken page, and a refresh loop
+// is far worse than the unstyled page it is trying to fix.
 let deadBuildHandled = false;
+const reloadedClients = new Set();
 async function onDeadBuildAsset() {
   if (deadBuildHandled) return;
   deadBuildHandled = true;
   try {
     await caches.delete(SHELL);
     const clients = await self.clients.matchAll({ type: "window" });
-    for (const client of clients) client.postMessage({ type: "hm-stale-build" });
+    for (const client of clients) {
+      if (reloadedClients.has(client.id)) continue;
+      reloadedClients.add(client.id);
+      client.postMessage({ type: "hm-stale-build" });
+      // navigate() rejects for a client this worker does not control, or that
+      // has moved on. Neither is a reason to fail the asset response.
+      if (typeof client.navigate === "function") {
+        client.navigate(client.url).catch(() => undefined);
+      }
+    }
   } catch {
     /* best effort — a failed recovery must not also break the response */
   }

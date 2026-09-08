@@ -72,6 +72,8 @@ export function ShareGlyph() {
   return (
     <svg
       viewBox="0 0 24 24"
+      width={14}
+      height={14}
       aria-hidden="true"
       className="inline-block h-3.5 w-3.5 -translate-y-px align-text-bottom text-sky-600"
       fill="none"

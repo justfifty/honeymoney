@@ -126,7 +126,40 @@ async function main() {
   // 2. Ship the build's client assets wholesale. Scraping <script> tags misses
   //    lazily-imported chunks; copying .next/static cannot.
   await cp(NEXT_STATIC, path.join(DIST, "_next", "static"), { recursive: true });
-  log(`✓ .next/static → _next/static`);
+  log(`✓ ${path.relative(WEB, NEXT_STATIC)} → _next/static`);
+
+  // 2b. AND THE OTHER ORIGIN'S. This is not belt-and-braces; it is the fix for
+  //     the failure the site had on 2026-09-08.
+  //
+  //     There are two origins and they run two builds: the laptop serves
+  //     `.next` with `next start`, DOM Cloud serves the standalone bundle cut
+  //     from `.next-dc` (deploy/domcloud/push-build.ps1). The two are built
+  //     separately and differ whenever anything at all differs — the README
+  //     records a next.config.ts change alone moving two chunk hashes. And
+  //     _worker.js puts the LAPTOP FIRST, so most pages are rendered by the
+  //     build this snapshot did NOT ship: their HTML asks for `.next` chunks,
+  //     the edge holds `.next-dc` chunks, and every stylesheet 404s.
+  //
+  //     The worker's origin rescue is supposed to cover that gap. It is also a
+  //     round trip per asset to a laptop that may be cold or asleep, and until
+  //     2026-09-08 it had never once executed (see _worker.js). A snapshot that
+  //     simply HAS both builds' files needs no rescue, and no laptop.
+  //
+  //     Safe to overlay: /_next/static filenames are content-hashed, so the
+  //     same name is the same bytes, and a file only one build has is one only
+  //     that build's pages will ask for. Nothing here changes what step 5
+  //     verifies — the --base origin's HTML must still be fully satisfied by
+  //     the primary copy above — this only widens what the edge can answer.
+  const OTHER_DIST_DIRS = [".next", ".next-dc"]
+    .map((d) => path.join(WEB, d, "static"))
+    .filter((p) => p !== NEXT_STATIC && existsSync(p));
+  for (const other of OTHER_DIST_DIRS) {
+    await cp(other, path.join(DIST, "_next", "static"), { recursive: true, force: false, errorOnExist: false });
+    log(`✓ ${path.relative(WEB, other)} → _next/static (overlaid, other origin's build)`);
+  }
+  if (!OTHER_DIST_DIRS.length) {
+    log(`- no second build found beside ${path.relative(WEB, NEXT_STATIC)}; the edge will hold one origin's assets only`);
+  }
 
   // 3. …and everything in public/ (images, icons, gallery, deck PDFs, demo).
   //

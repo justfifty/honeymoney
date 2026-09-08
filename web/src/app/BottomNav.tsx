@@ -248,6 +248,8 @@ function TabFace({
       )}
       <svg
         viewBox="0 0 24 24"
+        width={20}
+        height={20}
         className={
           "h-5 w-5 shrink-0 " +
           (active ? "text-amber-600 dark:text-amber-400" : "text-zinc-500 dark:text-zinc-400")
