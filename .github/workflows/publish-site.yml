@@ -202,6 +202,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy the warmer
+        id: warmer
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -209,12 +210,14 @@ jobs:
           workingDirectory: deploy/warm
           command: deploy
       # Prove the schedule is real, not merely accepted: knock on the warmer's
-      # own address, which runs the same code the cron runs.
+      # own address, which runs the same code the cron runs. The address comes
+      # from wrangler's own output — the Pages token cannot read the account's
+      # workers.dev subdomain through the API, which is how run #6 skipped this.
       - name: Run the warmer once by hand
         shell: bash
+        env:
+          WARMER_URL: ${{ steps.warmer.outputs.deployment-url }}
         run: |
-          url=$(curl -sS --max-time 30 "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/workers/subdomain" \
-                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" | sed -n 's/.*"subdomain":"\([^"]*\)".*/\1/p')
-          if [ -z "$url" ]; then echo "could not read the workers.dev subdomain — skipping the manual knock"; exit 0; fi
-          echo "knocking via https://honeymoney-warm.$url.workers.dev/"
-          curl -sS --max-time 60 "https://honeymoney-warm.$url.workers.dev/" || echo "(the knock itself failed; the schedule is still installed)"
+          if [ -z "$WARMER_URL" ]; then echo "wrangler reported no URL — skipping the manual knock (the schedule is still installed)"; exit 0; fi
+          echo "knocking via $WARMER_URL"
+          curl -sS --max-time 60 "$WARMER_URL" || echo "(the knock itself failed; the schedule is still installed)"
