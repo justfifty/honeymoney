@@ -167,10 +167,11 @@ of `npm run site:deploy`. `-DryRun` builds and stages without shipping.
 
 #### 1b. Refresh the FALLBACK origin too
 
-`deploy/pages/_worker.js` now tries two origins in order — DOM Cloud, then
-`origin.honeymoney.app`, the laptop behind the tunnel — so a GET that the DOM
-Cloud box cannot answer is served by this machine instead of by the offline
-page. That only helps if the laptop is running the same code:
+`deploy/pages/_worker.js` tries two origins in order — **`origin.honeymoney.app`,
+the laptop behind the tunnel, FIRST**, then DOM Cloud (the order was reversed on
+2026-08-31 after DOM Cloud ran out of swap; see the ORIGINS note in the worker).
+So this machine is not the fallback: it renders most pages, and the build it
+serves is the build most visitors get. It has to be current:
 
 ```powershell
 cd web; npm run build            # into .next, which is what the laptop serves
@@ -186,10 +187,26 @@ stops first. Verified the difference on 2026-08-31: after `npm run build` and
 `HoneyMoney`, `/hscore` still came back without the new markup; after
 `HoneyMoney-Restart` it had it.
 
-A stale fallback is degraded rather than broken — the worker asks the origins
-for any `/_next/static/*` the snapshot lacks, so a page rendered by an
-out-of-step laptop still finds its own scripts — but it will serve older
-behaviour, so keep the two in step.
+⚠️ **An out-of-step laptop is not "degraded". Until 2026-09-08 it was the
+unstyled site.** The two builds differ whenever anything differs, the snapshot
+used to ship only DOM Cloud's `.next-dc/static`, and the worker's origin rescue
+for a missing chunk — the thing this paragraph used to lean on — had never once
+executed (Pages answers a miss with HTML at status 200, and the rescue waited on
+a non-200). Every laptop-rendered page asked the edge for `.next` chunks it did
+not hold and got a bare 404: raw HTML, giant icons, a tab bar that is a line of
+links.
+
+Three things now stand between that and the site, in the order they matter:
+
+1. `site:build` ships **both** `.next/static` and `.next-dc/static` into the
+   snapshot when both exist, so the edge can answer either origin's pages
+   without asking anyone. Content-hashed names make the overlay safe.
+2. The worker's rescue actually runs, and outlasts a cold start — so a chunk
+   only an origin has is still fetched, once, rather than 404'd.
+3. `npm run check:worker` proves 2 before every publish, offline.
+
+Keeping the two builds in step is still the right habit; it is just no longer
+what the site's stylesheet depends on.
 
 ### 2. Give the app its environment
 

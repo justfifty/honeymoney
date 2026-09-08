@@ -121,6 +121,14 @@ Both are fixed, and both now have guards that fail loudly: `check:worker` runs
 the worker, and `check:edge` reports INCONCLUSIVE rather than success when it
 could not reach a single origin route.
 
+The structural cause underneath was that there are **two origins running two
+builds** — the laptop's `.next`, DOM Cloud's `.next-dc` — and the snapshot
+carried only one. The laptop is first in the worker's list, so most pages were
+rendered by the build the edge did not hold. `site:build` now ships **both**
+`static/` directories when both exist (content-hashed names make the overlay
+safe), so the edge answers either origin's pages with no rescue and no laptop.
+The rescue stays as the net for a chunk neither copy has.
+
 So:
 
 - To **check a change compiles**, never touch the live build:
