@@ -128,6 +128,43 @@ jobs:
         working-directory: web
         run: npm run build
 
+      # Wake the origin before rendering from it. Run #4 on 2026-09-08 failed
+      # here with "Can't reach https://honeymoney-app.domcloud.dev": a Passenger
+      # process reaped after idle, on a host too short of memory to respawn it
+      # inside the 10s the snapshot script allows. The same host had answered
+      # seven minutes earlier. Nothing about the publish was wrong; nobody had
+      # waited long enough for the origin to come up.
+      #
+      # So wait. Ninety seconds per knock, several knocks, at the origin's own
+      # hostname so the worker's 2.5s navigation budget is not in the way. If
+      # it can come up at all this brings it up, and once resident it answers
+      # the render and every visitor after it. If it cannot, the log says which
+      # origin and this step fails plainly rather than the render failing
+      # cryptically — and that case is a person's to fix, not a re-run's.
+      - name: Wake the origin
+        shell: bash
+        run: |
+          knock() {
+            local url="$1" tries="$2" i code
+            for i in $(seq 1 "$tries"); do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 \
+                     -H 'User-Agent: honeymoney-publish/1 (+https://honeymoney.app)' \
+                     -H 'Cache-Control: no-cache' "$url" 2>/dev/null || echo 000)
+              echo "  attempt $i → $code   $url"
+              [ "$code" = "200" ] && return 0
+              sleep 5
+            done
+            return 1
+          }
+          echo "PocketBase:"; knock https://honeymoney-pb.domcloud.dev/api/health 2 || echo "  (PocketBase not answering — the app will render its degraded notice)"
+          echo "Origin:"
+          if knock "$SNAPSHOT_BASE/api/health" 5; then
+            echo "origin is up"
+          else
+            echo "::error title=Origin unreachable::$SNAPSHOT_BASE did not answer a 90-second knock, five times. The publish cannot render a snapshot from an origin that is down. This is the origin host, not the edge: restart the app on DOM Cloud, or wake the laptop and re-run."
+            exit 1
+          fi
+
       - name: Render the snapshot from the live origin
         run: node scripts/build-static-site.mjs --base "$SNAPSHOT_BASE"
 
