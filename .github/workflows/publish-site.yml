@@ -186,3 +186,35 @@ jobs:
       - name: Verify edge and origin agree
         working-directory: web
         run: node scripts/check-edge.mjs --after-deploy
+
+  # The warmer: a Worker whose only job is to knock on the origin every three
+  # minutes so that no visitor is the one who pays the Passenger respawn.
+  # deploy/warm/README.md explains it; what it never had was a way to be
+  # deployed from anywhere but a laptop. On 2026-09-08 the origin was cold at
+  # 10:02 and again at 10:08 — the warmer was not running — and the site sat
+  # "resting" for the rest of the afternoon. Deploying it here, with the same
+  # token, every time the site is published, means it cannot quietly not exist.
+  # Independent of the publish job: a broken snapshot must not stop the warmer
+  # and vice versa.
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy the warmer
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: deploy/warm
+          command: deploy
+      # Prove the schedule is real, not merely accepted: knock on the warmer's
+      # own address, which runs the same code the cron runs.
+      - name: Run the warmer once by hand
+        shell: bash
+        run: |
+          url=$(curl -sS --max-time 30 "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/workers/subdomain" \
+                -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" | sed -n 's/.*"subdomain":"\([^"]*\)".*/\1/p')
+          if [ -z "$url" ]; then echo "could not read the workers.dev subdomain — skipping the manual knock"; exit 0; fi
+          echo "knocking via https://honeymoney-warm.$url.workers.dev/"
+          curl -sS --max-time 60 "https://honeymoney-warm.$url.workers.dev/" || echo "(the knock itself failed; the schedule is still installed)"
