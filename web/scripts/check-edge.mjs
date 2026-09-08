@@ -205,6 +205,21 @@ if (!originRoutesRead) {
       `its own problem, not a snapshot problem — then re-run this check. Until it\n` +
       `answers, whether the edge still holds the assets it is serving is unknown.\n`,
   );
+  // As a MONITOR, inconclusive is a failure: someone should look. As the last
+  // step of a PUBLISH, it is not — the upload already succeeded, the origin
+  // being down is not something the publish did or a re-run can undo, and a
+  // red run says "the deploy failed" to a person reading it on a phone, who
+  // then re-runs it and changes nothing. Publish run #3 on 2026-09-08 was
+  // exactly that: 119 files and the worker deployed, then red for an origin
+  // outage that had nothing to do with it. A warning annotation keeps the fact
+  // visible at the top of the run without lying about what happened.
+  if (AFTER_DEPLOY) {
+    console.log("::warning title=Published, but the origin was down — edge not verified::" +
+      "The upload succeeded. No origin route answered, so whether the edge holds the " +
+      "assets the origin references could not be checked. Run `npm run check:edge` " +
+      "once the origin is back.");
+    process.exit(0);
+  }
   process.exit(1);
 }
 
