@@ -62,6 +62,27 @@ Two details worth knowing:
 
 ## Deploy
 
+### From anywhere — including a phone
+
+`.github/workflows/publish-site.yml` publishes the Pages project on every push
+to `main` that touches `web/`, `scripts/` or `deploy/pages/`, and on demand from
+the Actions tab ("Run workflow"). It renders the snapshot from the DOM Cloud
+origin, ships the worker beside it, and runs `check:edge` afterwards. **Merging
+a pull request is the deploy.**
+
+It exists because on 2026-09-08 the fix for an unstyled site sat on a branch
+for an afternoon: the only publish path was a command on the laptop, and the
+only person available had a phone. It needs two repository secrets, once —
+`CLOUDFLARE_API_TOKEN` (Cloudflare Pages: Edit) and `CLOUDFLARE_ACCOUNT_ID` —
+under Settings → Secrets and variables → Actions. Both screens work in a
+mobile browser.
+
+It publishes the edge only. Neither origin is rebuilt by it; a laptop page whose
+chunk the snapshot lacks is rescued by the worker from the laptop, which is what
+`check:worker` proves before every run.
+
+### From the laptop
+
 ```bash
 # 0. once per machine — opens a browser
 npx wrangler login

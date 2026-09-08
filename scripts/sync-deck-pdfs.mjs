@@ -53,7 +53,24 @@ for (const f of FILES) {
   const src = path.join(SRC, f);
   const dst = path.join(DST, f);
   if (!existsSync(src)) {
-    console.error(`  ✗ ${f} — missing from docs/deck. Export it before deploying.`);
+    // A missing SOURCE with a present site copy is not a broken deploy — it is
+    // every fresh clone. docs/deck/*.pdf is gitignored (the exports live on
+    // the laptop), while web/public/deck/* is committed, so a CI runner or a
+    // new checkout has exactly the four files the site serves and none of the
+    // ones they were exported from. Aborting the whole snapshot there shipped
+    // NOTHING, which is strictly worse than shipping the committed copy — and
+    // it is what made a publish impossible from anywhere but one machine.
+    //
+    // So: warn, and serve what is committed. The failure this file exists for
+    // — a stale site copy going out silently — still cannot happen from here:
+    // nothing is copied, so nothing can be copied wrong, and the line below is
+    // louder than the silence that preceded 2026-08-24. Source AND site copy
+    // both absent is still the hard error it always was.
+    if (existsSync(dst)) {
+      console.warn(`  !    ${f} — no export in docs/deck; serving the committed site copy as-is`);
+      continue;
+    }
+    console.error(`  ✗ ${f} — missing from docs/deck AND from web/public/deck. Export it before deploying.`);
     missing++;
     continue;
   }

@@ -149,7 +149,12 @@ if ((broken || !originRoutesRead) && AFTER_DEPLOY && !process.env.HM_EDGE_RETRIE
   );
   await new Promise((r) => setTimeout(r, 20000));
   const { spawnSync } = await import("node:child_process");
-  const again = spawnSync(process.execPath, [new URL(import.meta.url).pathname.slice(1), ...args], {
+  const { fileURLToPath } = await import("node:url");
+  // fileURLToPath, not `pathname.slice(1)`: that trick strips the drive-letter
+  // slash on Windows and the ROOT slash on Linux, so the retry — the only
+  // path a GitHub runner takes after a publish — respawned a script it could
+  // not find and failed for a reason that had nothing to do with the edge.
+  const again = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...args], {
     stdio: "inherit",
     env: { ...process.env, HM_EDGE_RETRIED: "1" },
   });

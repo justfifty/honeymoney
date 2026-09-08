@@ -1,0 +1,120 @@
+# Publish honeymoney.app's front door from GitHub, so that fixing the site
+# never again depends on a keyboard attached to one particular laptop.
+#
+# ── WHY THIS EXISTS ────────────────────────────────────────────────────────
+#
+# On 2026-09-08 the site served every app page as raw HTML — no stylesheet, no
+# hydration, a tab bar that was a line of links. The fixes were on a branch
+# within the hour. They then sat there, because the only deploy path was
+# `npm run site:publish` on the laptop that serves the origin, and the only
+# person around had a phone. A fix that exists and cannot be shipped is not a
+# fix. This workflow is the missing half.
+#
+# ── WHAT IT SHIPS, AND WHY THAT IS ENOUGH ─────────────────────────────────
+#
+# One Cloudflare Pages deploy, containing:
+#
+#   deploy/pages/_worker.js   the routing brain — the thing that was broken
+#   dist/*/index.html         the public pages, rendered from the DOM Cloud
+#                             origin (public, always reachable from a runner)
+#   dist/_next/static         the client assets the runner's own build emits,
+#                             PLUS every asset the rendered HTML references that
+#                             the runner's build did not produce, fetched from
+#                             the origin (build-static-site.mjs step "extra")
+#
+# It does NOT touch either origin. It does not need to: a laptop-rendered page
+# whose chunk the snapshot lacks is now rescued from the laptop by the worker
+# (see _worker.js and web/scripts/check-worker.mjs), and a DOM Cloud-rendered
+# page finds its chunks in the snapshot rendered from that same origin. Either
+# way the page arrives styled. The one thing this cannot do is publish a
+# snapshot while BOTH origins are down — build-static-site refuses to render
+# from a dead server, on purpose, and the job goes red saying so.
+#
+# ── WHAT A PHONE HAS TO DO, ONCE ──────────────────────────────────────────
+#
+# Two repository secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN    a token with "Cloudflare Pages: Edit" on the account
+#                           (dash.cloudflare.com → My Profile → API Tokens)
+#   CLOUDFLARE_ACCOUNT_ID   from the right-hand column of any zone's Overview
+#
+# After that, merging to main is the deploy, and the Actions tab is the log.
+# "Run workflow" on this file re-publishes without a commit.
+
+name: Publish site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "scripts/**"
+      - "deploy/pages/**"
+      - ".github/workflows/publish-site.yml"
+  workflow_dispatch:
+
+# One publish at a time. Two runners racing `wrangler pages deploy` would leave
+# whichever finished last as production, which is not necessarily the newer one.
+concurrency:
+  group: publish-site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # The origin the snapshot is rendered from and the dist dir whose client
+      # assets ship beside it. Both are build-static-site.mjs's defaults, stated
+      # here so the pairing is visible in the log rather than implied.
+      SNAPSHOT_BASE: https://honeymoney-app.domcloud.dev
+      NEXT_DIST_DIR: .next-dc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      # The front door, proven before anything is built or uploaded. Four
+      # seconds, offline. A worker that mis-routes ships a site that looks up
+      # and is not, so this is the first gate and not the last.
+      - name: Check the worker routes as documented
+        working-directory: web
+        run: npm run check:worker
+
+      # The runner's own build supplies the bulk of /_next/static. Where the
+      # origin's HTML references a hash this build did not produce, the
+      # snapshot script fetches that file from the origin, and its step 5
+      # refuses to finish if any referenced chunk is still missing.
+      - name: Build client assets
+        working-directory: web
+        run: npm run build
+
+      - name: Render the snapshot from the live origin
+        run: node scripts/build-static-site.mjs --base "$SNAPSHOT_BASE"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: deploy/pages
+          # --branch=main marks this the production deployment rather than a
+          # preview; the project name comes from wrangler.toml.
+          command: pages deploy --branch=main
+
+      # The same check site:publish runs. It now distinguishes "the edge is
+      # missing assets the origin references" (a failed publish) from "no
+      # origin route answered" (an origin problem; the publish itself is fine)
+      # and says which. Both go red here on purpose — a green run must mean the
+      # site was seen working, not merely uploaded.
+      - name: Verify edge and origin agree
+        working-directory: web
+        run: node scripts/check-edge.mjs --after-deploy
