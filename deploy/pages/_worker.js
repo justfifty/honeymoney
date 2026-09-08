@@ -183,12 +183,34 @@ export default {
       // files themselves had been fixed at the edge.
       //
       // 404 makes the same mistake loud and, crucially, not cached as valid.
-      if (pathname.startsWith("/_next/static/") && res.status === 200) {
-        const type = res.headers.get("content-type") || "";
-        if (!/javascript|css|font|image|json|octet-stream|wasm|video|audio/i.test(type)) {
-          return missingAsset();
-        }
-      }
+      //
+      // ⚠️ BUT IT IS A MISS, AND A MISS MUST TAKE THE MISS PATH — NOT RETURN HERE.
+      //
+      // This branch used to `return missingAsset()` on the spot, and doing so
+      // made the origin rescue below UNREACHABLE in the one case it was written
+      // for. Read the two conditions against the fact stated four lines up:
+      // Pages answers an unknown path with the site's HTML AT STATUS 200. So a
+      // missing chunk arrives here as a 200, is caught here, and is answered
+      // with a bare 404 — while the rescue below waits on `res.status !== 200`,
+      // which for a missing /_next/static file on Pages essentially never
+      // happens. The rescue could not run. It had never run.
+      //
+      // That is how honeymoney.app spent 2026-09-08 serving /record and
+      // /dashboard as raw HTML — real household data, correct markup, giant
+      // unsized icons, no stylesheet, no hydration, a tab bar that is only a
+      // list of links. The origin was up the entire time and was holding every
+      // chunk being 404'd at the edge, and nothing in this file ever asked it.
+      //
+      // So the answer is a FLAG, not a return. Everything the comment above
+      // argues for still holds — the fallback HTML must never reach a browser
+      // under a .js URL, and the 404 must stay uncacheable — it just has to
+      // happen AFTER the origin has been given its chance, not instead of it.
+      const servedFallbackHtml =
+        pathname.startsWith("/_next/static/") &&
+        res.status === 200 &&
+        !/javascript|css|font|image|json|octet-stream|wasm|video|audio/i.test(
+          res.headers.get("content-type") || "",
+        );
 
       // ⚠️ A 404 HERE MUST NEVER BE CACHEABLE. _headers matches on PATH, not on
       // status, so the `/_next/static/*` immutable rule is attached to a miss
@@ -211,7 +233,7 @@ export default {
       // no-store costs nothing on the happy path (a present asset is a 200 and
       // keeps its immutable header) and removes the only way this failure
       // outlives the deploy that caused it.
-      if (pathname.startsWith("/_next/static/") && res.status !== 200) {
+      if (pathname.startsWith("/_next/static/") && (res.status !== 200 || servedFallbackHtml)) {
         // ── ASK THE ORIGINS BEFORE GIVING UP ──────────────────────────────
         //
         // Necessary the moment there is more than one origin. The snapshot's
@@ -227,7 +249,10 @@ export default {
         // loud and uncacheable.
         const fromOrigin = await tryOrigin(request, url, "asset");
         if (fromOrigin && fromOrigin.status === 200) return fromOrigin;
-        return missingAsset(res.status);
+        // Never pass a 200 through here. In the fallback-HTML case that IS the
+        // status Pages gave us, and echoing it would hand the browser an empty
+        // 200 under a .js URL — a different way of saying "this file is fine".
+        return missingAsset(servedFallbackHtml ? 404 : res.status);
       }
       return res;
     }
