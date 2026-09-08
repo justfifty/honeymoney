@@ -40,6 +40,12 @@ const BASE = (args.find((a) => a.startsWith("http")) || "https://honeymoney.app"
 // The drift only shows where origin HTML meets edge assets.
 const ROUTES = ["/", "/login", "/signup", "/record", "/dashboard", "/graph"];
 
+// Which of those actually prove anything. `/` is answered by the snapshot for
+// an anonymous English visitor, so it agrees with itself no matter how far the
+// origin has drifted — it can never fail this check and must never be counted
+// as evidence that the check ran. See the "inconclusive" exit at the bottom.
+const SNAPSHOT_ROUTES = new Set(["/"]);
+
 const TIMEOUT = 20000;
 
 async function head(url) {
@@ -81,18 +87,26 @@ console.log(`\nedge ↔ origin asset check\n   ${BASE}\n`);
 
 let broken = 0;
 let checked = 0;
+// How many ORIGIN routes were actually read. A skipped route is not a passing
+// route, and this is what stops the summary claiming otherwise.
+let originRoutesRead = 0;
+const unreadable = [];
 const seen = new Map(); // asset -> status, so a shared chunk is fetched once
 
 for (const route of ROUTES) {
+  const fromOrigin = !SNAPSHOT_ROUTES.has(route);
   const page = await html(BASE + route);
   if (!page.status) {
     console.log(`  ??   ${route.padEnd(11)} unreachable`);
+    if (fromOrigin) unreadable.push(`${route} — unreachable`);
     continue;
   }
   if (page.status !== 200) {
-    console.log(`  ${page.status}  ${route.padEnd(11)} (not 200 — skipped)`);
+    console.log(`  ${page.status}  ${route.padEnd(11)} (not 200 — not checked)`);
+    if (fromOrigin) unreadable.push(`${route} — ${page.status}`);
     continue;
   }
+  if (fromOrigin) originRoutesRead++;
 
   // Every build asset the document asks for. `.css` first in the report,
   // because the stylesheet is the one whose absence is visible from the far
@@ -123,8 +137,16 @@ for (const route of ROUTES) {
   }
 }
 
-if (broken && AFTER_DEPLOY && !process.env.HM_EDGE_RETRIED) {
-  console.log("\n…one route came back short. Waiting 20s and checking once more before failing.");
+// The retry covers "could not read the origin" as well as "assets missing".
+// Straight after a publish the origin has usually just been restarted, so a
+// route answering 503 for a few seconds is a cold start rather than a fault —
+// and failing the publish over one would teach people to stop running this.
+if ((broken || !originRoutesRead) && AFTER_DEPLOY && !process.env.HM_EDGE_RETRIED) {
+  console.log(
+    broken
+      ? "\n…one route came back short. Waiting 20s and checking once more before failing."
+      : "\n…no origin route answered. Waiting 20s and checking once more before failing.",
+  );
   await new Promise((r) => setTimeout(r, 20000));
   const { spawnSync } = await import("node:child_process");
   const again = spawnSync(process.execPath, [new URL(import.meta.url).pathname.slice(1), ...args], {
@@ -150,5 +172,42 @@ if (broken) {
   process.exit(1);
 }
 
-console.log(`\nEdge and origin agree — ${checked} asset reference(s), none missing.\n`);
+// ── A CHECK THAT COULD NOT LOOK MUST NOT REPORT "ok" ───────────────────────
+//
+// Every non-200 above used to `continue` without touching `broken`, and the
+// run then printed "Edge and origin agree" and exited 0. Read that against the
+// failure this file exists to catch: the origin is down or flapping, so every
+// app route answers 503 from the worker's offline page and is skipped, `/` is
+// answered by the SNAPSHOT and agrees with itself by construction, and the
+// script congratulates you on a site whose origin it never once reached.
+//
+// That is not a weak check, it is an inverted one — it passed most confidently
+// in the exact conditions that produce the failure. As the gate on
+// `site:publish` it was gating on nothing, and as a monitor it was a green
+// light over a broken site. Reported 2026-09-08 as "haywire icon and
+// unreachable", a week after the last publish.
+//
+// So: reaching no origin route is its own outcome, named and non-zero. It is
+// NOT the unstyled-site failure and does not claim to be — the message says
+// which of the two you have, because the fixes are different.
+if (!originRoutesRead) {
+  console.log(
+    `\nINCONCLUSIVE — no origin route could be read, so nothing was verified.\n\n` +
+      unreadable.map((u) => `  ${u}`).join("\n") +
+      `\n\n${BASE}/ answers from the Pages snapshot, which is internally consistent\n` +
+      `whatever the origin is doing, so it proves nothing on its own.\n\n` +
+      `The origin is down or unreachable from here. Bring it back first — that is\n` +
+      `its own problem, not a snapshot problem — then re-run this check. Until it\n` +
+      `answers, whether the edge still holds the assets it is serving is unknown.\n`,
+  );
+  process.exit(1);
+}
+
+if (unreadable.length) {
+  console.log(`\n  note: ${unreadable.length} origin route(s) could not be read — ${unreadable.join(", ")}`);
+}
+console.log(
+  `\nEdge and origin agree — ${checked} asset reference(s) across ` +
+    `${originRoutesRead} origin route(s), none missing.\n`,
+);
 process.exit(0);
