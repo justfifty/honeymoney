@@ -1,0 +1,111 @@
+# Knock on the origins, patiently, from somewhere that is not a phone.
+#
+# ── WHY THIS EXISTS ────────────────────────────────────────────────────────
+#
+# On 2026-09-08, with the edge freshly fixed, honeymoney.app showed "This part
+# of HoneyMoney is resting" on every app route: both origins unreachable. The
+# laptop was asleep. DOM Cloud had answered a direct fetch at 10:01 and timed
+# out at 10:08 — the shape of a Passenger process reaped after idle on a host
+# too short of memory to respawn it inside anyone's patience.
+#
+# And nobody's patience is long enough, by design. _worker.js gives an origin
+# 2.5s to answer a navigation before serving the offline page, because a
+# person is waiting on a blank tab. deploy/warm/ exists to knock every three
+# minutes with a 20s timeout so that the respawn is never a visitor's problem —
+# but if the warmer itself is not deployed, or the spawn now takes longer than
+# 20s, the site sits "resting" indefinitely with nothing that will wait for it.
+#
+# This is a hand that will. Ninety seconds per knock, several knocks, straight
+# at each origin's own hostname so the worker's 2.5s budget is not in the way.
+# If the process can come up at all, this brings it up; once it is resident the
+# worker's budget is plenty and the site serves. Then it reads honeymoney.app
+# through the worker and says, in plain words, what a visitor would get.
+#
+# Run it from the Actions tab: "Wake origin" → Run workflow. It changes nothing
+# and stores nothing; every request is a GET. It cannot restart a process the
+# host refuses to run — the summary says so if that is what it finds.
+
+name: Wake origin
+
+on:
+  workflow_dispatch:
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Knock on each origin until one answers
+        id: knock
+        shell: bash
+        run: |
+          set +e
+          knock() {
+            local name="$1" url="$2" tries="$3" code
+            for i in $(seq 1 "$tries"); do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 \
+                     -H 'User-Agent: honeymoney-wake/1 (+https://honeymoney.app)' \
+                     -H 'Cache-Control: no-cache' "$url" 2>/dev/null || echo 000)
+              echo "  $name  attempt $i → $code"
+              if [ "$code" = "200" ]; then echo "$name=200" >> "$GITHUB_OUTPUT"; return 0; fi
+              sleep 5
+            done
+            echo "$name=$code" >> "$GITHUB_OUTPUT"
+            return 1
+          }
+          echo "── PocketBase (the ledger both apps read) ──"
+          knock pocketbase https://honeymoney-pb.domcloud.dev/api/health 3
+          echo "── DOM Cloud app ──"
+          knock domcloud   https://honeymoney-app.domcloud.dev/api/health 5
+          echo "── Laptop (tunnel) ──"
+          knock laptop     https://origin.honeymoney.app/api/health 2
+          true
+
+      - name: What a visitor gets right now
+        shell: bash
+        run: |
+          set +e
+          echo "── honeymoney.app through the worker ──"
+          for route in /record /dashboard /login; do
+            body=$(curl -sS --max-time 30 -H 'User-Agent: honeymoney-wake/1' "https://honeymoney.app$route" 2>/dev/null)
+            code=$?
+            if echo "$body" | grep -q 'X-HoneyMoney-Served\|is resting'; then state="RESTING (offline page)"
+            elif echo "$body" | grep -q '/_next/static/.*\.css'; then
+              css=$(echo "$body" | grep -o '/_next/static/[^" ]*\.css' | head -1)
+              cs=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 "https://honeymoney.app$css" 2>/dev/null)
+              if [ "$cs" = "200" ]; then state="STYLED PAGE — stylesheet $cs"; else state="PAGE BUT STYLESHEET $cs (the unstyled-site failure)"; fi
+            elif [ -z "$body" ]; then state="no response (curl $code)"
+            else state="unrecognised response"; fi
+            echo "  $route  →  $state"
+          done
+
+      - name: Summary
+        shell: bash
+        env:
+          PB: ${{ steps.knock.outputs.pocketbase }}
+          DC: ${{ steps.knock.outputs.domcloud }}
+          LT: ${{ steps.knock.outputs.laptop }}
+        run: |
+          {
+            echo "## Origins"
+            echo
+            echo "| origin | health |"
+            echo "|---|---|"
+            echo "| PocketBase (ledger) | ${PB:-000} |"
+            echo "| DOM Cloud app | ${DC:-000} |"
+            echo "| Laptop (tunnel) | ${LT:-000} |"
+            echo
+            if [ "$DC" = "200" ] || [ "$LT" = "200" ]; then
+              echo "An app origin is answering. honeymoney.app should serve styled pages now — reload it."
+            else
+              echo "**Neither app origin answered a 90-second knock.** This is not something the edge or a re-run can fix:"
+              echo "- **Laptop**: wake it. The HoneyMoney watchdog restarts the stack within 5 minutes."
+              echo "- **DOM Cloud**: restart the app from the DOM Cloud dashboard, or check the host — an origin that accepts a connection and never answers is the out-of-swap state documented in deploy/pages/_worker.js."
+            fi
+            if [ "$PB" != "200" ]; then
+              echo
+              echo "PocketBase is also not answering, so even a running app would show the degraded ledger notice."
+            fi
+          } | tee -a "$GITHUB_STEP_SUMMARY"
