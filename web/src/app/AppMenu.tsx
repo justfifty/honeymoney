@@ -79,7 +79,7 @@ export default function AppMenu({
         onClick={() => setOpen((v) => !v)}
         className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 hover:bg-amber-50 hover:text-amber-600 dark:text-zinc-300 dark:hover:bg-amber-950/40 dark:hover:text-amber-400"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="h-5 w-5" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="h-5 w-5" aria-hidden="true">
           {open ? (
             <>
               <path d="M18 6 6 18" />

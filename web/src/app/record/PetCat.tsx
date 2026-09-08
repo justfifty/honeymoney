@@ -483,8 +483,8 @@ export default function PetCat({ lang, household }: Props) {
               <Image
                 src="/honey-cat.jpg"
                 alt=""
-                width={1021}
-                height={1024}
+                width={48}
+                height={48}
                 priority
                 draggable={false}
                 className="block h-[76px] w-[76px] scale-[1.08] select-none sm:h-[88px] sm:w-[88px]"

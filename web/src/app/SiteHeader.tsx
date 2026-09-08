@@ -56,7 +56,7 @@ export default async function SiteHeader() {
             <>
               {/* Icon-only on phones to keep the top bar compact; full label from sm up. */}
               <Link href="/login" aria-label={tr("auth.login")} className="flex items-center whitespace-nowrap rounded-lg px-2 py-1.5 font-medium text-amber-600 hover:bg-amber-50 sm:px-2.5 dark:text-amber-400 dark:hover:bg-amber-950/40">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 sm:hidden" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 sm:hidden" aria-hidden="true">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
