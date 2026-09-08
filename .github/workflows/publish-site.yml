@@ -70,6 +70,37 @@ jobs:
       NEXT_DIST_DIR: .next-dc
 
     steps:
+      # First, and before anything is installed or built: are the secrets there?
+      #
+      # Run #1 on 2026-09-08 proved every other step on a real runner — the
+      # worker check, the build, the snapshot rendered from the live origin —
+      # and then died at the upload with wrangler's "set a CLOUDFLARE_API_TOKEN".
+      # Eighty seconds of green output ending in a red line about credentials,
+      # read on a phone. The person merging cannot see repository secrets from
+      # the PR, so the workflow has to say what is missing in its own words, at
+      # the top, in a way that is the first thing the log shows.
+      - name: Check publish secrets are configured
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          missing=""
+          [ "$HAS_TOKEN" = "true" ]   || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ "$HAS_ACCOUNT" = "true" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error title=Publish cannot run — repository secret(s) missing::$missing"
+            echo
+            echo "Add them at: https://github.com/${GITHUB_REPOSITORY}/settings/secrets/actions"
+            echo
+            echo "  CLOUDFLARE_API_TOKEN    dash.cloudflare.com → My Profile → API Tokens → Create Token"
+            echo "                          → permission 'Cloudflare Pages: Edit' on the account"
+            echo "  CLOUDFLARE_ACCOUNT_ID   dash.cloudflare.com → any site → Overview → right-hand column"
+            echo
+            echo "Then re-run this workflow from the Actions tab. Nothing was uploaded."
+            exit 1
+          fi
+          echo "both secrets present"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
