@@ -70,6 +70,37 @@ jobs:
       NEXT_DIST_DIR: .next-dc
 
     steps:
+      # First, and before anything is installed or built: are the secrets there?
+      #
+      # Run #1 on 2026-09-08 proved every other step on a real runner — the
+      # worker check, the build, the snapshot rendered from the live origin —
+      # and then died at the upload with wrangler's "set a CLOUDFLARE_API_TOKEN".
+      # Eighty seconds of green output ending in a red line about credentials,
+      # read on a phone. The person merging cannot see repository secrets from
+      # the PR, so the workflow has to say what is missing in its own words, at
+      # the top, in a way that is the first thing the log shows.
+      - name: Check publish secrets are configured
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          missing=""
+          [ "$HAS_TOKEN" = "true" ]   || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ "$HAS_ACCOUNT" = "true" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          if [ -n "$missing" ]; then
+            echo "::error title=Publish cannot run — repository secret(s) missing::$missing"
+            echo
+            echo "Add them at: https://github.com/${GITHUB_REPOSITORY}/settings/secrets/actions"
+            echo
+            echo "  CLOUDFLARE_API_TOKEN    dash.cloudflare.com → My Profile → API Tokens → Create Token"
+            echo "                          → permission 'Cloudflare Pages: Edit' on the account"
+            echo "  CLOUDFLARE_ACCOUNT_ID   dash.cloudflare.com → any site → Overview → right-hand column"
+            echo
+            echo "Then re-run this workflow from the Actions tab. Nothing was uploaded."
+            exit 1
+          fi
+          echo "both secrets present"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -97,6 +128,43 @@ jobs:
         working-directory: web
         run: npm run build
 
+      # Wake the origin before rendering from it. Run #4 on 2026-09-08 failed
+      # here with "Can't reach https://honeymoney-app.domcloud.dev": a Passenger
+      # process reaped after idle, on a host too short of memory to respawn it
+      # inside the 10s the snapshot script allows. The same host had answered
+      # seven minutes earlier. Nothing about the publish was wrong; nobody had
+      # waited long enough for the origin to come up.
+      #
+      # So wait. Ninety seconds per knock, several knocks, at the origin's own
+      # hostname so the worker's 2.5s navigation budget is not in the way. If
+      # it can come up at all this brings it up, and once resident it answers
+      # the render and every visitor after it. If it cannot, the log says which
+      # origin and this step fails plainly rather than the render failing
+      # cryptically — and that case is a person's to fix, not a re-run's.
+      - name: Wake the origin
+        shell: bash
+        run: |
+          knock() {
+            local url="$1" tries="$2" i code
+            for i in $(seq 1 "$tries"); do
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 \
+                     -H 'User-Agent: honeymoney-publish/1 (+https://honeymoney.app)' \
+                     -H 'Cache-Control: no-cache' "$url" 2>/dev/null || echo 000)
+              echo "  attempt $i → $code   $url"
+              [ "$code" = "200" ] && return 0
+              sleep 5
+            done
+            return 1
+          }
+          echo "PocketBase:"; knock https://honeymoney-pb.domcloud.dev/api/health 2 || echo "  (PocketBase not answering — the app will render its degraded notice)"
+          echo "Origin:"
+          if knock "$SNAPSHOT_BASE/api/health" 5; then
+            echo "origin is up"
+          else
+            echo "::error title=Origin unreachable::$SNAPSHOT_BASE did not answer a 90-second knock, five times. The publish cannot render a snapshot from an origin that is down. This is the origin host, not the edge: restart the app on DOM Cloud, or wake the laptop and re-run."
+            exit 1
+          fi
+
       - name: Render the snapshot from the live origin
         run: node scripts/build-static-site.mjs --base "$SNAPSHOT_BASE"
 
@@ -118,3 +186,38 @@ jobs:
       - name: Verify edge and origin agree
         working-directory: web
         run: node scripts/check-edge.mjs --after-deploy
+
+  # The warmer: a Worker whose only job is to knock on the origin every three
+  # minutes so that no visitor is the one who pays the Passenger respawn.
+  # deploy/warm/README.md explains it; what it never had was a way to be
+  # deployed from anywhere but a laptop. On 2026-09-08 the origin was cold at
+  # 10:02 and again at 10:08 — the warmer was not running — and the site sat
+  # "resting" for the rest of the afternoon. Deploying it here, with the same
+  # token, every time the site is published, means it cannot quietly not exist.
+  # Independent of the publish job: a broken snapshot must not stop the warmer
+  # and vice versa.
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy the warmer
+        id: warmer
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: deploy/warm
+          command: deploy
+      # Prove the schedule is real, not merely accepted: knock on the warmer's
+      # own address, which runs the same code the cron runs. The address comes
+      # from wrangler's own output — the Pages token cannot read the account's
+      # workers.dev subdomain through the API, which is how run #6 skipped this.
+      - name: Run the warmer once by hand
+        shell: bash
+        env:
+          WARMER_URL: ${{ steps.warmer.outputs.deployment-url }}
+        run: |
+          if [ -z "$WARMER_URL" ]; then echo "wrangler reported no URL — skipping the manual knock (the schedule is still installed)"; exit 0; fi
+          echo "knocking via $WARMER_URL"
+          curl -sS --max-time 60 "$WARMER_URL" || echo "(the knock itself failed; the schedule is still installed)"

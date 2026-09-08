@@ -134,7 +134,35 @@ const SNAPSHOT = new Set(/* @snapshot-routes */ ["/", "/guide", "/learn", "/gall
 //
 // 8000 clears the cold start with room for the transfer, and is still bounded.
 // It is only ever paid on a miss, so the happy path is untouched.
-const ORIGIN_TIMEOUT_MS = { nav: 2500, rsc: 1500, asset: 8000, other: 25000 };
+//
+// ── `app`: A NAVIGATION WITH NOTHING TO FALL BACK TO ──────────────────────
+//
+// The 2500ms `nav` budget was written for the public pages, and there it is
+// right: run out, and the visitor gets the snapshot — the same page, from the
+// edge, instantly. But /record, /dashboard, /graph and the rest have no
+// snapshot. For them, running out means the offline page. That is the asset
+// trade again, wearing a different hat: every other budget here is short
+// because there is something else to serve, and on an app route there is
+// not.
+//
+// Measured on 2026-09-08: a Passenger process reaped after five idle minutes
+// took ~3s to respawn, the edge gave up at 2.5s, and every visitor saw
+// "resting" — on a host that was alive and would have answered a moment
+// later. Nobody waits long enough to wake it, so it never wakes; the site
+// stayed "resting" until a runner with a 90s timeout knocked from outside.
+//
+// 8000 on app routes means the FIRST visitor after an idle spell waits about
+// three seconds and gets the real page, instead of waiting two and a half and
+// getting a dead end; everyone after them gets the ~100ms a warm origin has
+// always given. The warmer (deploy/warm/) exists so that first visitor is
+// almost never a person; this is for when it is anyway.
+//
+// A genuinely dead host still costs one visitor eight seconds rather than
+// two and a half — and a timeout at eight seconds is strong evidence the host
+// is down, so it trips the breaker and the visitors behind them are answered
+// from the marker in milliseconds. The `nav` budget is unchanged for the
+// routes that have a snapshot to fall back to.
+const ORIGIN_TIMEOUT_MS = { nav: 2500, app: 8000, rsc: 1500, asset: 8000, other: 25000 };
 
 // ── THE BREAKER ─────────────────────────────────────────────────────────────
 //
@@ -285,8 +313,11 @@ export default {
     //    1.8s when cold. An API route is not a person staring at a blank tab and
     //    there is no snapshot to give it instead, so the path has to be part of
     //    the question.
+    //    `app`, not `nav`: these routes have no snapshot behind them, so the
+    //    budget has to outlast a cold start rather than a warm render. See the
+    //    ORIGIN_TIMEOUT_MS note.
     const isNav = isPageRequest(request, url) && !pathname.startsWith("/api/");
-    const live = await tryOrigin(request, url, isNav ? "nav" : "other");
+    const live = await tryOrigin(request, url, isNav ? "app" : "other");
     if (live) return live;
     return pathname.startsWith("/api/") ? offlineJson() : offlinePage(url);
   },
@@ -455,7 +486,10 @@ async function askOrigin(request, url, host, kind) {
     // DNS, TLS, connection refused — is the host, whatever was being asked of
     // it, and is worth sparing the next visitor the same wait.
     const timedOut = err && err.name === "TimeoutError";
-    if (!timedOut || kind === "nav") await tripBreaker(host);
+    // An `app` timeout is eight seconds against a ~3s cold start: that is the
+    // host, not the request, and the visitors behind this one should not each
+    // pay it again.
+    if (!timedOut || kind === "nav" || kind === "app") await tripBreaker(host);
     return null;
   }
 }

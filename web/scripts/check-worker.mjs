@@ -254,6 +254,24 @@ const CHUNK_B = "/_next/static/chunks/build-b.js";
   );
 }
 
+// 6b. A COLD origin — alive, but respawning after idle — must be waited for
+//     on an app route, because there is no snapshot to fall back to. At 2.5s
+//     every visitor after an idle spell got "resting" from a host that would
+//     have answered half a second later, and nobody ever waited long enough
+//     to wake it. Measured cold start: ~3.1s (deploy/warm/README.md).
+{
+  reset();
+  ORIGIN.set("/dashboard", html("<!doctype html><html>the real dashboard</html>"));
+  originDelayMs = 3140;
+  const started = Date.now();
+  const r = await call("/dashboard");
+  check(
+    "app route on a cold (~3.1s) origin — waited for, real page served",
+    r.status === 200 && r.body.includes("the real dashboard"),
+    `status=${r.status} after ${Date.now() - started}ms body=${JSON.stringify(r.body.slice(0, 30))}`,
+  );
+}
+
 // 7. An app route with no origin gets the offline page, not a blank tab.
 {
   reset();

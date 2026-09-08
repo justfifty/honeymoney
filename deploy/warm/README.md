@@ -6,6 +6,13 @@ Passenger cold start (~3s, measured).
 
 ## Deploy
 
+**It deploys itself.** `.github/workflows/publish-site.yml` has a `warm` job
+that runs `wrangler deploy` here on every publish, with the same Cloudflare
+token — so the warmer cannot quietly not exist, which is what it was doing on
+2026-09-08 while the site sat "resting" all afternoon.
+
+By hand, from anywhere with wrangler logged in:
+
 ```
 cd deploy/warm
 npx wrangler deploy
