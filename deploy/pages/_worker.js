@@ -425,6 +425,17 @@ async function resetBreaker(host) {
  * on /api/* is the second kind, and must not park a marker that sends the next
  * visitor's dashboard somewhere else.
  */
+/**
+ * askOrigin's answer when the host PROVABLY never received the request: the
+ * breaker was already open (nothing was sent), or the host answered with one
+ * of Cloudflare's "I could not reach your origin" statuses — which is what a
+ * sleeping laptop's tunnel returns, from Cloudflare's edge, before a single
+ * byte reaches the app. Distinct from `null`, which means "no usable answer,
+ * and the request MAY have been delivered" — a timeout after the body went
+ * out. The distinction is what makes a write safe to retry. See tryOrigin.
+ */
+const NEVER_DELIVERED = Symbol("never-delivered");
+
 async function askOrigin(request, url, host, kind) {
   // ⚠️ AN ASSET RESCUE IGNORES THE BREAKER, AND MUST.
   //
@@ -449,7 +460,7 @@ async function askOrigin(request, url, host, kind) {
   // That is the trade taken deliberately: the page being rescued is unusable if
   // we are wrong, and correct if we are right, so waiting is only ever paid on
   // a page that has nothing to lose.
-  if (kind !== "asset" && (await breakerOpen(host))) return null;
+  if (kind !== "asset" && (await breakerOpen(host))) return NEVER_DELIVERED;
 
   const target = new URL(url);
   target.protocol = "https:";
@@ -467,7 +478,8 @@ async function askOrigin(request, url, host, kind) {
     });
     if (ORIGIN_DOWN.has(res.status)) {
       await tripBreaker(host);
-      return null;
+      // Cloudflare answered on the origin's behalf: the app never saw this.
+      return NEVER_DELIVERED;
     }
     // Anything the app itself answered — a 200, a redirect, even a real 500 —
     // proves the host is up. Clearing here is what makes recovery immediate.
@@ -511,12 +523,37 @@ async function askOrigin(request, url, host, kind) {
  * second chance, and writes get an honest failure they already know how to
  * recover from.
  */
+//
+// ── THE ONE CASE WHERE A WRITE IS SAFE TO RETRY, AND WHY IT IS THE COMMON ONE ─
+//
+// "Never fail a POST over" was correct and, on 2026-09-08, was also why login
+// said "offline" on a working site. The laptop is first in ORIGINS and was
+// asleep; every write went to it, got the tunnel's 530, and stopped there —
+// while DOM Cloud, second in line and perfectly healthy, was never asked.
+// Reads worked. Writes did not. The site looked up and could not be used.
+//
+// The rule above forbids retrying a write the first host MAY have processed.
+// A 530 from Cloudflare's edge, or a breaker that was already open, is not
+// that: the request provably never reached the app. Sending it to the next
+// host cannot land it twice, because it has not landed once. So askOrigin
+// distinguishes NEVER_DELIVERED from null, and a write follows the first and
+// not the second. A timeout — the one case where the body may have gone out
+// and the answer simply did not come back — is still null, still final, and
+// still the client's queue to retry, because only it knows whether the write
+// happened.
+//
+// The body has to survive the first attempt for this to work at all: a
+// Request's body is a stream, read once. Each attempt gets a clone, so a
+// never-delivered first try leaves an intact body for the second. The tee
+// buffers at most one body in memory, and only for the attempt's duration.
 async function tryOrigin(request, url, kind = "other") {
-  const canFailOver = request.method === "GET" || request.method === "HEAD";
+  const bodyless = request.method === "GET" || request.method === "HEAD";
   for (const host of ORIGINS) {
-    const res = await askOrigin(request, url, host, kind);
+    const attempt = bodyless ? request : request.clone();
+    const res = await askOrigin(attempt, url, host, kind);
+    if (res === NEVER_DELIVERED) continue;
     if (res) return res;
-    if (!canFailOver) break;
+    if (!bodyless) break;
   }
   return null;
 }

@@ -272,6 +272,87 @@ const CHUNK_B = "/_next/static/chunks/build-b.js";
   );
 }
 
+// 6c. A WRITE while the first origin is asleep. Login is a POST. The laptop is
+//     first in ORIGINS and, asleep, its tunnel answers 530 from Cloudflare's
+//     edge — before a single byte reaches the app. That is a request the
+//     laptop provably never received, so sending it to DOM Cloud cannot land
+//     it twice. Before 2026-09-08 a POST never failed over at all, and every
+//     write said "offline" while a perfectly good origin sat idle.
+{
+  reset();
+  ORIGIN.set("/api/auth/login", { body: '{"ok":true}', type: "application/json", status: 200 });
+  originDelayMs = 0;
+  // First host answers 530 (tunnel down); second host is the real app.
+  const realFetch = globalThis.fetch;
+  const delivered = [];
+  globalThis.fetch = async (req, init = {}) => {
+    const url = new URL(req.url);
+    if (url.hostname === "origin.honeymoney.app") {
+      originCalls.push(url.hostname + url.pathname);
+      return new Response("tunnel down", { status: 530 });
+    }
+    delivered.push(await req.clone().text());
+    return realFetch(req, init);
+  };
+  const res = await worker.fetch(
+    new Request("https://honeymoney.app/api/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: '{"email":"a@b.c","password":"x"}',
+    }),
+    env,
+  );
+  const body = await res.text();
+  globalThis.fetch = realFetch;
+  check(
+    "POST while the first origin's tunnel is down (530) — served by the second, body delivered once",
+    res.status === 200 && body.includes('"ok":true') && delivered.length === 1 && delivered[0].includes("a@b.c"),
+    `status=${res.status} body=${JSON.stringify(body.slice(0, 40))} deliveredToSecond=${delivered.length}`,
+  );
+}
+
+// 6d. …but a POST the first origin MAY have received is never resent. A
+//     timeout after the request went out is exactly the case where a write
+//     could land twice, and the client's own offline queue is the right place
+//     for that retry, because only it knows whether the write happened.
+{
+  reset();
+  ORIGIN.set("/api/auth/login", { body: '{"ok":true}', type: "application/json", status: 200 });
+  const realFetch = globalThis.fetch;
+  let secondAsked = 0;
+  globalThis.fetch = async (req, init = {}) => {
+    const url = new URL(req.url);
+    if (url.hostname === "origin.honeymoney.app") {
+      originCalls.push(url.hostname + url.pathname);
+      // Never answers. A referenced timer keeps the event loop alive until the
+      // worker's own AbortSignal.timeout fires — Node's timeout signals are
+      // unref'd, and without this the process exits mid-test.
+      await new Promise((resolve, reject) => {
+        const keepAlive = setTimeout(resolve, 120_000);
+        const signal = init.signal ?? req.signal;
+        signal?.addEventListener("abort", () => {
+          clearTimeout(keepAlive);
+          reject(Object.assign(new Error("timed out"), { name: "TimeoutError" }));
+        });
+      });
+    }
+    secondAsked++;
+    return realFetch(req, init);
+  };
+  const started = Date.now();
+  const res = await worker.fetch(
+    new Request("https://honeymoney.app/api/auth/login", { method: "POST", body: "{}" }),
+    env,
+  );
+  const body = await res.text();
+  globalThis.fetch = realFetch;
+  check(
+    "POST that timed out at the first origin — NOT resent to the second, honest 503",
+    res.status === 503 && secondAsked === 0 && body.includes("offline"),
+    `status=${res.status} secondAsked=${secondAsked} after ${Date.now() - started}ms`,
+  );
+}
+
 // 7. An app route with no origin gets the offline page, not a blank tab.
 {
   reset();
