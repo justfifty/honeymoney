@@ -63,6 +63,11 @@ function LoginForm() {
           onChange={setPassword}
           autoComplete="current-password"
         />
+        <p className="text-right text-sm">
+          <Link href="/forgot-password" className="text-zinc-500 hover:text-amber-600 hover:underline">
+            Forgot password?
+          </Link>
+        </p>
         {err && (
           <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">
             {err}
