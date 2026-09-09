@@ -30,6 +30,38 @@ is the entire reason Part 2 exists.
 
 ---
 
+## Part 3 — PocketBase's own mail: password-reset links
+
+The app's **Forgot password?** flow (`/forgot-password` → email → `/reset-password`)
+is sent by **PocketBase**, not by Gmail, so PocketBase needs the Brevo relay
+too. Once, in the PocketBase admin UI → **Settings → Mail settings**:
+
+| field | value |
+|---|---|
+| Sender name | `HoneyMoney` |
+| Sender address | `hello@honeymoney.app` |
+| SMTP enabled | on |
+| Host | `smtp-relay.brevo.com` |
+| Port | `587` |
+| Username | your Brevo SMTP login |
+| Password | the Brevo **SMTP key** (Part 2.4) |
+| TLS | STARTTLS / auto |
+
+Then **Send test email** on that same screen — if it does not arrive, revisit
+Part 2.3 (Brevo's IP blocking).
+
+The email's *link* is set by `pocketbase/pb_migrations/1757400001_password_reset_link.js`,
+which runs at PocketBase's next start and points the button at
+`https://honeymoney.app/reset-password?token=…` instead of PocketBase's admin
+page. Apply it by restarting PocketBase: on the laptop drop the restart marker
+(`deploy/start-honeymoney.ps1`), on DOM Cloud `touch ~/public_html/tmp/restart.txt`.
+
+Without the SMTP settings the flow still answers "if an account exists, a link
+is on its way" — and nothing arrives. With them and without the migration, the
+link opens PocketBase's own page, which works but is not HoneyMoney. Do both.
+
+---
+
 ## Part 2 — Sending, via Brevo SMTP (free, 300/day)
 
 ```

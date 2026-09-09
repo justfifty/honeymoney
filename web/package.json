@@ -18,6 +18,7 @@
     "check:receipt": "npx --yes tsx scripts/check-receipt.mts",
     "check:edge": "node scripts/check-edge.mjs",
     "check:worker": "node scripts/check-worker.mjs",
+    "check:reset": "node scripts/check-password-reset.mjs",
     "check:ocr": "npx --yes tsx scripts/check-ocr.mts",
     "check:mic": "node scripts/check-no-mic.mjs",
     "check:attachments": "node scripts/check-attachments.mjs",
