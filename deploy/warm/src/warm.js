@@ -29,7 +29,13 @@
 // at 3s would reliably cancel the very thing it was scheduled to do.
 const KNOCK_TIMEOUT_MS = 20000;
 
-async function knock(name, url) {
+/**
+ * @param {string} name
+ * @param {string} url
+ * @param {{ readBody?: boolean }} [opts] readBody: this URL answers the app's
+ *   own /api/health, whose BODY says more than its status code does.
+ */
+async function knock(name, url, opts = {}) {
   if (!url) return `${name}: not configured`;
   const started = Date.now();
   try {
@@ -40,7 +46,36 @@ async function knock(name, url) {
       headers: { "User-Agent": "honeymoney-warm/1 (+https://honeymoney.app)" },
       signal: AbortSignal.timeout(KNOCK_TIMEOUT_MS),
     });
-    return `${name}: ${res.status} in ${Date.now() - started}ms`;
+    const line = `${name}: ${res.status} in ${Date.now() - started}ms`;
+    if (!opts.readBody || !res.ok) return line;
+
+    // ── WHY A 200 IS NOT ENOUGH ANY MORE ────────────────────────────────
+    //
+    // On 2026-09-13 this warmer logged `app: 200` every three minutes for
+    // hours while /graph and /goals served empty tabs. It was telling the
+    // truth: the app WAS up. It could not read the ledger — the TLS chain to
+    // PocketBase had become unverifiable — and nothing about that fact was
+    // visible in a status code.
+    //
+    // The PocketBase knock below could not see it either, and that is the
+    // subtle part: a Cloudflare Worker completes the very certificate chain
+    // that Node cannot, so `pocketbase: 200` was ALSO true and ALSO useless.
+    // Only the app can report whether the app can reach the ledger, which is
+    // why /api/health now probes it and answers `ok: false` when it cannot.
+    //
+    // Reading that costs one JSON parse of a few hundred bytes, and turns a
+    // warmer into the monitor this outage proved we did not have.
+    try {
+      const body = await res.json();
+      if (body && body.ok === false) {
+        const why = (body.ledger && body.ledger.error) || "no detail";
+        return `${line}  ⚠️ NOT READY — the app cannot reach the ledger: ${why}`;
+      }
+    } catch {
+      // A health endpoint that stops being JSON is not worth failing a knock
+      // over; the status line above still went out.
+    }
+    return line;
   } catch (err) {
     return `${name}: ${err && err.name === "TimeoutError" ? "timeout" : "unreachable"} after ${Date.now() - started}ms`;
   }
@@ -52,7 +87,7 @@ export default {
     // one must not eat the other's budget.
     ctx.waitUntil(
       Promise.all([
-        knock("app", env.APP_HEALTH),
+        knock("app", env.APP_HEALTH, { readBody: true }),
         knock("pocketbase", env.PB_HEALTH),
       ]).then((lines) => console.log(lines.join("  |  "))),
     );
@@ -63,7 +98,7 @@ export default {
   // schedule runs — "is the warmer working" should not require reading logs.
   async fetch(_request, env) {
     const lines = await Promise.all([
-      knock("app", env.APP_HEALTH),
+      knock("app", env.APP_HEALTH, { readBody: true }),
       knock("pocketbase", env.PB_HEALTH),
     ]);
     return new Response(lines.join("\n") + "\n", {

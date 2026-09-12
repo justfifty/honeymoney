@@ -18,6 +18,8 @@ import { t as translate } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 import { normalizeCurrency, fmtMoney } from "@/lib/format";
 import { can, resolveViewTenant, listHouseholdsFor } from "@/lib/household";
+import { isUnreachable } from "@/lib/pocketbase";
+import DegradedNotice from "../DegradedNotice";
 import LocalOverlay from "../LocalOverlay";
 
 export const dynamic = "force-dynamic";
@@ -79,38 +81,75 @@ export default async function GraphPage({
   }
 
   const params = await searchParams;
-  // Signed in, you see YOUR household — the ?tenantId= switcher is a showcase
-  // affordance for anonymous visitors browsing the demo personas, and must not
-  // be able to point a logged-in user at somebody else's books.
-  const { ctx, isDemo } = await resolveViewTenant();
-  // Anonymous visitors may only view the seed demo personas — never an arbitrary
-  // (real) household passed via ?tenantId. Signed in, you're locked to your own.
-  const tenantId = ctx
-    ? ctx.tenant.id
-    : params.tenantId && config.demoPersonaIds.includes(params.tenantId)
-      ? params.tenantId
-      : config.demoTenantId;
-  // The persona switcher lists the viewer's OWN households, or the demo personas
-  // for anonymous visitors — never every consumer's private household.
-  const personaIds = ctx
-    ? (await listHouseholdsFor(ctx.user.id)).map((h) => h.id)
-    : config.demoPersonaIds;
-  const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
-  const canManageGraph = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
   const mode: Mode = chartFromParam(params.mode);
   const focus = parseFocus(params.focus);
   const focusParam = focusToParam(focus);
+  // Locale comes from the cookie jar, not the ledger, so it is resolved BEFORE
+  // the reads below — the screen that apologises for the ledger being down has
+  // to be written in the reader's own language.
   const lang = await getLocale();
   const tr = (k: string, vars?: Record<string, string | number>) => translate(lang, k, vars);
   const ccy = normalizeCurrency(params.ccy);
   const sticky = `&focus=${focusParam}&lang=${lang}&ccy=${ccy}`;
   const rm0 = (n: number) => fmtMoney(n, ccy, { round: true });
-  // Redaction is for real households only: the seeded personas are fictional,
-  // and their vendor breakdown is the whole point of this page.
-  const view = await getFocusedView(tenantId, focus, lang, personaIds, {
-    viewerMemberId: ctx?.memberId,
-    redact: !isDemo,
-  });
+
+  // ── EVERY READ OF THE LEDGER, IN ONE PLACE THAT CAN FAIL ──────────────────
+  //
+  // This page had no catch at all, and on 2026-09-13 that was the whole visible
+  // outage: PocketBase became unreachable, `getFocusedView` threw, and the
+  // Server Component error boundary served a tab with nothing in it. /dashboard,
+  // /hscore and /record already told the truth in that situation; /graph did not
+  // and was therefore the page that looked broken.
+  //
+  // Nothing here is a lost cause worth crashing over — the records exist, the
+  // host is not answering this minute — so the honest render is the same
+  // DegradedNotice the other three use, in the reader's language.
+  let data: {
+    ctx: Awaited<ReturnType<typeof resolveViewTenant>>["ctx"];
+    isDemo: boolean;
+    tenantId: string;
+    view: Awaited<ReturnType<typeof getFocusedView>>;
+  };
+  try {
+    // Signed in, you see YOUR household — the ?tenantId= switcher is a showcase
+    // affordance for anonymous visitors browsing the demo personas, and must not
+    // be able to point a logged-in user at somebody else's books.
+    const { ctx, isDemo } = await resolveViewTenant();
+    // Anonymous visitors may only view the seed demo personas — never an arbitrary
+    // (real) household passed via ?tenantId. Signed in, you're locked to your own.
+    const tenantId = ctx
+      ? ctx.tenant.id
+      : params.tenantId && config.demoPersonaIds.includes(params.tenantId)
+        ? params.tenantId
+        : config.demoTenantId;
+    // The persona switcher lists the viewer's OWN households, or the demo personas
+    // for anonymous visitors — never every consumer's private household.
+    const personaIds = ctx
+      ? (await listHouseholdsFor(ctx.user.id)).map((h) => h.id)
+      : config.demoPersonaIds;
+    // Redaction is for real households only: the seeded personas are fictional,
+    // and their vendor breakdown is the whole point of this page.
+    const view = await getFocusedView(tenantId, focus, lang, personaIds, {
+      viewerMemberId: ctx?.memberId,
+      redact: !isDemo,
+    });
+    data = { ctx, isDemo, tenantId, view };
+  } catch (err) {
+    if (!isUnreachable(err)) throw err;
+    return (
+      <main className="mx-auto min-h-full w-full min-w-0 max-w-5xl px-4 py-16 sm:px-6">
+        <DegradedNotice
+          lang={lang}
+          detail={err instanceof Error ? err.message : undefined}
+          where={tr("app.title")}
+        />
+      </main>
+    );
+  }
+
+  const { ctx, isDemo, tenantId, view } = data;
+  const canWrite = Boolean(ctx) && can(ctx!.accessRole, "add_record");
+  const canManageGraph = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
   const { nodes, edges } = view.graph;
   const money = view.money;
 

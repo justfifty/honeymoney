@@ -21,6 +21,13 @@ import { mkdir, writeFile, readFile, rm, cp, readdir, stat } from "node:fs/promi
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { installLedgerCertificateChain } from "./lib/ledger-tls.mjs";
+
+// The origin is reached over a certificate whose issuer that host does not
+// send. Without this, every fetch below dies in the handshake and this script
+// reports "Can't reach <origin>" about a server that is up and serving. See
+// scripts/lib/ledger-tls.mjs.
+installLedgerCertificateChain();
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WEB = path.join(ROOT, "web");
@@ -296,7 +303,23 @@ async function assertServerIsProd() {
   let res;
   try {
     res = await fetch(BASE + "/api/health", { signal: AbortSignal.timeout(10_000) });
-  } catch {
+  } catch (err) {
+    // "Can't reach" used to be the only thing this said, and on 2026-09-13 it
+    // said it about an origin that was answering curl in 40ms — the handshake
+    // was failing, not the server. Telling someone to restart a healthy app is
+    // worse than saying nothing, so the cause gets to speak for itself.
+    const cause = err?.cause;
+    const code = cause?.code ?? "";
+    if (/CERT|SIGNATURE|ISSUER|SELF_SIGNED/i.test(code)) {
+      throw new Error(
+        `TLS failure talking to ${BASE} — ${code}.\n` +
+          `The origin is probably UP; this process cannot verify its certificate.\n` +
+          `${BASE.replace(/^https?:\/\//, "")} serves a leaf with no issuer, and the\n` +
+          `missing links are carried in web/src/lib/tlsChain.ts. Check what it sends:\n` +
+          `  echo | openssl s_client -connect ${BASE.replace(/^https?:\/\//, "")}:443 \\\n` +
+          `    -servername ${BASE.replace(/^https?:\/\//, "")} 2>/dev/null | grep "^ [0-9] s:"`,
+      );
+    }
     throw new Error(`Can't reach ${BASE}. Start the production app first: cd web && npm run start`);
   }
   if (!res.ok) throw new Error(`${BASE}/api/health returned ${res.status} — is the app healthy?`);

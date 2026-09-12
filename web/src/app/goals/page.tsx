@@ -4,6 +4,8 @@ import { resolveViewTenant, can, listMembers } from "@/lib/household";
 import { listGoals, GOAL_CATEGORIES } from "@/lib/goals";
 import { getLocale } from "@/lib/locale";
 import { t } from "@/lib/i18n";
+import { isUnreachable } from "@/lib/pocketbase";
+import DegradedNotice from "../DegradedNotice";
 import Logo from "../Logo";
 import GoalsManager from "./GoalsManager";
 
@@ -25,15 +27,40 @@ export default async function GoalsPage() {
     );
   }
 
-  const { tenantId, ctx } = await resolveViewTenant();
-  const [goals, members] = tenantId
-    ? await Promise.all([
-        // The viewer decides what they may see: a private goal is redacted for
-        // everyone except its owner.
-        listGoals(tenantId, { viewerMemberId: ctx?.memberId ?? null }),
-        listMembers(tenantId),
-      ])
-    : [[], []];
+  // Same shape as /dashboard, /hscore, /record and /graph: an unreachable
+  // ledger is a temporary fact about a host, not an error this reader can act
+  // on, and it must not reach the error boundary — that renders an empty tab,
+  // which is exactly how the 2026-09-13 outage presented on this page.
+  let data: {
+    ctx: Awaited<ReturnType<typeof resolveViewTenant>>["ctx"];
+    goals: Awaited<ReturnType<typeof listGoals>>;
+    members: Awaited<ReturnType<typeof listMembers>>;
+  };
+  try {
+    const { tenantId, ctx } = await resolveViewTenant();
+    const [goals, members] = tenantId
+      ? await Promise.all([
+          // The viewer decides what they may see: a private goal is redacted for
+          // everyone except its owner.
+          listGoals(tenantId, { viewerMemberId: ctx?.memberId ?? null }),
+          listMembers(tenantId),
+        ])
+      : [[], []];
+    data = { ctx, goals, members };
+  } catch (err) {
+    if (!isUnreachable(err)) throw err;
+    return (
+      <main className="mx-auto min-h-full max-w-2xl px-4 py-16 sm:px-6">
+        <DegradedNotice
+          lang={locale}
+          detail={err instanceof Error ? err.message : undefined}
+          where={tr("goals.title")}
+        />
+      </main>
+    );
+  }
+
+  const { ctx, goals, members } = data;
   const canWrite = Boolean(ctx) && can(ctx!.accessRole, "manage_graph");
 
   return (

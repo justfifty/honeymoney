@@ -5,6 +5,13 @@
 
 import { config, isPocketBaseConfigured } from "./config";
 
+// ⚠️ The TLS chain this file depends on is installed in src/instrumentation.ts,
+// NOT here. Every call below reaches a host that serves an incomplete
+// certificate chain, and Node cannot complete it unaided — see lib/tlsChain.ts
+// for what is missing. It is registered from the instrumentation hook because
+// this module, despite the "server-side only" note above, is dragged into the
+// CLIENT bundle by lib/consent.ts, and a browser chunk cannot contain node:tls.
+
 interface PBListResult<T> {
   items: T[];
   totalItems: number;
@@ -394,4 +401,64 @@ export async function pbFileResponse(
 // Escape a value for use inside a PocketBase filter string literal.
 export function pbStr(value: string): string {
   return `'${value.replace(/'/g, "\\'")}'`;
+}
+
+/**
+ * Can this process actually reach the ledger, right now?
+ *
+ * ── WHY A PROBE AND NOT A BOOLEAN ─────────────────────────────────────────
+ *
+ * /api/health used to answer this question from `isPocketBaseConfigured()`,
+ * which reads three environment variables and has never once been wrong in a
+ * way that mattered. Through the whole 2026-09-13 outage it reported
+ * `"pocketbase": true` — truthfully, and uselessly. The variables were set. The
+ * TLS handshake was failing.
+ *
+ * The `honeymoney-warm` cron had the same blind spot from the other side: it
+ * knocks on PocketBase's OWN health URL from a Cloudflare Worker, whose TLS
+ * stack completes the chain that Node's cannot. Both monitors were green, on
+ * two different paths, neither of which was the path the app uses.
+ *
+ * So this one deliberately makes the app's own call, with the app's own fetch,
+ * from the app's own process. It is the only version of the question whose
+ * answer predicts whether a household can see their records.
+ *
+ * Unauthenticated on purpose: PocketBase's /api/health needs no superuser, and
+ * the failures worth catching — DNS, TLS, blackhole, dead host — all happen
+ * before any credential is looked at. Bounded by the same timeout as a real
+ * read, and it never throws: a readiness probe that crashes is a worse monitor
+ * than one that reports a problem.
+ */
+export async function probeLedger(): Promise<{
+  configured: boolean;
+  reachable: boolean;
+  latencyMs: number;
+  error?: string;
+}> {
+  if (!isPocketBaseConfigured()) {
+    return { configured: false, reachable: false, latencyMs: 0, error: "not configured" };
+  }
+  const started = Date.now();
+  try {
+    const res = await pbTimedFetch(
+      `${config.pocketbaseUrl}/api/health`,
+      { method: "GET", cache: "no-store" },
+      "health probe",
+    );
+    return {
+      configured: true,
+      reachable: res.ok,
+      latencyMs: Date.now() - started,
+      ...(res.ok ? {} : { error: `HTTP ${res.status}` }),
+    };
+  } catch (err) {
+    return {
+      configured: true,
+      reachable: false,
+      latencyMs: Date.now() - started,
+      // The message carries the TLS/DNS cause, which is the entire diagnosis
+      // when this fires. Losing it would leave a monitor saying only "no".
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
