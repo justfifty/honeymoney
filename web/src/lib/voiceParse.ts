@@ -149,16 +149,34 @@ function wordsToNumber(text: string): number | undefined {
 
 // ── Currency ────────────────────────────────────────────────────────────────
 
+// A currency CODE is a word that may have the number glued to it. "RM20",
+// "SGD20", "USD20", "THB100" are how people actually type prices — and until
+// 2026-09-13 every one of them was filed in MYR, because `\brm\b` needs a word
+// boundary after the M and there is none between a letter and a digit. The
+// number was read correctly (20) and the currency was quietly lost, which for a
+// converter is the worst outcome: a wrong amount in the right currency at least
+// looks wrong. So a code ends at a word boundary OR at a digit. \b before it
+// still stands: "farm20" is not RM20.
+const CODE = (...codes: string[]) => String.raw`\b(?:${codes.join("|")})(?=\d|\b)`;
+// "SG20" — the shorthand somebody in Malaysia reaches for before "SGD", and the
+// one that turned SG20.00 into "MYR 20 at SG .00". It counts only when a number
+// or a $ follows, so a merchant whose name contains SG as a word is left alone.
+const SG_SHORTHAND = String.raw`\bsg(?=\s*\d|\$)`;
+
 const CURRENCY_WORDS: { re: RegExp; code: string }[] = [
-  { re: /\brm\b|\bmyr\b|ringgit|林吉特|ரிங்கிட்|रिंगित/iu, code: "MYR" },
-  { re: /\bsgd\b|\bs\$|sing(?:apore)?\s*dollar|新币|新加坡元/iu, code: "SGD" },
-  { re: /\busd\b|\bus\$|\bdollars?\b|美元|美金/iu, code: "USD" },
-  { re: /\bgbp\b|\bpounds?\b|英镑/iu, code: "GBP" },
-  { re: /\bthb\b|\bbaht\b|฿|泰铢/iu, code: "THB" },
-  { re: /\bcny\b|\brmb\b|yuan|人民币|元(?!旦)/iu, code: "CNY" },
-  { re: /\bhkd\b|\bhk\$|港币|港元/iu, code: "HKD" },
-  { re: /\btwd\b|\bnt\$|新台币/iu, code: "TWD" },
-  { re: /\bjpy\b|\byen\b|日元|日圓/iu, code: "JPY" },
+  { re: new RegExp(String.raw`${CODE("rm", "myr")}|ringgit|林吉特|ரிங்கிட்|रिंगित`, "iu"), code: "MYR" },
+  { re: new RegExp(String.raw`${CODE("sgd")}|${SG_SHORTHAND}|\bs\$|sing(?:apore)?\s*dollar|新币|新加坡元`, "iu"), code: "SGD" },
+  { re: new RegExp(String.raw`${CODE("usd")}|\bus\$|\bdollars?\b|美元|美金`, "iu"), code: "USD" },
+  { re: new RegExp(String.raw`${CODE("gbp")}|\bpounds?\b|£|英镑`, "iu"), code: "GBP" },
+  { re: new RegExp(String.raw`${CODE("thb")}|\bbaht\b|฿|泰铢`, "iu"), code: "THB" },
+  { re: new RegExp(String.raw`${CODE("cny", "rmb")}|yuan|人民币|元(?!旦)`, "iu"), code: "CNY" },
+  { re: new RegExp(String.raw`${CODE("hkd")}|\bhk\$|港币|港元`, "iu"), code: "HKD" },
+  { re: new RegExp(String.raw`${CODE("twd")}|\bnt\$|新台币`, "iu"), code: "TWD" },
+  { re: new RegExp(String.raw`${CODE("jpy")}|\byen\b|日元|日圓`, "iu"), code: "JPY" },
+  // A bare "$" and a bare "¥" are deliberately NOT here. "$20" is USD to one
+  // person and SGD to the next; "¥" is yuan or yen. The parser leaves the
+  // currency undetected and the form keeps whatever the person had selected,
+  // which is a visible choice rather than a silent guess.
 ];
 
 export function detectCurrency(text: string): string | undefined {
@@ -236,6 +254,16 @@ function stripNonMoney(text: string): string {
 // ("6,50", which some people do type).
 const MONEY = String.raw`\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?`;
 
+// What may sit against a figure and mean "this is money, in this currency":
+// a code, glued or spaced ("RM20", "SGD 20", "SG20"), a sign ("S$20", "US$20",
+// "$20", "£20"), or a currency noun trailing it ("20 sgd", "100 baht"). Shared
+// by extractAmount, which uses them to FIND the figure, and removeAmount, which
+// uses them to take the marker away WITH the figure — so "S$20 kopi" leaves
+// "kopi", not "S kopi", and "SGD20.00 kopi" leaves "kopi", not "SGD .00 Kopi".
+// Every code detectCurrency knows is here; add to both or neither.
+const MARKER_BEFORE = String.raw`(?:\b(?:rm|myr|ringgit|sgd|sg|usd|gbp|thb|cny|rmb|hkd|twd|jpy)\s*|\b(?:s|us|sg|hk|nt)\$\s*|[$£฿¥]\s*)`;
+const MARKER_AFTER = String.raw`\s*(?:rm|myr|ringgit|sen|sgd|usd|gbp|thb|cny|rmb|hkd|twd|jpy|dollars?|pounds?|baht|yuan|yen)\b`;
+
 function toAmount(token: string): number {
   // 1,234.56 or 1,234 — the comma groups thousands, so it is not a decimal point.
   if (/^\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?$/.test(token)) {
@@ -278,11 +306,9 @@ export function extractAmount(raw: string): number | undefined {
   if (chosen) return toAmount(chosen[2]);
 
   // 2) adjacent to a currency marker, either side: "RM 12.50" or "12.50 ringgit"
-  const before = t.match(new RegExp(String.raw`(?:rm|myr|ringgit|s\$|sgd|usd|\$|£|฿|¥)\s*(${MONEY})`, "iu"));
+  const before = t.match(new RegExp(String.raw`${MARKER_BEFORE}(${MONEY})`, "iu"));
   if (before) return toAmount(before[1]);
-  const after = t.match(
-    new RegExp(String.raw`(${MONEY})\s*(?:rm|myr|ringgit|sen|dollars?|pounds?|baht|yuan|yen)\b`, "iu"),
-  );
+  const after = t.match(new RegExp(String.raw`(${MONEY})${MARKER_AFTER}`, "iu"));
   if (after) return toAmount(after[1]);
 
   // 3) "twelve ringgit fifty (sen)" — spoken decimals
@@ -456,26 +482,20 @@ export function extractVendor(
   return snapToKnownVendor(titleCase(v), knownVendors);
 }
 
-// Delete the first literal occurrence of the amount — "42.50", "42,50" or "42".
+// Delete the amount — in whatever form the person WROTE it ("42.50", "42,50",
+// "42", "2,000", "2000.00") — together with the currency marker glued to or
+// spaced against it. Match by VALUE, not by spelling: the old version listed
+// spellings and tried "20" before "20.00", so "kopi 20.00" became the merchant
+// "Kopi .00", and "S$20 kopi" the merchant "S Kopi". The lookahead refuses to
+// take "20" out of "20.00"; the value comparison means any spelling that reads
+// as the amount is the one removed. Numbers that are NOT the amount stay where
+// they are: "99 Speedmart", "7-Eleven" and "1 Utama" are real merchants.
 function removeAmount(text: string, amount: number): string {
-  const whole = String(Math.trunc(amount));
-  // How the user may have WRITTEN it, not just how JavaScript prints it. The
-  // grouped forms are here because extractAmount learned to read "RM2,000": if
-  // only the ungrouped "2000" were removed, the vendor came back as "RM2 000
-  // Raya Trip" — the amount left behind, in pieces, inside the merchant name.
-  const grouped = (n: number) => n.toLocaleString("en-US"); // 2,000 · 1,234.56
-  const forms = [
-    grouped(amount), // 2,000
-    amount.toFixed(2), // 42.50
-    grouped(Number(amount.toFixed(2))), // 1,234.56
-    amount.toFixed(2).replace(".", ","), // 42,50
-    String(amount), // 42.5
-    ...(Number.isInteger(amount) ? [whole] : []),
-  ];
-  for (const form of forms) {
-    const escaped = form.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(?<![\\d.,])${escaped}(?![\\d])`);
-    if (re.test(text)) return text.replace(re, " ");
+  const re = new RegExp(String.raw`${MARKER_BEFORE}?(?<![\d.,])(${MONEY})(?!\d|[.,]\d)(?:${MARKER_AFTER})?`, "giu");
+  for (const m of text.matchAll(re)) {
+    if (Math.abs(toAmount(m[1]) - amount) < 0.005) {
+      return `${text.slice(0, m.index)} ${text.slice(m.index + m[0].length)}`;
+    }
   }
   return text;
 }
