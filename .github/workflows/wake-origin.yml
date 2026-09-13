@@ -33,7 +33,7 @@ on:
 jobs:
   wake:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -42,12 +42,23 @@ jobs:
         shell: bash
         run: |
           set +e
+          # ── THE KNOCK MUST CARRY THE SAME CHAIN THE APP DOES ─────────────────
+          # The DOM Cloud hosts serve a certificate whose issuer they omit, and
+          # curl on this runner (OpenSSL) cannot complete the chain — the exact
+          # failure the app had (web/src/lib/tlsChain.ts). Run #11 on
+          # 2026-09-12 reported "origin unreachable" about a host that was up.
+          # --cacert REPLACES the store, so the system bundle is concatenated
+          # with the two certificates the app ships, and nothing is exempted.
+          bundle=$(mktemp)
+          cat /etc/ssl/certs/ca-certificates.crt > "$bundle"
+          sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' web/src/lib/tlsChain.ts >> "$bundle"
+          echo "CA bundle: $(grep -c 'BEGIN CERTIFICATE' "$bundle") certificates, of which $(sed -n '/-----BEGIN CERTIFICATE-----/,/-----END CERTIFICATE-----/p' web/src/lib/tlsChain.ts | grep -c 'BEGIN CERTIFICATE') from tlsChain.ts"
           knock() {
             local name="$1" url="$2" tries="$3" code
             for i in $(seq 1 "$tries"); do
-              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 \
+              code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 90 --cacert "$bundle" \
                      -H 'User-Agent: honeymoney-wake/1 (+https://honeymoney.app)' \
-                     -H 'Cache-Control: no-cache' "$url" 2>/dev/null || echo 000)
+                     -H 'Cache-Control: no-cache' "$url" 2>/dev/null) || code="${code:-000}"
               echo "  $name  attempt $i → $code"
               if [ "$code" = "200" ]; then echo "$name=200" >> "$GITHUB_OUTPUT"; return 0; fi
               sleep 5
