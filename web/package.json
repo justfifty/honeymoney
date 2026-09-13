@@ -16,6 +16,7 @@
     "check:nav": "node scripts/check-nav.mjs",
     "check:tap": "node scripts/check-tap.mjs --routes=/record,/dashboard,/hscore",
     "check:receipt": "npx --yes tsx scripts/check-receipt.mts",
+    "check:parse": "npx --yes tsx scripts/check-parse.mts",
     "check:edge": "node scripts/check-edge.mjs",
     "check:worker": "node scripts/check-worker.mjs",
     "check:reset": "node scripts/check-password-reset.mjs",
